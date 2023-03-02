@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Inputs:
     filtered_signal = np.array of filtered signal. Shape = (recorded data points, number of electrodes)
@@ -18,7 +19,6 @@ Inputs:
     reject_channels = List of channels/electrodes that should not be included in
     the spike detection. default: [None]
     file_name = Name of the analysed file for reference, string. default: None
-    save = Should the resulting spike file be saved, boolean. default: True
     
 Outputs:
     Results = Dictionary containing all detected spikes, a file name, the sampling 
@@ -28,7 +28,7 @@ Outputs:
     contains the spike time and the rest of columns contain the spike shape
 """
 
-def spike_detection(filtered_signal, electrode_stream, fsample, save_path, min_TH, dat_points_pre_min=20, dat_points_post_min=44, max_TH=-30, chunck_len=300, refrec_period=0.002, reject_channels=[None], file_name=None, save=True):
+def spike_detection(filtered_signal, electrode_stream, fsample, save_path, min_TH, dat_points_pre_min=20, dat_points_post_min=44, max_TH=-30, chunck_len=300, refrec_period=0.002, reject_channels=[None], file_name=None):
     
     reject_ch = reject_channels #In case you manually want to reject channels
     ids = [c.channel_id for c in electrode_stream.channel_infos.values()]
@@ -86,13 +86,12 @@ def spike_detection(filtered_signal, electrode_stream, fsample, save_path, min_T
     Results["Recording len"] = filtered_signal.shape[0] / fsample
     Results["Raw_spikes"] = dat_arr[dat_arr[:, 1].argsort()]
     
-    if save:
-        if file_name != None:
-            with open(save_path + '/Spike_File_' + file_name + '.pkl', 'wb+') as f:
-                pickle.dump(Results, f, -1)
-         else:
-            with open(save_path + '/Spike_File.pkl', 'wb+') as f:
-                pickle.dump(Results, f, -1)
+    if file_name != None:
+        with open(save_path + '/Spike_File_' + file_name + '.pkl', 'wb+') as f:
+            pickle.dump(Results, f, -1)
+    else:
+        with open(save_path + '/Spike_File.pkl', 'wb+') as f:
+            pickle.dump(Results, f, -1)
     
     return Results
     

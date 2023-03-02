@@ -21,7 +21,7 @@ import McsPy.McsData
 from McsPy import ureg, Q_
 
 
-def file_opener(file_name, path, is_big_file=False):
+def file_opener_raw_recording_data(file_name, path, is_big_file=False):
     
 
     file_path = path + file_name + '.h5'
