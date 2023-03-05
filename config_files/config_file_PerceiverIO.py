@@ -3,7 +3,7 @@ class Config_AutoPerceiver(object):
 
     # General  
 
-    CHK_DIR = '/content/drive/My Drive/Data ML/Model data .h5/2022_03_15_Peceiver_Testing/'
+    SAVE_DIR = '/content/drive/My Drive/Data ML/Model data .h5/2022_03_15_Peceiver_Testing/'
 
     LOAD = False #'run20211212T2105/'
     

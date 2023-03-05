@@ -71,7 +71,6 @@ class Run:
             autoencoder = AutoPerceiver(Embedding_dim=config.EMBEDDING_DIM,
                       seq_len=config.SEQ_LEN,
                       ENC_number_of_layers=config.ENC_NUMBER_OF_LAYERS,
-                      ENC_latent_len=config.ENC_LATENT_LEN,
                       ENC_state_index=config.ENC_STATE_INDEX,
                       ENC_state_channels=config.ENC_STATE_CHANNELS,                    
                       ENC_dff=config.ENC_DFF,
@@ -93,43 +92,8 @@ class Run:
                       DEC_dropout_rate=config.DEC_DROPOUT_RATE)
         
     def train_model(self, self.model):
-        if self.model == "AutoPerceiver":
-            lr = config.LEARNING_RATE
-            wd = config.WEIGHT_DECAY
-            
-            if WITH_WD:
-                optimizer = tfa.optimizers.AdamW(weight_decay=wd, learning_rate=lr)
-            else:
-                optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
-            
-            
-            #subdir = datetime.datetime.now().strftime('run%Y%m%dT%H%M')
-            #chk_dir = config.CHK_DIR + './checkpoints/'+subdir+'/' 
-            
-            
-            for epoch in range(config.NUM_EPOCHS):
-                    
-                if WITH_WARMUP:
-                    lr = config.LEARNING_RATE*min(epoch,config.LR_WARMUP)/config.LR_WARMUP
-                    if epoch>config.LR_WARMUP:
-                        lr = config.LEARNING_RATE
-                        lr = config.LR_FINAL + .5*(lr-config.LR_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-                        wd = wd + .5*(wd-config.WD_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-                else:
-                    lr = config.LR_FINAL + .5*(lr-config.LR_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-                    wd = wd + .5*(wd-config.WD_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-            
-                
-                optimizer.learning_rate = lr
-                optimizer.weight_decay = wd
-                
-                for step,batch in enumerate(dataset):      
-                    batch_s = batch
-                    with tf.GradientTape() as tape:                   
-                      [ENC_state, logits, output] = autoencoder(batch_s)
-                      mse = tf.keras.losses.MeanSquaredError()
-                      loss = mse(batch_s, output)
-                      grads = tape.gradient(loss,autoencoder.trainable_weights)
-                      optimizer.apply_gradients(zip(grads,autoencoder.trainable_weights))
+        train_model(self.modelmodel, save_weights)
         
+        
+    
     #def clustering(self, ) Write full clustering class

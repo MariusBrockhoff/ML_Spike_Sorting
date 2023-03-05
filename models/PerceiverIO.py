@@ -10,6 +10,7 @@ import math
 from einops import rearrange, repeat
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers as KL
+import tensorflow_addons as tfa
 
 
 
@@ -454,8 +455,6 @@ class Encoder(tf.keras.layers.Layer):
                  seq_len = 64,  
                               
                  number_of_layers=3,
-               
-                 latent_len=30,
                  
                  state_index=256,
 
@@ -482,8 +481,6 @@ class Encoder(tf.keras.layers.Layer):
     self.seq_len = seq_len
 
     self.number_of_layers = number_of_layers
-
-    self.latent_len = latent_len
 
     self.state_index = state_index
 
@@ -572,8 +569,6 @@ class Decoder(tf.keras.layers.Layer):
                  seq_len=64,
                               
                  number_of_layers=3,
-               
-                 latent_len=30,
                  
                  state_index=256,
 
@@ -600,8 +595,6 @@ class Decoder(tf.keras.layers.Layer):
     self.seq_len = seq_len
 
     self.number_of_layers = number_of_layers
-
-    self.latent_len = latent_len
 
     self.state_index = state_index
 
@@ -682,8 +675,6 @@ class AutoPerceiver(tf.keras.Model):
                               
                  ENC_number_of_layers=3,
 
-                 ENC_latent_len=30,
-                 
                  ENC_state_index=256,
 
                  ENC_state_channels=128,
@@ -730,8 +721,6 @@ class AutoPerceiver(tf.keras.Model):
 
     self.ENC_number_of_layers = ENC_number_of_layers
 
-    self.ENC_latent_len = ENC_latent_len
-
     self.ENC_state_index = ENC_state_index
 
     self.ENC_state_channels = ENC_state_channels
@@ -776,9 +765,7 @@ class AutoPerceiver(tf.keras.Model):
                            
                                    seq_len=self.seq_len,
                                                     
-                                   number_of_layers=self.ENC_number_of_layers,
-
-                                   latent_len=self.ENC_latent_len,                           
+                                   number_of_layers=self.ENC_number_of_layers,                          
                                                             
                                    state_index=self.ENC_state_index,
                                             
@@ -802,9 +789,7 @@ class AutoPerceiver(tf.keras.Model):
                            
                                    seq_len=seq_len,
                                                     
-                                   number_of_layers=self.DEC_number_of_layers,
-
-                                   latent_len=self.ENC_latent_len,                           
+                                   number_of_layers=self.DEC_number_of_layers,                        
                                                             
                                    state_index=self.DEC_state_index,
                                             
