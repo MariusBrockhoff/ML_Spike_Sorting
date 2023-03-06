@@ -9,7 +9,7 @@ import numpy as np
 from scipy.fft import fft
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
- 
+
 
 def gradient_transform(X, fsample):
   time_step = 1 / fsample * 10**6 #in us
@@ -164,5 +164,3 @@ def data_preprocessing_Jakob(dataset_path, method, data_split):
     print('---' * 30)
 
     return batches_train, batches_test, signal_length
-
-
