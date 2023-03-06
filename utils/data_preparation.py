@@ -6,6 +6,8 @@ import pickle
 import tensorflow as tf
 import numpy as np
 
+from scipy.fft import fft
+
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
  
 
@@ -71,3 +73,96 @@ def data_praparation(path_spike_file, data_prep_method, normalization, train_tes
     dataset_test = tf.data.Dataset.from_tensor_slices(x_test).batch(batch_size, drop_remainder=True).take(EPOCH_SIZE).shuffle(buffer_size=len(x_test))
     
     return dataset, dataset_test
+
+
+def make_batches(data, batch_size, shuffle, preprocessing_method):
+    if shuffle:
+        data = tf.random.shuffle(data)
+
+    mod = data.shape[0] % batch_size
+
+    if data.shape[0] % batch_size != 0:
+        data = data[:-mod]
+
+    batch_number = int(data.shape[0] / batch_size)
+
+    if preprocessing_method != 0:
+        data = tf.reshape(data, shape=(batch_number, batch_size, data.shape[-2], data.shape[-1]))
+
+    else:
+        data = tf.reshape(data, shape=(batch_number, batch_size, data.shape[-1]))
+
+    return data
+
+def data_preprocessing_Jakob(dataset_path, method, data_split):
+    # file_name: e.g. 'C_Difficult1_noise02' with default path '/content/drive/My Drive/SpikeSorting_Datasets/file_name/.mat
+    # method: ['gradient', 'FT'] --> gradient + MinMaxScale, FourierTransform
+    # data_split: boolean for split in train and test data
+
+    # Import dataset
+    print('---' * 30)
+    print('IMPORTING DATASET...')
+    with open(dataset_path, 'rb') as f:
+        raw_data = pickle.load(f)
+
+        spike_times = raw_data[:, 1]
+        spike_class = raw_data[:, 0]
+        X = raw_data[:, 2:]
+
+    print('shape of raw data:', raw_data.shape)
+    print('shape of spikes:', X.shape)
+
+    # Data preparation:
+    print('---' * 30)
+    print('DATA PREPARATION...')
+    # method 1: Transform to gradient and then MinMaxScale
+    if method == 'gradient':
+        signal_length = 65
+        X_grad = gradient_transform(X, fsample=20000)
+        scaler = MinMaxScaler()
+        X_data = scaler.fit_transform(X_grad)
+
+    # method 2: FT
+    elif method == 'FT':
+        signal_length = 35
+        X_data = np.abs(fft(X))[:,:33]  # due to real-value sequence --> FT-spectrum is symmetric (1 31 1 31) take 33 unique of inital 64 values
+        scaler = MinMaxScaler()
+        X_data = scaler.fit_transform(X_data)
+
+    # append start+stop
+    if method == 'gradient' or method == 'FT':
+        print('shape of data set (using gradient and MinMaxScale) before codons:', X_data.shape)
+
+        # add start+stop codon
+        X_data = np.insert(X_data, 0, -1, axis=1)
+        print('shape of data set (using gradient and MinMaxScale) after start codon:', X_data.shape)
+
+        X_data = np.append(X_data, np.array([[-1] for i in range(X_data.shape[0])]), axis=1)
+        print('shape of data set (using gradient and MinMaxScale) after stop codon:', X_data.shape)
+
+    # create batches
+    print('---' * 30)
+    print('CREATE BATCHES...')
+    print('shape of data before splitting into batches', X_data.shape)
+
+    batches = make_batches(X_data, batch_size=64, shuffle=False, preprocessing_method=0)
+    print('shape of data after splitting into batches', batches.shape)
+
+    # train/test split
+    if data_split:
+        print('---' * 30)
+        print('DATA SPLIT...')
+        split_frac = 0.1
+
+        split_ind = int(batches.shape[0] * split_frac)
+
+        batches_train = batches[split_ind:]
+        batches_test = batches[:split_ind]
+
+        print('shape of batches_train', batches_train.shape)
+        print('shape of batches_test', batches_test.shape)
+    print('---' * 30)
+
+    return batches_train, batches_test, signal_length
+
+
