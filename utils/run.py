@@ -12,6 +12,7 @@ from filter_signal import *
 from file_opener_raw_recording_data import *
 from spike_detection import *
 from data_preparation import *
+from train_models import *
 from clustering import *
 
 #Do imports of models, config files etc
@@ -97,5 +98,9 @@ class Run:
         
         
     
-    def cluster_data(self, ):
+    def cluster_data(self):
         y_pred, n_clusters = clustering(data=, method=config.CLUSTERING_METHOD, n_clusters=config.N_CLUSTERS, eps=config.EPS, min_cluster_size=config.MIN_CLUSTER_SIZE)
+
+
+    def evaluate_spike_sorting(self, ):
+        #accuracy and other metrices
