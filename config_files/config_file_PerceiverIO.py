@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 class Config_AutoPerceiver(object):
 
-    # General  
+    # General 
+    
+    SAVE_WEIGHTS = True
 
-    SAVE_DIR = '/content/drive/My Drive/Data ML/Model data .h5/2022_03_15_Peceiver_Testing/'
+    SAVE_DIR = ''
 
-    LOAD = False #'run20211212T2105/'
+    LOAD = False 
+    
+    LOAD_DIR = False
     
     
 
@@ -35,7 +39,7 @@ class Config_AutoPerceiver(object):
 
     EMBEDDING_DIM = 64
 
-    SEQ_LEN = 63
+    SEQ_LEN = 64
 
 
 
@@ -86,3 +90,14 @@ class Config_AutoPerceiver(object):
     DEC_SELF_ATTN_DIM = int(DEC_STATE_CHANNELS / DEC_NUM_ATTN_HEADS)
 
     DEC_DROPOUT_RATE = 0
+    
+    
+    #Clustering
+    
+    CLUSTERING_METHOD = "Kmeans"
+    
+    N_CLUSTERS = 5
+    
+    EPS = None
+    
+    MIN_CLUSTER_SIZE = 1000
