@@ -12,6 +12,7 @@ from filter_signal import *
 from file_opener_raw_recording_data import *
 from spike_detection import *
 from data_preparation import *
+from clustering import *
 
 #Do imports of models, config files etc
 
@@ -92,8 +93,9 @@ class Run:
                       DEC_dropout_rate=config.DEC_DROPOUT_RATE)
         
     def train_model(self, self.model):
-        train_model(self.modelmodel, save_weights)
+        train_model(self.model, save_weights)
         
         
     
-    #def clustering(self, ) Write full clustering class
+    def cluster_data(self, ):
+        y_pred, n_clusters = clustering(data=, method=config.CLUSTERING_METHOD, n_clusters=config.N_CLUSTERS, eps=config.EPS, min_cluster_size=config.MIN_CLUSTER_SIZE)
