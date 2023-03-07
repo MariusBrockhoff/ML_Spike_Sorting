@@ -3,6 +3,9 @@ import tensorflow as tf
 from models.AttnAE_1 import TransformerEncoder_AEDecoder, CustomSchedule
 import time
 import numpy as np
+import seaborn as sns
+
+print(sns.__version__)
 
 def train(batches_train, batches_test, loss_object, epochs, plot, save):
 
