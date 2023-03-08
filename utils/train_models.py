@@ -48,7 +48,8 @@ def train(batches_train, batches_test, loss_object, epochs, plot, save):
             tar_inp = inp[:, :-1]
             tar_real = inp[:, 1:]
 
-            predictions, _, _, = transformer([inp, tar_inp], training=True)
+            [input, latent, prediction] = model(batch_s)
+            predictions, _, _, = transformer(inp, training=True)
 
             loss = loss_object(tar_real, predictions)
 
@@ -116,6 +117,8 @@ def train_model(model, config, dataset, dataset_test, save_weights):
     loss_lst = []
     test_loss_lst = []
 
+    mse = tf.keras.losses.MeanSquaredError()
+
     for epoch in range(config.NUM_EPOCHS):
 
         if config.WITH_WARMUP:
@@ -135,19 +138,19 @@ def train_model(model, config, dataset, dataset_test, save_weights):
         for step,batch in enumerate(dataset):
             batch_s = batch
             with tf.GradientTape() as tape:
-              [ENC_state, logits, output] = model(batch_s)
-              mse = tf.keras.losses.MeanSquaredError()
-              loss = mse(batch_s, output)
-              grads = tape.gradient(loss,model.trainable_weights)
-              optimizer.apply_gradients(zip(grads,model.trainable_weights))
+                [_, _, output] = model(batch_s)
+
+                loss = mse(batch_s, output)
+                grads = tape.gradient(loss,model.trainable_weights)
+                optimizer.apply_gradients(zip(grads,model.trainable_weights))
         loss_lst.append(loss)
 
 
         #test loss
         for step,batch in enumerate(dataset_test):
-          batch_t = batch
-          [ENC_state, logits, output] = model(batch_t)
-          break
+            batch_t = batch
+            [ENC_state, logits, output] = model(batch_t)
+            break
         test_loss= mse(batch_t, output)
         test_loss_lst.append(test_loss)
 

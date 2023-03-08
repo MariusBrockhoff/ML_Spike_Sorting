@@ -312,13 +312,16 @@ class AttnEncoder(tf.keras.layers.Layer):
 
         elif data_prep == 'embedding':
             x = self.embedding(x)
+            #print('After Embedding Shape: {}'.format(x.shape))
 
         x += self.pos_encoding
+        #print('After Pos Encoding Shape: {}'.format(x.shape))
 
         x = self.dropout(x, training=training)
 
         for i in range(self.num_layers):
             x = self.enc_layers[i](x, training, mask)
+            #print('Encoder Layer {} Output Shape: {}'.format(i, x.shape))
 
         return x  # (batch_size, input_seq_len, d_model)
 
@@ -342,6 +345,8 @@ class OneDtoTwoDLayer(tf.keras.layers.Layer):
             range(self.seq_length)]
 
     def call(self, x, training):
+        #print('seq_length: ', self.seq_length)
+        #print('embedding input shape: ', x.shape)
         scalars = tf.split(x, num_or_size_splits=self.seq_length, axis=-1)
 
         output_list = []
@@ -367,16 +372,15 @@ class TransformerEncoder_AEDecoder(tf.keras.Model):
             tf.keras.layers.Dense(dec_dims[i], activation='relu', kernel_initializer='glorot_uniform',
                                   name='dense_decoder_%d' % i) for i in range(len(dec_dims))]
         self.dropout = tf.keras.layers.Dropout(dropout)
-        self.final_dense = tf.keras.layers.Dense(pe_input - 1)
+        self.final_dense = tf.keras.layers.Dense(pe_input)
 
         self.data_prep = data_prep
         self.d_model = d_model
 
-    def call(self, inputs, training):
+    def call(self, inp, training):
         # Keras models prefer if you pass all your inputs in the first argument
-        inp, tar = inputs  # inp = input, tar = target
-        #print('shape input',inp.shape)
 
+        #print('inp input',inp.shape)
         enc_output = self.encoder(inp, training, mask=None, data_prep=self.data_prep)  # (batch_size, inp_seq_len, d_model)
         #print('enc_output input',enc_output.shape)
 
@@ -393,4 +397,4 @@ class TransformerEncoder_AEDecoder(tf.keras.Model):
         final_output = self.final_dense(x)
         #print('final_output input',final_output.shape)
 
-        return final_output, latent_vec, inp
+        return inp, latent_vec, final_output

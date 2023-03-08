@@ -2,10 +2,6 @@
 import os
 import sys
 import numpy as np
-
-cwd = os.getcwd()
-root_folder = os.sep+"ML_Spike_Sorting"
-sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"utils"+os.sep)
 from filter_signal import *
 #from file_opener_raw_recording_data import *
 from spike_detection import *
@@ -14,15 +10,24 @@ from train_models import *
 from model_predict import *
 from clustering import *
 
+from config_files.config_file_PerceiverIO import *
+from config_files.config_AttnAE_1 import Config_AttnAE_1
+
+from models.PerceiverIO import *
+from models.AttnAE_1 import TransformerEncoder_AEDecoder
+
+
+cwd = os.getcwd()
+root_folder = os.sep+"ML_Spike_Sorting"
+sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"utils"+os.sep)
+
 cwd = os.getcwd()
 root_folder = os.sep+"ML_Spike_Sorting"
 sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"config_files"+os.sep)
-from config_file_PerceiverIO import *
 
 cwd = os.getcwd()
 root_folder = os.sep+"ML_Spike_Sorting"
 sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"models"+os.sep)
-from PerceiverIO import *
 
 
 
@@ -39,13 +44,13 @@ class Run:
     """
 
     def prepare_data(self):
-        dataset, dataset_test = data_praparation(self.config.DATA_SAVE_PATH, self.config.DATA_PREP_METHOD,
+        dataset, dataset_test = data_preparation(self.config , self.config.DATA_SAVE_PATH, self.config.DATA_PREP_METHOD,
                                                  self.config.DATA_NORMALIZATION, self.config.TRAIN_TEST_SPLIT,
                                                  self.config.BATCH_SIZE)
         return dataset, dataset_test
-    
-    
+
     def initialize_model(self):
+        print("Initializing model: ", self.config.MODEL_TYPE)
         if self.config.MODEL_TYPE == "AutoPerceiver":
             model = AutoPerceiver(Embedding_dim=self.config.EMBEDDING_DIM,
                       seq_len=self.config.SEQ_LEN,
@@ -69,10 +74,23 @@ class Run:
                       DEC_attn_dim=self.config.DEC_SELF_ATTN_DIM,
                       DEC_attn_heads=self.config.DEC_NUM_ATTN_HEADS,
                       DEC_dropout_rate=self.config.DEC_DROPOUT_RATE)
+
+        elif self.config.MODEL_TYPE == "AttnAE_1":
+            model_init = TransformerEncoder_AEDecoder(data_prep=self.config.DATA_PREP,
+                                                 num_layers=self.config.NUM_LAYERS,
+                                                 d_model=self.config.D_MODEL,
+                                                 num_heads=self.config.NUM_HEADS,
+                                                 dff=self.config.DFF,
+                                                 pe_input=self.config.SEQ_LEN,
+                                                 dropout=self.config.DROPOUT_RATE,
+                                                 dec_dims=self.config.DEC_DIMS)
+
+            return model_init
+
         
     def train(self, model, dataset, dataset_test):
-        loss_lst, test_loss_lst = train_model(model=model, model_type=self.config.MODEL_TYPE, config=self.config,
-                                              dataset=dataset, dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS)
+        loss_lst, test_loss_lst = train_model(model=model, config=self.config, dataset=dataset,
+                                              dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS)
         return loss_lst, test_loss_lst
         
 
@@ -93,9 +111,64 @@ class Run:
         #accuracy and other metrices
 
 
-run = Run(Config_AutoPerceiver)
+###DATA
+
+DATA_SAVE_PATH = '/Users/jakobtraeuble/PycharmProjects/ML_Spike_Sorting/spikes_test/Small_SpikesFile_1.pkl'
+DATA_PREP_METHOD = "gradient"
+DATA_NORMALIZATION = "Standard"
+TRAIN_TEST_SPLIT = 0.1
+
+###GENERAL
+
+DROPOUT_RATE = 0.1
+NUM_EPOCHS = 100
+PLOT = False
+BATCH_SIZE = 128
+LEARNING_RATE = 0.001
+WITH_WARMUP = True
+LR_WARMUP = 0.0001
+WITH_WD = True
+WEIGHT_DECAY = 0.0001
+SAVE_WEIGHTS = False
+
+
+### DATA PREPROCESSING
+
+DATA_PREP = 'embedding'
+D_MODEL = 128
+DEC_DIMS = [128, 32, 8, 3]
+NUM_LAYERS = 8
+DFF = 512
+NUM_HEADS = 8
+
+
+Config_AttnAE_1 = Config_AttnAE_1(data_save_path=DATA_SAVE_PATH,
+                                  data_prep_method=DATA_PREP_METHOD,
+                                  data_normalization=DATA_NORMALIZATION,
+                                  train_test_split=TRAIN_TEST_SPLIT,
+                                  data_prep=DATA_PREP,
+                                  num_layers=NUM_LAYERS,
+                                  d_model=D_MODEL,
+                                  dff=DFF,
+                                  num_heads=NUM_HEADS,
+                                  dropout_rate=DROPOUT_RATE,
+                                  dec_dims=DEC_DIMS,
+                                  num_epochs=NUM_EPOCHS,
+                                  plot=PLOT,
+                                  batch_size=BATCH_SIZE,
+                                  learning_rate=LEARNING_RATE,
+                                  with_warmup=WITH_WARMUP,
+                                  lr_warmup=LR_WARMUP,
+                                  with_wd=WITH_WD,
+                                  weight_decay=WEIGHT_DECAY,
+                                  save_weights=SAVE_WEIGHTS)
+
+
+run = Run(Config_AttnAE_1)
 dataset, dataset_test = run.prepare_data()
-run.initialize_model()
-loss_lst, test_loss_lst = run.train()
+model = run.initialize_model()
+loss_lst, test_loss_lst = run.train(model=model, dataset=dataset, dataset_test=dataset_test)
 encoded_data, encoded_data_test = run.predict()
 y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data()
+
+
