@@ -29,7 +29,7 @@ class Config_AutoPerceiver(object):
 
     WD_FINAL = 1e-4    #1e-41e-6
 
-    NUM_EPOCHS = 50
+    NUM_EPOCHS = 1
 
     BATCH_SIZE = 512
 
@@ -50,7 +50,10 @@ class Config_AutoPerceiver(object):
 
     EMBEDDING_DIM = 64
 
-    SEQ_LEN = 64
+    if DATA_PREP_METHOD == "gradient":
+        SEQ_LEN = 63
+    else:
+        SEQ_LEN = 64
 
 
 

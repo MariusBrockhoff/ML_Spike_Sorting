@@ -25,15 +25,12 @@ def data_praparation(path_spike_file, data_prep_method, normalization, train_tes
     
     with open(path_spike_file, 'rb') as f:
         X = pickle.load(f)
-        spikes = X["Raw_spikes"]
-        #recording_len = X["Recording len"]
-        fsample = X["Sampling rate"]
+        fsample = 20000
+        y_train = X[:, 0]
+        spike_times = X[:, 1]
+        spikes = X[:, 2:]
         del X
-    
-    #spike_times = spikes[:,1]
-    #electrodes = spikes[:,0]
-    spikes = spikes[:,2:]
-    
+
     if data_prep_method == "gradient":
         grad_spikes = gradient_transform(spikes, fsample)
         if normalization == "MinMax":
@@ -41,7 +38,7 @@ def data_praparation(path_spike_file, data_prep_method, normalization, train_tes
         elif normalization == "Standard":
             scaler = StandardScaler()
         x_train = scaler.fit_transform(grad_spikes)
-        config.SEQ_LEN = 63
+        #config.SEQ_LEN = 63
         
     elif data_prep_method == "raw_spikes":
         if normalization == "MinMax":

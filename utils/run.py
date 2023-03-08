@@ -69,6 +69,7 @@ class Run:
                       DEC_attn_dim=self.config.DEC_SELF_ATTN_DIM,
                       DEC_attn_heads=self.config.DEC_NUM_ATTN_HEADS,
                       DEC_dropout_rate=self.config.DEC_DROPOUT_RATE)
+            return model
         
     def train(self, model, dataset, dataset_test):
         loss_lst, test_loss_lst = train_model(model=model, model_type=self.config.MODEL_TYPE, config=self.config,
@@ -95,7 +96,7 @@ class Run:
 
 run = Run(Config_AutoPerceiver)
 dataset, dataset_test = run.prepare_data()
-run.initialize_model()
-loss_lst, test_loss_lst = run.train()
+model = run.initialize_model()
+loss_lst, test_loss_lst = run.train(model, dataset, dataset_test)
 encoded_data, encoded_data_test = run.predict()
 y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data()
