@@ -4,98 +4,98 @@ import sys
 import numpy as np
 
 cwd = os.getcwd()
-
 root_folder = os.sep+"ML_Spike_Sorting"
 sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"utils"+os.sep)
-
 from filter_signal import *
-from file_opener_raw_recording_data import *
+#from file_opener_raw_recording_data import *
 from spike_detection import *
 from data_preparation import *
+from train_models import *
+from model_predict import *
 from clustering import *
 
-#Do imports of models, config files etc
+cwd = os.getcwd()
+root_folder = os.sep+"ML_Spike_Sorting"
+sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"config_files"+os.sep)
+from config_file_PerceiverIO import *
+
+cwd = os.getcwd()
+root_folder = os.sep+"ML_Spike_Sorting"
+sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"models"+os.sep)
+from PerceiverIO import *
 
 
 
 class Run:
-	"""Class for running full Spike sorting pipeline"""
-	
-	def __init__(self, raw_file_name, data_path, is_big_file, filter_frequencies, filtering_method, order, save_path, min_TH, dat_points_pre_min, dat_points_post_min, max_TH, chunck_len, refrec_period, reject_channels, file_name, save):
-		"""
-			Args:
-				hfpn: instance of HFPN after all runs have been completed
-				save_all_data (bool): whether to save every data point of the time-series data
-		"""
+    """Class for running full Spike sorting pipeline"""
 
-		self.raw_file_name = raw_file_name
-		self.data_path = data_path
-		self.is_big_file = is_big_file
-		self.filter_frequencies = filter_frequencies
-		self.filtering_method = filtering_method
-		self.order = order
-		self.save_path = save_path
-        self.min_TH = min_TH
-		self.dat_points_pre_min = dat_points_pre_min
-		self.dat_points_post_min = dat_points_post_min
-		self.max_TH = max_TH
-		self.chunck_len = chunck_len
-		self.refrec_period = refrec_period
-		self.reject_channels = reject_channels
-		self.file_name = file_name
-		self.save = save
-        
-        self.data_prep_method = data_prep_method
-        self.normalization = normalization
-        self.train_test_split = train_test_split
-        self.batch_size = batch_size
-        
-        self.model = model
+    def __init__(self, config):
+        self.config = config
 
-	def extract_spikes(self, self.raw_file_name, self.data_path, self.is_big_file, self.filter_frequencies, self.filtering_method, self.order, self.save_path, self.min_TH, self.dat_points_pre_min, self.dat_points_post_min, self.max_TH, self.chunck_len, self.refrec_period, self.reject_channels, self.file_name, self.save):
-		"""Takes raw recording and produces spike file"""
+    """def extract_spikes(self, self.raw_file_name, self.data_path, self.is_big_file, self.filter_frequencies, self.filtering_method, self.order, self.save_path, self.min_TH, self.dat_points_pre_min, self.dat_points_post_min, self.max_TH, self.chunck_len, self.refrec_period, self.reject_channels, self.file_name, self.save):
         recording_data, electrode_stream, fsample = file_opener_raw_recording_data(self.raw_file_name, self.data_path, self.is_big_file=False)
         filtered_signal = filter_signal(recording_data, self.filter_frequencies, fsample, self.filtering_method="Butter_bandpass", self.order=2)
         spike_file = spike_detection(filtered_signal, electrode_stream, fsample, self.save_path, self.min_TH, self.dat_points_pre_min=20, self.dat_points_post_min=44, self.max_TH=-30, self.chunck_len=300, self.refrec_period=0.002, self.reject_channels=[None], self.file_name=None, self.save=True):
-            
-    
-    #def load_config_file(self, ):
-    
-    def prepare_data(self, self.save_path, self.data_prep_method, self.normalization, self.train_test_split, self.batch_size):
-        dataset, dataset_test = data_praparation(self.save_path, self.data_prep_method, self.normalization, self.train_test_split, self.batch_size)
+    """
+
+    def prepare_data(self):
+        dataset, dataset_test = data_praparation(self.config.DATA_SAVE_PATH, self.config.DATA_PREP_METHOD,
+                                                 self.config.DATA_NORMALIZATION, self.config.TRAIN_TEST_SPLIT,
+                                                 self.config.BATCH_SIZE)
         return dataset, dataset_test
     
     
-    def initialize_model(self, self.model):
-        if self.model == "AutoPerceiver":
-            config = Config_AutoPerceiver
-            autoencoder = AutoPerceiver(Embedding_dim=config.EMBEDDING_DIM,
-                      seq_len=config.SEQ_LEN,
-                      ENC_number_of_layers=config.ENC_NUMBER_OF_LAYERS,
-                      ENC_state_index=config.ENC_STATE_INDEX,
-                      ENC_state_channels=config.ENC_STATE_CHANNELS,                    
-                      ENC_dff=config.ENC_DFF,
-                      ENC_x_attn_dim=config.ENC_X_ATTN_DIM,
-                      ENC_x_attn_heads=config.ENC_X_ATTN_HEADS,
-                      ENC_depth=config.ENC_DEPTH,     
-                      ENC_attn_dim=config.ENC_SELF_ATTN_DIM,
-                      ENC_attn_heads=config.ENC_NUM_ATTN_HEADS,
-                      ENC_dropout_rate=config.ENC_DROPOUT_RATE,
-                      DEC_number_of_layers=config.DEC_NUMBER_OF_LAYERS,
-                      DEC_state_index=config.DEC_STATE_INDEX,
-                      DEC_state_channels=config.DEC_STATE_CHANNELS,                     
-                      DEC_dff=config.DEC_DFF,
-                      DEC_x_attn_dim=config.DEC_X_ATTN_DIM,
-                      DEC_x_attn_heads=config.DEC_X_ATTN_HEADS,
-                      DEC_depth=config.DEC_DEPTH,     
-                      DEC_attn_dim=config.DEC_SELF_ATTN_DIM,
-                      DEC_attn_heads=config.DEC_NUM_ATTN_HEADS,
-                      DEC_dropout_rate=config.DEC_DROPOUT_RATE)
+    def initialize_model(self):
+        if self.config.MODEL_TYPE == "AutoPerceiver":
+            model = AutoPerceiver(Embedding_dim=self.config.EMBEDDING_DIM,
+                      seq_len=self.config.SEQ_LEN,
+                      ENC_number_of_layers=self.config.ENC_NUMBER_OF_LAYERS,
+                      ENC_state_index=self.config.ENC_STATE_INDEX,
+                      ENC_state_channels=self.config.ENC_STATE_CHANNELS,
+                      ENC_dff=self.config.ENC_DFF,
+                      ENC_x_attn_dim=self.config.ENC_X_ATTN_DIM,
+                      ENC_x_attn_heads=self.config.ENC_X_ATTN_HEADS,
+                      ENC_depth=self.config.ENC_DEPTH,
+                      ENC_attn_dim=self.config.ENC_SELF_ATTN_DIM,
+                      ENC_attn_heads=self.config.ENC_NUM_ATTN_HEADS,
+                      ENC_dropout_rate=self.config.ENC_DROPOUT_RATE,
+                      DEC_number_of_layers=self.config.DEC_NUMBER_OF_LAYERS,
+                      DEC_state_index=self.config.DEC_STATE_INDEX,
+                      DEC_state_channels=self.config.DEC_STATE_CHANNELS,
+                      DEC_dff=self.config.DEC_DFF,
+                      DEC_x_attn_dim=self.config.DEC_X_ATTN_DIM,
+                      DEC_x_attn_heads=self.config.DEC_X_ATTN_HEADS,
+                      DEC_depth=self.config.DEC_DEPTH,
+                      DEC_attn_dim=self.config.DEC_SELF_ATTN_DIM,
+                      DEC_attn_heads=self.config.DEC_NUM_ATTN_HEADS,
+                      DEC_dropout_rate=self.config.DEC_DROPOUT_RATE)
         
-    def train_model(self, self.model):
-        train_model(self.model, save_weights)
+    def train(self, model, dataset, dataset_test):
+        loss_lst, test_loss_lst = train_model(model=model, model_type=self.config.MODEL_TYPE, config=self.config,
+                                              dataset=dataset, dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS)
+        return loss_lst, test_loss_lst
         
-        
-    
-    def cluster_data(self, ):
-        y_pred, n_clusters = clustering(data=, method=config.CLUSTERING_METHOD, n_clusters=config.N_CLUSTERS, eps=config.EPS, min_cluster_size=config.MIN_CLUSTER_SIZE)
+
+    def predict(self, model, dataset, dataset_test):
+        encoded_data, encoded_data_test = model_predict_latents(model=model, dataset=dataset, dataset_test=dataset_test)
+        return encoded_data, encoded_data_test
+
+    def cluster_data(self, encoded_data, encoded_data_test):
+        y_pred, n_clusters = clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD, n_clusters=self.config.N_CLUSTERS,
+                                        eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE)
+        y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
+                                                  n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
+                                                  min_cluster_size=self.config.MIN_CLUSTER_SIZE)
+        return y_pred, n_clusters, y_pred_test, n_clusters_test
+
+
+    #def evaluate_spike_sorting(self, ):
+        #accuracy and other metrices
+
+
+run = Run(Config_AutoPerceiver)
+dataset, dataset_test = run.prepare_data()
+run.initialize_model()
+loss_lst, test_loss_lst = run.train()
+encoded_data, encoded_data_test = run.predict()
+y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data()

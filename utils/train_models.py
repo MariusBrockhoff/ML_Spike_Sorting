@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import tensorflow as tf
-from models.AttnAE_1 import TransformerEncoder_AEDecoder, CustomSchedule
+#from models.AttnAE_1 import TransformerEncoder_AEDecoder, CustomSchedule
 import time
 import numpy as np
+import tensorflow_addons as tfa
+
 
 
 def train(batches_train, batches_test, loss_object, epochs, plot, save):
@@ -66,6 +68,7 @@ def train(batches_train, batches_test, loss_object, epochs, plot, save):
             transformer.save(
                 f'saved_models/trials_model_epochs_{epochs}_{method_plot_annotation}_dataPrep_{data_prep}_dimsRed_{str(dims_red)}_numLayers_{num_layers}_dModel_{d_model}_dff_{dff}_numHeads_{num_heads}_dropout_{dropout_rate}')
 
+"""
 def train_transformer(batches_train, batches_test, signal_length, data_prep, num_layers, d_model, num_heads, dff, dropout_rate, dec_dims, epochs, plot):
 
     # data_prep =  'embedding', 'broadcasting', 'spectrogram' (string unqual to former two uses broadcasting as well)
@@ -99,64 +102,59 @@ def train_transformer(batches_train, batches_test, signal_length, data_prep, num
 
     train(batches_train=batches_train, batches_test=batches_test, loss_object=loss_object, epochs=epochs, plot=plot,
           save=False)
-
+"""
    
-def train_model(model, save_weights):
-    if model == "AutoPerceiver":
-        lr = config.LEARNING_RATE
-        wd = config.WEIGHT_DECAY
-        
-        if config.WITH_WD:
-            optimizer = tfa.optimizers.AdamW(weight_decay=wd, learning_rate=lr)
-        else:
-            optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
-        
-        
-        #subdir = datetime.datetime.now().strftime('run%Y%m%dT%H%M')
-        #chk_dir = config.CHK_DIR + './checkpoints/'+subdir+'/' 
-        
-        loss_lst = []
-        test_loss_lst = []
-        
-        
-        for epoch in range(config.NUM_EPOCHS):
-                
-            if WITH_WARMUP:
-                lr = config.LEARNING_RATE*min(epoch,config.LR_WARMUP)/config.LR_WARMUP
-                if epoch>config.LR_WARMUP:
-                    lr = config.LEARNING_RATE
-                    lr = config.LR_FINAL + .5*(lr-config.LR_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-                    wd = wd + .5*(wd-config.WD_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-            else:
+def train_model(model, config, dataset, dataset_test, save_weights):
+    lr = config.LEARNING_RATE
+    wd = config.WEIGHT_DECAY
+
+    if config.WITH_WD:
+        optimizer = tfa.optimizers.AdamW(weight_decay=wd, learning_rate=lr)
+    else:
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+
+    loss_lst = []
+    test_loss_lst = []
+
+    for epoch in range(config.NUM_EPOCHS):
+
+        if config.WITH_WARMUP:
+            lr = config.LEARNING_RATE*min(epoch,config.LR_WARMUP)/config.LR_WARMUP
+            if epoch>config.LR_WARMUP:
+                lr = config.LEARNING_RATE
                 lr = config.LR_FINAL + .5*(lr-config.LR_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
                 wd = wd + .5*(wd-config.WD_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-        
-            
-            optimizer.learning_rate = lr
-            optimizer.weight_decay = wd
-            
-            for step,batch in enumerate(dataset):      
-                batch_s = batch
-                with tf.GradientTape() as tape:                   
-                  [ENC_state, logits, output] = autoencoder(batch_s)
-                  mse = tf.keras.losses.MeanSquaredError()
-                  loss = mse(batch_s, output)
-                  grads = tape.gradient(loss,autoencoder.trainable_weights)
-                  optimizer.apply_gradients(zip(grads,autoencoder.trainable_weights))
-            loss_lst.append(loss)     
-            
-            
-            #test loss
-            for step,batch in enumerate(dataset_test):
-              batch_t = batch 
-              [ENC_state, logits, output] = autoencoder(batch_t)
-              break
-            test_loss= mse(batch_t, output)
-            test_loss_lst.append(test_loss)
-            
-            print("Epoch: ", epoch+1, ", Train loss: ", loss, ", Test loss: ", test_loss)
-       #if save_weights:
-            #autoencoder.trainable_weights, 
-            
-       #implement model loader and saver 
-        return loss_lst, test_loss_lst
+        else:
+            lr = config.LR_FINAL + .5*(lr-config.LR_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
+            wd = wd + .5*(wd-config.WD_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
+
+
+        optimizer.learning_rate = lr
+        optimizer.weight_decay = wd
+
+        for step,batch in enumerate(dataset):
+            batch_s = batch
+            with tf.GradientTape() as tape:
+              [ENC_state, logits, output] = model(batch_s)
+              mse = tf.keras.losses.MeanSquaredError()
+              loss = mse(batch_s, output)
+              grads = tape.gradient(loss,model.trainable_weights)
+              optimizer.apply_gradients(zip(grads,model.trainable_weights))
+        loss_lst.append(loss)
+
+
+        #test loss
+        for step,batch in enumerate(dataset_test):
+          batch_t = batch
+          [ENC_state, logits, output] = model(batch_t)
+          break
+        test_loss= mse(batch_t, output)
+        test_loss_lst.append(test_loss)
+
+        print("Epoch: ", epoch+1, ", Train loss: ", loss, ", Test loss: ", test_loss)
+
+   #if save_weights:
+        #autoencoder.trainable_weights,
+
+   #implement model loader and saver
+    return loss_lst, test_loss_lst
