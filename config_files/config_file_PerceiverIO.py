@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 class Config_AutoPerceiver(object):
 
-    # General 
-    
-    SAVE_WEIGHTS = True
+    # Data
 
-    SAVE_DIR = ''
+    DATA_SAVE_PATH = "C:\\Users\\marib\\Documents\\Github\\ML_Spike_Sorting\\Data\\Small_SpikesFile_1.pkl"
 
-    LOAD = False 
-    
-    LOAD_DIR = False
+    DATA_PREP_METHOD = "gradient"
+
+    DATA_NORMALIZATION = "Standard"
+
+    TRAIN_TEST_SPLIT = 0.1
     
     
 
@@ -32,10 +32,21 @@ class Config_AutoPerceiver(object):
     NUM_EPOCHS = 50
 
     BATCH_SIZE = 512
+
+    # General
+
+    SAVE_WEIGHTS = False
+
+    SAVE_DIR = None
+
+    LOAD = False
+
+    LOAD_DIR = None
     
 
-
     #Architecture
+
+    MODEL_TYPE = "AutoPerceiver"
 
     EMBEDDING_DIM = 64
 

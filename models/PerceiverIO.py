@@ -10,7 +10,6 @@ import math
 from einops import rearrange, repeat
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers as KL
-import tensorflow_addons as tfa
 
 
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #import hdbscan
 from sklearn.cluster import KMeans, DBSCAN
+import numpy as np
 
 
 def clustering(data, method, n_clusters=5, eps=0.01, min_cluster_size=100):
@@ -10,7 +11,7 @@ def clustering(data, method, n_clusters=5, eps=0.01, min_cluster_size=100):
         y_pred = kmeans.fit_predict(data)
         
     elif method=="DBSCAN":
-        clustering = DBSCAN(eps=eps min_samples=min_cluster_size).fit(data)
+        clustering = DBSCAN(eps=eps, min_samples=min_cluster_size).fit(data)
         y_pred = clustering.labels_
         n_clusters = len(np.unique(y_pred))
 
