@@ -135,8 +135,8 @@ def train_model(model, config, dataset, dataset_test, save_weights):
         optimizer.learning_rate = lr
         optimizer.weight_decay = wd
 
-        for step,batch in enumerate(dataset):
-            batch_s = batch
+        for step, batch in enumerate(dataset):
+            batch_s = batch[0]
             with tf.GradientTape() as tape:
                 [_, _, output] = model(batch_s)
 
@@ -147,11 +147,11 @@ def train_model(model, config, dataset, dataset_test, save_weights):
 
 
         #test loss
-        for step,batch in enumerate(dataset_test):
-            batch_t = batch
-            [ENC_state, logits, output] = model(batch_t)
+        for step, batch in enumerate(dataset_test):
+            batch_t = batch[0]
+            [_, _, output] = model(batch_t)
             break
-        test_loss= mse(batch_t, output)
+        test_loss = mse(batch_t, output)
         test_loss_lst.append(test_loss)
 
         print("Epoch: ", epoch+1, ", Train loss: ", loss, ", Test loss: ", test_loss)
