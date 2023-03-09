@@ -2,34 +2,27 @@
 import os
 import sys
 import numpy as np
-from filter_signal import *
-#from file_opener_raw_recording_data import *
-from spike_detection import *
-from data_preparation import *
-from train_models import *
-from model_predict import *
-from clustering import *
+import argparse
+
+from utils.filter_signal import *
+#from utils.file_opener_raw_recording_data import *
+from utils.spike_detection import *
+from utils.data_preparation import *
+from utils.train_models import *
+from utils.model_predict import *
+from utils.clustering import *
 
 from config_files.config_file_PerceiverIO import *
 from config_files.config_AttnAE_1 import Config_AttnAE_1
 
 from models.PerceiverIO import *
-from models.AttnAE_1 import TransformerEncoder_AEDecoder
+from models.AttnAE_1 import *
+from models.AttnAE_2 import *
 
 
-cwd = os.getcwd()
-root_folder = os.sep+"ML_Spike_Sorting"
-sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"utils"+os.sep)
-
-cwd = os.getcwd()
-root_folder = os.sep+"ML_Spike_Sorting"
-sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"config_files"+os.sep)
-
-cwd = os.getcwd()
-root_folder = os.sep+"ML_Spike_Sorting"
-sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep+"models"+os.sep)
-
-
+parser = argparse.ArgumentParser()
+parser.add_argument('--Model', type=str, required=True)
+args = parser.parse_args()
 
 class Run:
     """Class for running full Spike sorting pipeline"""
@@ -44,7 +37,7 @@ class Run:
     """
 
     def prepare_data(self):
-        dataset, dataset_test = data_preparation(self.config , self.config.DATA_SAVE_PATH, self.config.DATA_PREP_METHOD,
+        dataset, dataset_test = data_preparation(self.config, self.config.DATA_SAVE_PATH, self.config.DATA_PREP_METHOD,
                                                  self.config.DATA_NORMALIZATION, self.config.TRAIN_TEST_SPLIT,
                                                  self.config.BATCH_SIZE)
         return dataset, dataset_test
@@ -86,7 +79,20 @@ class Run:
                                                  dec_dims=self.config.DEC_DIMS)
 
 
-            return model
+        elif self.config.MODEL_TYPE == "AttnAE_2":
+            model = Attention_AE(d_model=self.config.D_MODEL,
+                                dff=self.config.DFF,
+                                seq_len=self.config.SEQ_LEN,
+                                latent_len=self.config.LATENT_LEN,
+                                ENC_depth=self.config.ENC_DEPTH,
+                                ENC_attn_dim=self.config.ENC_SELF_ATTN_DIM,
+                                ENC_attn_heads=self.config.ENC_NUM_ATTN_HEADS,
+                                ENC_dropout_rate=self.config.ENC_DROPOUT_RATE,
+                                DEC_layers=self.config.DEC_LAYERS,
+                                reg_value=self.config.REG_VALUE)
+
+
+        return model
 
         
     def train(self, model, dataset, dataset_test):
@@ -112,12 +118,18 @@ class Run:
         #accuracy and other metrices
 
 
-Config_AttnAE_1 = Config_AttnAE_1()
-run = Run(Config_AttnAE_1)
+if args.Model == "PerceiverIO":
+    config = config_file_PerceiverIO()
+elif args.Model == "AttentionAutoencoder_1":
+    config = config_AttnAE_1()
+elif args.Model == "AttentionAutoencoder_2":
+    config = config_AttnAE_2()
+else:
+    raise ValueError("please choose a valid Model Type. See Documentation!")
+
+run = Run(config)
 dataset, dataset_test = run.prepare_data()
 model = run.initialize_model()
 loss_lst, test_loss_lst = run.train(model=model, dataset=dataset, dataset_test=dataset_test)
 encoded_data, encoded_data_test = run.predict()
 y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data()
-
-

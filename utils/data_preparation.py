@@ -75,21 +75,21 @@ def data_preparation(config, path_spike_file, data_prep_method, normalization, t
     split = train_test_split
     number_of_test_samples = int(split*spikes.shape[0])
     x_test = spikes[-number_of_test_samples:,:]
-    #y_test = y_train[-number_of_test_samples:]
+    y_test = y_train[-number_of_test_samples:]
     x_train = spikes[:-number_of_test_samples,:]
-    #y_train = y_train[:-number_of_test_samples] 
+    y_train = y_train[:-number_of_test_samples]
     
     print("Shapes data:")
     print("x_train:", x_train.shape)
-    #print("y_train:", y_train.shape)
+    print("y_train:", y_train.shape)
     print("x_test:", x_test.shape)
-    #print("y_test:", y_test.shape)
+    print("y_test:", y_test.shape)
 
     print('---' * 30)
     print('CREATE BATCHES...')
-    EPOCH_SIZE = int(x_train.shape[0]/batch_size)
-    dataset = tf.data.Dataset.from_tensor_slices(x_train).batch(batch_size, drop_remainder=True).take(EPOCH_SIZE).shuffle(buffer_size=len(x_train))
-    dataset_test = tf.data.Dataset.from_tensor_slices(x_test).batch(batch_size, drop_remainder=True).take(EPOCH_SIZE).shuffle(buffer_size=len(x_test))
+    config.EPOCH_SIZE = int(x_train.shape[0]/batch_size)
+    dataset = tf.data.Dataset.from_tensor_slices(x_train).batch(batch_size, drop_remainder=True).take(config.EPOCH_SIZE).shuffle(buffer_size=len(x_train))
+    dataset_test = tf.data.Dataset.from_tensor_slices(x_test).batch(batch_size, drop_remainder=True).take(config.EPOCH_SIZE).shuffle(buffer_size=len(x_test))
     
     return dataset, dataset_test
 
