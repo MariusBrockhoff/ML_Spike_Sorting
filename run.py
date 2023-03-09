@@ -119,7 +119,7 @@ class Run:
 
 
 if args.Model == "PerceiverIO":
-    config = config_file_PerceiverIO()
+    config = Config_PerceiverIO()
 elif args.Model == "AttentionAutoencoder_1":
     config = config_AttnAE_1()
 elif args.Model == "AttentionAutoencoder_2":

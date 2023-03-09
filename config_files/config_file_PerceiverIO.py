@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-class Config_AutoPerceiver(object):
+class Config_PerceiverIO(object):
 
     def __init__(self):
-        super(Config_AutoPerceiver, self).__init__()
+        super(Config_PerceiverIO, self).__init__()
 
         # Data
 
