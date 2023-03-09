@@ -76,7 +76,7 @@ class Run:
                       DEC_dropout_rate=self.config.DEC_DROPOUT_RATE)
 
         elif self.config.MODEL_TYPE == "AttnAE_1":
-            model_init = TransformerEncoder_AEDecoder(data_prep=self.config.DATA_PREP,
+            model = TransformerEncoder_AEDecoder(data_prep=self.config.DATA_PREP,
                                                  num_layers=self.config.NUM_LAYERS,
                                                  d_model=self.config.D_MODEL,
                                                  num_heads=self.config.NUM_HEADS,
@@ -85,7 +85,8 @@ class Run:
                                                  dropout=self.config.DROPOUT_RATE,
                                                  dec_dims=self.config.DEC_DIMS)
 
-            return model_init
+
+            return model
 
         
     def train(self, model, dataset, dataset_test):

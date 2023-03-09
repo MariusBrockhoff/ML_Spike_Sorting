@@ -28,15 +28,10 @@ def data_preparation(config, path_spike_file, data_prep_method, normalization, t
     with open(path_spike_file, 'rb') as f:
         X = pickle.load(f)
         fsample = 20000
-
-        #spikes = X["Raw_spikes"]
-        #recording_len = X["Recording len"]
-        #fsample = X["Sampling rate"]
-        #del X
-    
-    #spike_times = spikes[:,1]
-    #electrodes = spikes[:,0]
-    spikes = X[:,2:]
+        y_train = X[:, 0]
+        spike_times = X[:, 1]
+        spikes = X[:, 2:]
+        del X
 
     print('---' * 30)
     print('DATA PREPARATION...')
