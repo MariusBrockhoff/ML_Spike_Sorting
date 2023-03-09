@@ -289,7 +289,8 @@ class AttnEncoder(tf.keras.layers.Layer):
         self.d_model = d_model
         self.num_layers = num_layers
 
-        self.embedding = OneDtoTwoDLayer(seq_length=maximum_position_encoding, d_model=d_model)
+        #self.embedding = OneDtoTwoDLayer(seq_length=maximum_position_encoding, d_model=d_model)
+        self.embedding = tf.keras.layers.Dense(d_model, name='dense_embedding')
 
         self.pos_encoding = positional_encoding(maximum_position_encoding,
                                                 self.d_model)
@@ -311,6 +312,7 @@ class AttnEncoder(tf.keras.layers.Layer):
             x = tf.expand_dims(x, axis=-1)
 
         elif data_prep == 'embedding':
+            x = tf.expand_dims(x, -1)
             x = self.embedding(x)
             #print('After Embedding Shape: {}'.format(x.shape))
 
