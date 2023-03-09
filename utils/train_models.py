@@ -105,7 +105,7 @@ def train_transformer(batches_train, batches_test, signal_length, data_prep, num
           save=False)
 """
    
-def train_model(model, model_type, config, dataset, dataset_test, save_weights):
+def train_model(model, config, dataset, dataset_test, save_weights):
     lr = config.LEARNING_RATE
     wd = config.WEIGHT_DECAY
 

@@ -118,7 +118,6 @@ class Run:
         #accuracy and other metrices
 
 
-
 if args.Model == "PerceiverIO":
     config = config_file_PerceiverIO()
 elif args.Model == "AttentionAutoencoder_1":
@@ -127,11 +126,10 @@ elif args.Model == "AttentionAutoencoder_2":
     config = config_AttnAE_2()
 else:
     raise ValueError("please choose a valid Model Type. See Documentation!")
+
 run = Run(config)
 dataset, dataset_test = run.prepare_data()
 model = run.initialize_model()
 loss_lst, test_loss_lst = run.train(model=model, dataset=dataset, dataset_test=dataset_test)
 encoded_data, encoded_data_test = run.predict()
 y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data()
-
-
