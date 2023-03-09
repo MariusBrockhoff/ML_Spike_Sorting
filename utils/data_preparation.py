@@ -21,8 +21,10 @@ def gradient_transform(X, fsample):
   return X_grad
 
 
-def data_praparation(path_spike_file, data_prep_method, normalization, train_test_split, batch_size):
-    
+def data_preparation(config, path_spike_file, data_prep_method, normalization, train_test_split, batch_size):
+
+    print('---' * 30)
+    print('IMPORTING DATASET...')
     with open(path_spike_file, 'rb') as f:
         X = pickle.load(f)
         fsample = 20000
@@ -31,31 +33,50 @@ def data_praparation(path_spike_file, data_prep_method, normalization, train_tes
         spikes = X[:, 2:]
         del X
 
+    print('---' * 30)
+    print('DATA PREPARATION...')
+
+    if normalization == "MinMax":
+        scaler = MinMaxScaler()
+
+    elif normalization == "Standard":
+        scaler = StandardScaler()
+
     if data_prep_method == "gradient":
         grad_spikes = gradient_transform(spikes, fsample)
-        if normalization == "MinMax":
-            scaler = MinMaxScaler()
-        elif normalization == "Standard":
-            scaler = StandardScaler()
-        x_train = scaler.fit_transform(grad_spikes)
-        #config.SEQ_LEN = 63
+        spikes = scaler.fit_transform(grad_spikes)
+        config.SEQ_LEN = 63
         
     elif data_prep_method == "raw_spikes":
-        if normalization == "MinMax":
-            scaler = MinMaxScaler()
-        elif normalization == "Standard":
-            scaler = StandardScaler()
-        x_train = scaler.fit_transform(spikes)
-        
+        spikes = scaler.fit_transform(spikes)
+        spikes = scaler.fit_transform(spikes)
+        config.SEQ_LEN = 64
+
+    elif data_prep_method == "fft":
+        FT_spikes = np.abs(fft(spikes))[:, :33]
+        spikes = scaler.fit_transform(FT_spikes)
+        config.SEQ_LEN = 33
+
     else:
         print("Please specify valied data preprocessing method (gradient, raw_spikes)")
 
+    '''if config.MODEL_TYPE=='AttnAE_1' or config.MODEL_TYPE=='AttnAE_2':
+        print('shape of data set before codons:', spikes.shape)
 
+        # add start+stop codon
+        spikes = np.insert(spikes, 0, -1, axis=1)
+        print('shape of data set after start codon:', spikes.shape)
+
+        spikes = np.append(spikes, np.array([[-1] for i in range(spikes.shape[0])]), axis=1)
+        print('shape of data set after stop codon:', spikes.shape)'''
+
+    print('---' * 30)
+    print('DATA SPLIT...')
     split = train_test_split
-    number_of_test_samples = int(split*x_train.shape[0])
-    x_test = x_train[-number_of_test_samples:,:]
+    number_of_test_samples = int(split*spikes.shape[0])
+    x_test = spikes[-number_of_test_samples:,:]
     #y_test = y_train[-number_of_test_samples:]
-    x_train = x_train[:-number_of_test_samples,:]
+    x_train = spikes[:-number_of_test_samples,:]
     #y_train = y_train[:-number_of_test_samples] 
     
     print("Shapes data:")
@@ -63,8 +84,9 @@ def data_praparation(path_spike_file, data_prep_method, normalization, train_tes
     #print("y_train:", y_train.shape)
     print("x_test:", x_test.shape)
     #print("y_test:", y_test.shape)
-    
-    
+
+    print('---' * 30)
+    print('CREATE BATCHES...')
     EPOCH_SIZE = int(x_train.shape[0]/batch_size)
     dataset = tf.data.Dataset.from_tensor_slices(x_train).batch(batch_size, drop_remainder=True).take(EPOCH_SIZE).shuffle(buffer_size=len(x_train))
     dataset_test = tf.data.Dataset.from_tensor_slices(x_test).batch(batch_size, drop_remainder=True).take(EPOCH_SIZE).shuffle(buffer_size=len(x_test))
