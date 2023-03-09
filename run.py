@@ -27,6 +27,7 @@ parser.add_argument('--Model', type=str, required=True)
 parser.add_argument('--Benchmark', default=False, action=argparse.BooleanOptionalAction)
 args = parser.parse_args()
 
+
 class Run:
     """Class for running full Spike sorting pipeline"""
 
@@ -52,7 +53,7 @@ class Run:
         print('---' * 30)
         print('INITIALIZING MODEL...')
         if self.config.MODEL_TYPE == "AutoPerceiver":
-            model = AutoPerceiver(Embedding_dim=self.config.EMBEDDING_DIM,
+            model = AutoPerceiver(embedding_dim=self.config.EMBEDDING_DIM,
                                   seq_len=self.config.SEQ_LEN,
                                   ENC_number_of_layers=self.config.ENC_NUMBER_OF_LAYERS,
                                   ENC_state_index=self.config.ENC_STATE_INDEX,
@@ -108,7 +109,8 @@ class Run:
         return loss_lst, test_loss_lst
 
     def predict(self, model, dataset, dataset_test):
-        encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(model=model, dataset=dataset, dataset_test=dataset_test)
+        encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(model=model, dataset=dataset,
+                                                                                     dataset_test=dataset_test)
         return encoded_data, encoded_data_test, y_true, y_true_test
 
     def cluster_data(self, encoded_data, encoded_data_test):

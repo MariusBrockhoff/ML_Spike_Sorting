@@ -29,4 +29,3 @@ def evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
     test_acc = acc(y_true_test, y_pred_test)
 
     return train_acc, test_acc
-

@@ -21,7 +21,7 @@ def clustering(data, method, n_clusters=5, eps=0.01, min_cluster_size=100):
     #     n_clusters = len(np.unique(y_pred))
 
     else:
-        raise ValueError(
-            "Please choose a valid clusering method! Chooose between Butter_bandpass, Butter_highpass, Elliptic_bandpass or Elliptic_highpass")
+        raise ValueError("Please choose a valid clusering method! Chooose between Butter_bandpass, "
+                         "Butter_highpass, Elliptic_bandpass or Elliptic_highpass")
 
     return y_pred, n_clusters

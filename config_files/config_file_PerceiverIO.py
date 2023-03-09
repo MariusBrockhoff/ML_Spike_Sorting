@@ -4,6 +4,7 @@ class Config_PerceiverIO(object):
     def __init__(self):
         super(Config_PerceiverIO, self).__init__()
 
+
         # Data
 
         self.DATA_SAVE_PATH = "C:\\Users\\marib\\Documents\\Github\\ML_Spike_Sorting\\Data\\Small_SpikesFile_1.pkl"
@@ -13,7 +14,6 @@ class Config_PerceiverIO(object):
         self.DATA_NORMALIZATION = "Standard"
 
         self.TRAIN_TEST_SPLIT = 0.1
-
 
 
         # TRAINING HYPERPARAMETERS
@@ -35,6 +35,7 @@ class Config_PerceiverIO(object):
         self.NUM_EPOCHS = 1
 
         self.BATCH_SIZE = 512
+
 
         # General
 
@@ -60,8 +61,6 @@ class Config_PerceiverIO(object):
 
         self.ENC_NUMBER_OF_LAYERS = 3
 
-        self.ENC_LATENT_LEN = 512
-
         self.ENC_STATE_INDEX = 32
 
         self.ENC_STATE_CHANNELS = 512
@@ -79,7 +78,6 @@ class Config_PerceiverIO(object):
         self.ENC_SELF_ATTN_DIM = int(self.ENC_STATE_CHANNELS / self.ENC_NUM_ATTN_HEADS)
 
         self.ENC_DROPOUT_RATE = 0
-
 
 
         #Decoder
