@@ -20,11 +20,11 @@ class Config_PerceiverIO(object):
 
         self.SAVE_WEIGHTS = False
 
-        self.SAVE_DIR = None
+        self.SAVE_DIR = "C:\\Users\\marib\\Documents\\Github\\ML_Spike_Sorting\\Data\\Model_test.tf"
 
         self.LOAD = False
 
-        self.LOAD_DIR = None
+        self.LOAD_DIR = "C:\\Users\\marib\\Documents\\Github\\ML_Spike_Sorting\\Data\\Model_test.tf"
 
 
         # TRAINING HYPERPARAMETERS
@@ -33,7 +33,7 @@ class Config_PerceiverIO(object):
 
         self.WITH_WARMUP = False
 
-        self.LR_WARMUP =  10 #2 #10
+        self.LR_WARMUP = 10 #2 #10
 
         self.LR_FINAL = 1e-9  #1e-6 1e-8
 
@@ -43,7 +43,7 @@ class Config_PerceiverIO(object):
 
         self.WD_FINAL = 1e-4    #1e-41e-6
 
-        self.NUM_EPOCHS = 1
+        self.NUM_EPOCHS = 100
 
         self.BATCH_SIZE = 512
 
