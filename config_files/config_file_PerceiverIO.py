@@ -16,6 +16,17 @@ class Config_PerceiverIO(object):
         self.TRAIN_TEST_SPLIT = 0.1
 
 
+        # General
+
+        self.SAVE_WEIGHTS = False
+
+        self.SAVE_DIR = None
+
+        self.LOAD = False
+
+        self.LOAD_DIR = None
+
+
         # TRAINING HYPERPARAMETERS
 
         self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
@@ -35,17 +46,6 @@ class Config_PerceiverIO(object):
         self.NUM_EPOCHS = 1
 
         self.BATCH_SIZE = 512
-
-
-        # General
-
-        self.SAVE_WEIGHTS = False
-
-        self.SAVE_DIR = None
-
-        self.LOAD = False
-
-        self.LOAD_DIR = None
 
 
         #Architecture

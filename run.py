@@ -105,7 +105,8 @@ class Run:
         print('---' * 30)
         print('TRAINING MODEL...')
         loss_lst, test_loss_lst = train_model(model=model, config=self.config, dataset=dataset,
-                                              dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS)
+                                              dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS,
+                                              save_dir=self.config.SAVE_DIR)
         return loss_lst, test_loss_lst
 
     def predict(self, model, dataset, dataset_test):

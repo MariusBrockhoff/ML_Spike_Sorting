@@ -104,8 +104,9 @@ def train_transformer(batches_train, batches_test, signal_length, data_prep, num
     train(batches_train=batches_train, batches_test=batches_test, loss_object=loss_object, epochs=epochs, plot=plot,
           save=False)
 """
-   
-def train_model(model, config, dataset, dataset_test, save_weights):
+
+
+def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
     lr = config.LEARNING_RATE
     wd = config.WEIGHT_DECAY
 
@@ -156,8 +157,7 @@ def train_model(model, config, dataset, dataset_test, save_weights):
 
         print("Epoch: ", epoch+1, ", Train loss: ", loss, ", Test loss: ", test_loss)
 
-   #if save_weights:
-        #autoencoder.trainable_weights,
+    if save_weights:
+        model.save_weights(save_dir)
 
-   #implement model loader and saver
     return loss_lst, test_loss_lst
