@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import argparse
 import statistics
+import tensorflow as tf
 
 from utils.filter_signal import *
 # from utils.file_opener_raw_recording_data import *
@@ -27,6 +28,10 @@ parser.add_argument('--Model', type=str, required=True)
 parser.add_argument('--PathData', type=str, required=True)
 parser.add_argument('--Benchmark', action='store_true')
 args = parser.parse_args()
+
+physical_devices = tf.config.list_physical_devices('GPU')
+print("Num GPUs:", len(physical_devices))
+print("devices:", tf.config.list_physical_devices(device_type=None))
 
 
 class Run:
