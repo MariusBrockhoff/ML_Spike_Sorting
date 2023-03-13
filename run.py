@@ -25,7 +25,7 @@ from models.AttnAE_2 import *
 parser = argparse.ArgumentParser()
 parser.add_argument('--Model', type=str, required=True)
 parser.add_argument('--PathData', type=str, required=True)
-parser.add_argument('--Benchmark', default=False, action=argparse.BooleanOptionalAction)
+parser.add_argument('--Benchmark', action='store_true')
 args = parser.parse_args()
 
 
