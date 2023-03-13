@@ -24,6 +24,7 @@ from models.AttnAE_2 import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Model', type=str, required=True)
+parser.add_argument('--PathData', type=str, required=True)
 parser.add_argument('--Benchmark', default=False, action=argparse.BooleanOptionalAction)
 args = parser.parse_args()
 
@@ -161,17 +162,18 @@ class Run:
                                                                                dataset_test=dataset_test)
             y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data(encoded_data=encoded_data,
                                                                                 encoded_data_test=encoded_data_test)
+
             train_acc, test_acc = run.evaluate_spike_sorting(y_pred, y_pred_test, y_true, y_true_test)
             print("Train Accuracy: ", train_acc)
             print("Test Accuracy: ", test_acc)
 
 
 if args.Model == "PerceiverIO":
-    config = Config_PerceiverIO()
+    config = Config_PerceiverIO(data_path=args.PathData)
 elif args.Model == "AttentionAutoencoder_1":
-    config = Config_AttnAE_1()
+    config = Config_AttnAE_1(data_path=args.PathData)
 elif args.Model == "AttentionAutoencoder_2":
-    config = Config_AttnAE_2()
+    config = Config_AttnAE_2(data_path=args.PathData)
 else:
     raise ValueError("please choose a valid Model Type. See Documentation!")
 

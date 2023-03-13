@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 class Config_AttnAE_2(object):
 
-    def __init__(self):
+    def __init__(self, data_path):
         super(Config_AttnAE_2, self).__init__()
+        self.data_path = data_path
 
         # Data
 
-        self.DATA_SAVE_PATH = "C:\\Users\\marib\\Documents\\Github\\ML_Spike_Sorting\\Data\\Small_SpikesFile_1.pkl"
+        self.DATA_SAVE_PATH = self.data_path
 
         self.DATA_PREP_METHOD = "gradient"
 

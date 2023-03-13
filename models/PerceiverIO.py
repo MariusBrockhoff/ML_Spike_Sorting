@@ -675,7 +675,7 @@ class AutoPerceiver(tf.keras.Model):
 
         super(AutoPerceiver,self).__init__()
 
-        self.Embedding_dim = embedding_dim
+        self.embedding_dim = embedding_dim
 
         self.seq_len = seq_len
 

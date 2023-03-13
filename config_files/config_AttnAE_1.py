@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 class Config_AttnAE_1(object):
 
-    def __init__(self):
+    def __init__(self, data_path):
         super(Config_AttnAE_1, self).__init__()
+        self.data_path = data_path
 
         self.MODEL_TYPE = "AttnAE_1"
 
         ###DATA
-        self.DATA_SAVE_PATH = '/Users/jakobtraeuble/PycharmProjects/ML_Spike_Sorting/spikes_test/Small_SpikesFile_1.pkl'
+        self.DATA_SAVE_PATH = self.data_path
         self.DATA_PREP_METHOD = "gradient"
         self.DATA_NORMALIZATION = "Standard"
         self.TRAIN_TEST_SPLIT = 0.1

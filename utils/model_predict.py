@@ -25,4 +25,4 @@ def model_predict_latents(model, dataset, dataset_test):
         y_true_test = y_true_test + batch[1].numpy().tolist()
         i += 1
 
-    return encoded_data, encoded_data_test, y_true, y_true_test
+    return encoded_data, encoded_data_test, np.array(y_true), np.array(y_true_test)
