@@ -7,9 +7,8 @@ import statistics
 import tensorflow as tf
 
 
-physical_devices = tf.config.list_physical_devices('GPU')
-print("Num GPUs:", len(physical_devices))
-print("devices:", tf.config.list_physical_devices(device_type=None))
+print("Num GPUs:", len(tf.config.experimental.list_physical_devices(device_type='GPU')))
+print("devices:", tf.config.experimental.list_physical_devices(device_type=None))
 
 from utils.filter_signal import *
 # from utils.file_opener_raw_recording_data import *
