@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-import tensorflow as tf
 #from models.AttnAE_1 import TransformerEncoder_AEDecoder, CustomSchedule
-import time
-import numpy as np
 import tensorflow_addons as tfa
 
 

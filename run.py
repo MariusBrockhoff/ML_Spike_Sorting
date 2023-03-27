@@ -5,10 +5,7 @@ import numpy as np
 import argparse
 import statistics
 import tensorflow as tf
-
-
-print("Num GPUs:", len(tf.config.experimental.list_physical_devices(device_type='GPU')))
-print("devices:", tf.config.experimental.list_physical_devices(device_type=None))
+import time
 
 from utils.filter_signal import *
 # from utils.file_opener_raw_recording_data import *
@@ -62,7 +59,7 @@ class Run:
     def initialize_model(self):
         print('---' * 30)
         print('INITIALIZING MODEL...')
-        if self.config.MODEL_TYPE == "AutoPerceiver":
+        if self.config.MODEL_TYPE == "PerceiverIO":
             model = AutoPerceiver(embedding_dim=self.config.EMBEDDING_DIM,
                                   seq_len=self.config.SEQ_LEN,
                                   ENC_number_of_layers=self.config.ENC_NUMBER_OF_LAYERS,
@@ -147,6 +144,7 @@ class Run:
             train_acc_lst = []
             test_acc_lst = []
             for i in range(len(dataset)):
+                start_time = time.time()
                 model = run.initialize_model()
                 loss_lst, test_loss_lst = run.train(model=model, dataset=dataset[i], dataset_test=dataset_test[i])
                 encoded_data, encoded_data_test, y_true, y_true_test = run.predict(model=model, dataset=dataset[i],
@@ -162,8 +160,11 @@ class Run:
                   statistics.stdev(train_acc_lst))
             print("Mean Test Accuracy: ", statistics.mean(test_acc_lst), ", Standarddeviation: ",
                   statistics.stdev(test_acc_lst))
+            end_time = time.time()
+            print("Time Run Execution: ", end_time - start_time)
 
         else:
+            start_time = time.time()
             dataset, dataset_test = run.prepare_data()
             model = run.initialize_model()
             loss_lst, test_loss_lst = run.train(model=model, dataset=dataset, dataset_test=dataset_test)
@@ -175,6 +176,8 @@ class Run:
             train_acc, test_acc = run.evaluate_spike_sorting(y_pred, y_pred_test, y_true, y_true_test)
             print("Train Accuracy: ", train_acc)
             print("Test Accuracy: ", test_acc)
+            end_time = time.time()
+            print("Time Run Execution: ", end_time - start_time)
 
 
 if args.Model == "PerceiverIO":

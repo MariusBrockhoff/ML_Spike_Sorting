@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-
-
 def model_predict_latents(model, dataset, dataset_test):
     i = 0
     for step, batch in enumerate(dataset):
