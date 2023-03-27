@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 #from models.AttnAE_1 import TransformerEncoder_AEDecoder, CustomSchedule
+import tensorflow as tf
+import numpy as np
 import tensorflow_addons as tfa
+
 
 
 
@@ -120,7 +123,7 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
     for epoch in range(config.NUM_EPOCHS):
 
         if config.WITH_WARMUP:
-            lr = config.LEARNING_RATE*min(epoch,config.LR_WARMUP)/config.LR_WARMUP
+            lr = config.LEARNING_RATE*min(epoch, config.LR_WARMUP)/config.LR_WARMUP
             if epoch>config.LR_WARMUP:
                 lr = config.LEARNING_RATE
                 lr = config.LR_FINAL + .5*(lr-config.LR_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
