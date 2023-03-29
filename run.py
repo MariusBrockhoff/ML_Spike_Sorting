@@ -182,9 +182,9 @@ class Run:
 
 if args.Model == "PerceiverIO":
     config = Config_PerceiverIO(data_path=args.PathData)
-elif args.Model == "AttentionAutoencoder_1":
+elif args.Model == "AttnAE_1":
     config = Config_AttnAE_1(data_path=args.PathData)
-elif args.Model == "AttentionAutoencoder_2":
+elif args.Model == "AttnAE_2":
     config = Config_AttnAE_2(data_path=args.PathData)
 else:
     raise ValueError("please choose a valid Model Type. See Documentation!")

@@ -6,6 +6,7 @@ class Config_AttnAE_1(object):
         self.data_path = data_path
 
         self.MODEL_TYPE = "AttnAE_1"
+        self.SAVE_DIR = "/Users/jakobtraeuble/PycharmProjects/ML_Spike_Sorting/model_test.tf"
 
         ###DATA
         self.DATA_SAVE_PATH = self.data_path
