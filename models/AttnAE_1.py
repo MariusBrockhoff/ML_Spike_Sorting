@@ -301,7 +301,7 @@ class AttnEncoder(tf.keras.layers.Layer):
 
         self.dropout = tf.keras.layers.Dropout(dropout)
 
-    def call(self, x, training, mask, data_prep):
+    def call(self, x, training, mask):
 
         seq_len = tf.shape(x)[1]  # shape of x: (batch_size, input_seq_len, d_model)
 
@@ -309,13 +309,9 @@ class AttnEncoder(tf.keras.layers.Layer):
 
         # x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32)) #TODO: maybe insert here normalization step
 
-        if data_prep == 'gradient' or data_prep == 'FT':
-            x = tf.expand_dims(x, axis=-1)
-
-        elif data_prep == 'embedding':
-            x = tf.expand_dims(x, -1)
-            x = self.embedding(x)
-            #print('After Embedding Shape: {}'.format(x.shape))
+        x = tf.expand_dims(x, -1)
+        x = self.embedding(x)
+        #print('After Embedding Shape: {}'.format(x.shape))
 
         x += self.pos_encoding
         #print('After Pos Encoding Shape: {}'.format(x.shape))
@@ -349,8 +345,7 @@ class OneDtoTwoDLayer(tf.keras.layers.Layer):
             range(self.seq_length)]
 
     def call(self, x, training):
-        # print('seq_length: ', self.seq_length)
-        # print('embedding input shape: ', x.shape)
+
         scalars = tf.split(x, num_or_size_splits=self.seq_length, axis=-1)
 
         output_list = []
@@ -367,7 +362,7 @@ class OneDtoTwoDLayer(tf.keras.layers.Layer):
 
 # TransformerEncoder + AEDecoder
 class TransformerEncoder_AEDecoder(tf.keras.Model):
-    def __init__(self, data_prep, num_layers, d_model, num_heads, dff, pe_input, dropout, dec_dims, reg_value,
+    def __init__(self, num_layers, d_model, num_heads, dff, pe_input, dropout, dec_dims, reg_value,
                  latent_len):
         super(TransformerEncoder_AEDecoder, self).__init__()
 
@@ -386,15 +381,13 @@ class TransformerEncoder_AEDecoder(tf.keras.Model):
         self.dropout = tf.keras.layers.Dropout(dropout)
         self.final_dense = tf.keras.layers.Dense(pe_input)
 
-        self.data_prep = data_prep
         self.d_model = d_model
 
     def call(self, inp, training):
         # Keras models prefer if you pass all your inputs in the first argument
 
         #print('inp input', inp.shape)
-        enc_output = self.encoder(inp, training, mask=None,
-                                  data_prep=self.data_prep)  # (batch_size, inp_seq_len, d_model)
+        enc_output = self.encoder(inp, training, mask=None)  # (batch_size, inp_seq_len, d_model)
         #print('enc_output input', enc_output.shape)
 
         latent_vec = self.reduce_pos_enc(enc_output)

@@ -52,9 +52,9 @@ class Config_AttnAE_2(object):
 
         self.MODEL_TYPE = "AttnAE_2"
 
-        self.EMBEDDING_DIM = 64
+        #self.EMBEDDING_DIM = 64
 
-        self.SEQ_LEN = 64
+        #self.SEQ_LEN = 64
 
 
         # Transformer

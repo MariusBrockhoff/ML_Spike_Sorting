@@ -315,7 +315,7 @@ class Attention_AE(tf.keras.Model):
     def call(self, inputs):
         # Input + Pos ENC
 
-        #print('shape input:', inputs.shape)
+        print('shape input:', inputs.shape)
 
         inputs = rearrange(inputs, "a b -> a b 1")
         #print('shape after rearrange:', inputs.shape)

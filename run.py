@@ -84,15 +84,14 @@ class Run:
                                   DEC_dropout_rate=self.config.DEC_DROPOUT_RATE)
 
         elif self.config.MODEL_TYPE == "AttnAE_1":
-            model = TransformerEncoder_AEDecoder(data_prep=self.config.DATA_PREP,
-                                                 num_layers=self.config.NUM_LAYERS,
+            model = TransformerEncoder_AEDecoder(num_layers=self.config.ENC_DEPTH,
                                                  d_model=self.config.D_MODEL,
-                                                 num_heads=self.config.NUM_HEADS,
+                                                 num_heads=self.config.NUM_ATTN_HEADS,
                                                  dff=self.config.DFF,
                                                  pe_input=self.config.SEQ_LEN,
                                                  latent_len=self.config.LATENT_LEN,
                                                  dropout=self.config.DROPOUT_RATE,
-                                                 dec_dims=self.config.DEC_DIMS,
+                                                 dec_dims=self.config.DEC_LAYERS,
                                                  reg_value=self.config.REG_VALUE)
 
 
@@ -102,9 +101,9 @@ class Run:
                                  seq_len=self.config.SEQ_LEN,
                                  latent_len=self.config.LATENT_LEN,
                                  ENC_depth=self.config.ENC_DEPTH,
-                                 ENC_attn_dim=self.config.ENC_SELF_ATTN_DIM,
+                                 ENC_attn_dim=int(self.config.D_MODEL / self.config.ENC_NUM_ATTN_HEADS),
                                  ENC_attn_heads=self.config.ENC_NUM_ATTN_HEADS,
-                                 ENC_dropout_rate=self.config.ENC_DROPOUT_RATE,
+                                 ENC_dropout_rate=self.config.DROPOUT_RATE,
                                  DEC_layers=self.config.DEC_LAYERS,
                                  reg_value=self.config.REG_VALUE)
 
@@ -186,8 +185,10 @@ if args.Model == "PerceiverIO":
     config = Config_PerceiverIO(data_path=args.PathData)
 elif args.Model == "AttnAE_1":
     config = Config_AttnAE_1(data_path=args.PathData)
+    assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
 elif args.Model == "AttnAE_2":
-    config = Config_AttnAE_2(data_path=args.PathData)
+    config = Config_AttnAE_1(data_path=args.PathData)
+    assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
 else:
     raise ValueError("please choose a valid Model Type. See Documentation!")
 
