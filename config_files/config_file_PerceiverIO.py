@@ -30,13 +30,13 @@ class Config_PerceiverIO(object):
 
         # TRAINING HYPERPARAMETERS
 
-        self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
+        self.LEARNING_RATE = 1e-8 #1e-4 #1e-6
 
         self.WITH_WARMUP = False
 
         self.LR_WARMUP = 10 #2 #10
 
-        self.LR_FINAL = 1e-9  #1e-6 1e-8
+        self.LR_FINAL = 1e-12  #1e-6 1e-8
 
         self.WITH_WD = False
 
@@ -44,7 +44,7 @@ class Config_PerceiverIO(object):
 
         self.WD_FINAL = 1e-4    #1e-41e-6
 
-        self.NUM_EPOCHS = 20
+        self.NUM_EPOCHS = 200
 
         self.BATCH_SIZE = 512
 
