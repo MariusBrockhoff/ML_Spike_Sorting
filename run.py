@@ -154,14 +154,15 @@ class Run:
                 train_acc, test_acc = run.evaluate_spike_sorting(y_pred, y_pred_test, y_true, y_true_test)
                 train_acc_lst.append(train_acc)
                 test_acc_lst.append(test_acc)
+                end_time = time.time()
+                print("Time Run Execution: ", end_time - start_time)
             print("Train Accuracies: ", train_acc_lst)
             print("Test Accuracies: ", test_acc_lst)
             print("Mean Train Accuracy: ", statistics.mean(train_acc_lst), ", Standarddeviation: ",
                   statistics.stdev(train_acc_lst))
             print("Mean Test Accuracy: ", statistics.mean(test_acc_lst), ", Standarddeviation: ",
                   statistics.stdev(test_acc_lst))
-            end_time = time.time()
-            print("Time Run Execution: ", end_time - start_time)
+
 
         else:
             start_time = time.time()
