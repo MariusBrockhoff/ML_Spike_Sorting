@@ -90,8 +90,10 @@ class Run:
                                                  num_heads=self.config.NUM_HEADS,
                                                  dff=self.config.DFF,
                                                  pe_input=self.config.SEQ_LEN,
+                                                 latent_len=self.config.LATENT_LEN,
                                                  dropout=self.config.DROPOUT_RATE,
-                                                 dec_dims=self.config.DEC_DIMS)
+                                                 dec_dims=self.config.DEC_DIMS,
+                                                 reg_value=self.config.REG_VALUE)
 
 
         elif self.config.MODEL_TYPE == "AttnAE_2":

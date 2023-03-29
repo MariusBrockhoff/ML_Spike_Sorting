@@ -15,6 +15,7 @@ class Config_AttnAE_1(object):
         self.TRAIN_TEST_SPLIT = 0.1
 
         ###GENERAL
+        self.REG_VALUE = 10e-3
         self.DROPOUT_RATE = 0.1
         self.NUM_EPOCHS = 100
         self.PLOT = False
@@ -43,5 +44,8 @@ class Config_AttnAE_1(object):
 
         # d_model: embedding
         self.D_MODEL = 32
+
+        #latent_len: length of latent space
+        self.LATENT_LEN = 30
 
 
