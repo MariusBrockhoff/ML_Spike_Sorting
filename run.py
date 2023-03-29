@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
-import numpy as np
 import argparse
 import statistics
-import tensorflow as tf
 import time
+print("Time checkpoint 1")
 
 from utils.filter_signal import *
 # from utils.file_opener_raw_recording_data import *
@@ -16,23 +13,27 @@ from utils.model_predict import *
 from utils.clustering import *
 from utils.evaluation import *
 
+print("Time checkpoint 2")
+
+
 from config_files.config_file_PerceiverIO import *
 from config_files.config_AttnAE_1 import *
 from config_files.config_AttnAE_2 import *
 
+print("Time checkpoint 3")
+
 from models.PerceiverIO import *
 from models.AttnAE_1 import *
 from models.AttnAE_2 import *
+
+print("Time checkpoint 4")
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Model', type=str, required=True)
 parser.add_argument('--PathData', type=str, required=True)
 parser.add_argument('--Benchmark', action='store_true')
 args = parser.parse_args()
-
-physical_devices = tf.config.list_physical_devices('GPU')
-print("Num GPUs:", len(physical_devices))
-print("devices:", tf.config.list_physical_devices(device_type=None))
 
 
 class Run:
