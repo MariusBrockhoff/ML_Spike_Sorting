@@ -368,9 +368,8 @@ class TransformerEncoder_AEDecoder(tf.keras.Model):
 
         self.encoder = AttnEncoder(num_layers, d_model, num_heads, dff, pe_input, dropout)
 
-        self.reduce_pos_enc = tf.keras.models.Sequential(
-            [tf.keras.layers.Dense(1, activation='relu', activity_regularizer=tf.keras.regularizers.l1(reg_value)),
-             tf.keras.layers.Reshape((pe_input,), input_shape=(pe_input, 1))])
+        self.reduce_pos_enc = tf.keras.layers.Dense(1, activation='relu', activity_regularizer=tf.keras.regularizers.l1(reg_value))
+        self.reshape_pos_enc = tf.keras.layers.Reshape((pe_input,), input_shape=(pe_input, 1))
 
         self.latent_map = tf.keras.layers.Dense(latent_len, activation='relu',
                                                 activity_regularizer=tf.keras.regularizers.l1(reg_value))
@@ -391,6 +390,7 @@ class TransformerEncoder_AEDecoder(tf.keras.Model):
         #print('enc_output input', enc_output.shape)
 
         latent_vec = self.reduce_pos_enc(enc_output)
+        latent_vec = self.reshape_pos_enc(latent_vec)
         # latent_vec = tf.math.reduce_mean(enc_output, axis=-1)
         #print('shape after reduce_pos_enc', latent_vec.shape)
 
