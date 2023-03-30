@@ -371,8 +371,7 @@ class TransformerEncoder_AEDecoder(tf.keras.Model):
         self.reduce_pos_enc = tf.keras.layers.Dense(1, activation='relu') #activity_regularizer=tf.keras.regularizers.l1(reg_value)
         self.reshape_pos_enc = tf.keras.layers.Reshape((pe_input,), input_shape=(pe_input, 1))
 
-        self.latent_map = tf.keras.layers.Dense(latent_len, activation='relu',
-                                                activity_regularizer=tf.keras.regularizers.l1(reg_value))
+        self.latent_map = tf.keras.layers.Dense(latent_len, activation='relu') #activity_regularizer=tf.keras.regularizers.l1(reg_value)
 
         self.decoder_layers = [
             tf.keras.layers.Dense(dec_dims[i], activation='relu', kernel_initializer='glorot_uniform',
