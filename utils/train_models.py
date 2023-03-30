@@ -125,7 +125,6 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
         if config.WITH_WARMUP:
             lr = config.LEARNING_RATE*min(epoch, config.LR_WARMUP)/config.LR_WARMUP
             if epoch>config.LR_WARMUP:
-                lr = config.LEARNING_RATE
                 lr = config.LR_FINAL + .5*(lr-config.LR_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
                 wd = wd + .5*(wd-config.WD_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
         else:
