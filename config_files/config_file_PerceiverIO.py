@@ -44,7 +44,7 @@ class Config_PerceiverIO(object):
 
         self.WD_FINAL = 1e-4    #1e-41e-6
 
-        self.NUM_EPOCHS = 200
+        self.NUM_EPOCHS = 100
 
         self.BATCH_SIZE = 512
 
