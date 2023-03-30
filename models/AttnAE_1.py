@@ -390,7 +390,7 @@ class TransformerEncoder_AEDecoder(tf.keras.Model):
         #print('enc_output input', enc_output.shape)
 
         latent_vec = self.reduce_pos_enc(enc_output)
-        latent_vec = tf.keras.layers.Reshape((latent_vec.shape[0], latent_vec.shape[1]), input_shape=(latent_vec.shape[0], latent_vec.shape[1], latent_vec.shape[2]))(latent_vec)
+        latent_vec = self.reshape_pos_enc(latent_vec)
         # latent_vec = tf.math.reduce_mean(enc_output, axis=-1)
         #print('shape after reduce_pos_enc', latent_vec.shape)
 
