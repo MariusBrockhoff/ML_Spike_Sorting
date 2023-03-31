@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-class Config_AttnAE_1(object):
+class Config_AttnAE(object):
 
     def __init__(self, data_path):
         super(Config_AttnAE_1, self).__init__()
