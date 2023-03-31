@@ -18,7 +18,6 @@ from utils.evaluation import *
 
 from config_files.config_file_PerceiverIO import *
 from config_files.config_AttnAE import *
-from config_files.config_AttnAE_2 import *
 
 from models.PerceiverIO import *
 from models.AttnAE_1 import *
@@ -184,12 +183,10 @@ class Run:
 if args.Model == "PerceiverIO":
     config = Config_PerceiverIO(data_path=args.PathData)
 elif args.Model == "AttnAE_1":
-    config = Config_AttnAE_1(data_path=args.PathData)
-    config.MODEL_TYPE = "AttnAE_1"
+    config = Config_AttnAE(data_path=args.PathData)
     assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
 elif args.Model == "AttnAE_2":
-    config = Config_AttnAE_1(data_path=args.PathData)
-    config.MODEL_TYPE = "AttnAE_2"
+    config = Config_AttnAE(data_path=args.PathData)
     assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
 else:
     raise ValueError("please choose a valid Model Type. See Documentation!")
