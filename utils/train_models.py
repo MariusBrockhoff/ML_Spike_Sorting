@@ -5,6 +5,17 @@ import numpy as np
 import tensorflow_addons as tfa
 
 
+def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_warmup_value=0):
+    warmup_schedule = np.array([])
+    if warmup_epochs > 0:
+        warmup_schedule = np.linspace(start_warmup_value, base_value, warmup_epochs)
+
+    epoch_counter = np.arange(epochs - warmup_epochs)
+    schedule = final_value + 0.5 * (base_value - final_value) * (1 + np.cos(epoch_counter * np.pi / epochs))
+
+    schedule = np.concatenate((warmup_schedule, schedule))
+    assert len(schedule) == epochs
+    return schedule
 
 
 def train(batches_train, batches_test, loss_object, epochs, plot, save):
@@ -107,33 +118,28 @@ def train_transformer(batches_train, batches_test, signal_length, data_prep, num
 
 
 def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
-    lr = config.LEARNING_RATE
-    wd = config.WEIGHT_DECAY
 
-    if config.WITH_WD:
-        optimizer = tfa.optimizers.AdamW(weight_decay=wd, learning_rate=lr)
+    if config.WITH_WARMUP:
+        lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
+                                       warmup_epochs=config.LR_WARMUP, start_warmup_value=0)
     else:
-        optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
+                                       warmup_epochs=0, start_warmup_value=0)
+    wd_schedule = cosine_scheduler(config.WEIGHT_DECAY, config.WD_FINAL, config.NUM_EPOCHS,
+                                   warmup_epochs=0, start_warmup_value=0)
+    if config.WITH_WD:
+        optimizer = tfa.optimizers.AdamW(weight_decay=wd_schedule[0], learning_rate=lr_schedule[0])
+    else:
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule[0])
 
     loss_lst = []
     test_loss_lst = []
-
     mse = tf.keras.losses.MeanSquaredError()
 
     for epoch in range(config.NUM_EPOCHS):
 
-        if config.WITH_WARMUP:
-            lr = config.LEARNING_RATE*min(epoch, config.LR_WARMUP)/config.LR_WARMUP
-            if epoch>config.LR_WARMUP:
-                lr = config.LR_FINAL + .5*(lr-config.LR_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-                wd = wd + .5*(wd-config.WD_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-        else:
-            lr = config.LR_FINAL + .5*(lr-config.LR_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-            wd = wd + .5*(wd-config.WD_FINAL)*(1+np.cos(epoch*np.pi/config.NUM_EPOCHS))
-
-
-        optimizer.learning_rate = lr
-        optimizer.weight_decay = wd
+        optimizer.learning_rate = lr_schedule[epoch]
+        optimizer.weight_decay = wd_schedule[epoch]
 
         for step, batch in enumerate(dataset):
             batch_s = batch[0]
@@ -141,10 +147,9 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
                 [_, _, output] = model(batch_s)
 
                 loss = mse(batch_s, output)
-                grads = tape.gradient(loss,model.trainable_weights)
-                optimizer.apply_gradients(zip(grads,model.trainable_weights))
+                grads = tape.gradient(loss, model.trainable_weights)
+                optimizer.apply_gradients(zip(grads, model.trainable_weights))
         loss_lst.append(loss)
-
 
         #test loss
         for step, batch in enumerate(dataset_test):
