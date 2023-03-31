@@ -2,10 +2,10 @@
 class Config_AttnAE(object):
 
     def __init__(self, data_path):
-        super(Config_AttnAE_1, self).__init__()
+        super(Config_AttnAE, self).__init__()
         self.data_path = data_path
 
-        #self.MODEL_TYPE = "AttnAE_1"
+        self.MODEL_TYPE = "AttnAE"
         self.SAVE_DIR = None
         self.LOAD = False
         self.LOAD_DIR = None
