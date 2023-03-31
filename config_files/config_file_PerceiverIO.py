@@ -36,7 +36,7 @@ class Config_PerceiverIO(object):
 
         self.LR_WARMUP = 10 #2 #10
 
-        self.LR_FINAL = 1e-10  #1e-6 1e-8
+        self.LR_FINAL = 1e-8  #1e-6 1e-8
 
         self.WITH_WD = False
 
