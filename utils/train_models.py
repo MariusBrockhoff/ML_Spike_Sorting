@@ -18,6 +18,144 @@ def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_war
     return schedule
 
 
+class SpikeAugmentation(tf.keras.Model):
+
+    def __init__(self,
+
+                 max_noise_lvl=0.1,
+
+                 apply_noise=True,
+
+                 flip_probability=0.5,
+
+                 apply_hshift=True,
+
+                 max_hshift=None):
+
+        super(SpikeAugmentation, self).__init__()
+
+        self.max_noise_lvl = max_noise_lvl
+
+        self.apply_noise = apply_noise
+
+        self.flip_probability = flip_probability
+
+        self.apply_hshift = apply_hshift
+
+        self.max_hshift = max_hshift
+
+    def call(self, inputs):
+
+        seq_len = inputs.shape[1]
+
+        # noise
+
+        if self.apply_noise:
+
+            noise_lvl = np.random.uniform(0, self.max_noise_lvl)
+
+            noise = tf.random.normal(shape=tf.shape(inputs), stddev=noise_lvl)
+
+            inputs += noise
+
+        #Horiz Trace Flipping
+
+        if np.random.rand() < self.flip_probability:
+
+            inputs = np.flip(inputs, axis=1)
+
+        # Horizontal shit
+
+        if self.apply_hshift:
+
+            if self.max_hshift==None:
+
+                shift = np.random.randint(seq_len, size=1)
+
+                inputs = np.roll(inputs, shift[0], axis=1)
+
+            else:
+
+                shift = np.random.randint(-self.max_hshift, self.max_hshift, size=1)
+
+                inputs = np.roll(inputs, shift[0], axis=1)
+
+        return inputs
+
+
+def random_spike_subsetting(dat, cropping_percentage):
+
+    n, seq_len = dat.shape
+
+    red_seq_len = int(seq_len * cropping_percentage)
+
+    start_ind = np.random.randint(seq_len - red_seq_len, size=1)
+
+    end_ind = start_ind + red_seq_len
+
+    cropped_spikes = dat[:, start_ind[0]:end_ind[0]]
+
+    return tf.cast(cropped_spikes, dtype=tf.float32)
+
+
+class DINOSpikeAugmentation(tf.keras.Model):
+
+    def __init__(self,
+
+                 max_noise_lvl=0.1,
+
+                 crop_pcts=[0.8, 0.4],
+
+                 number_local_crops=5):
+
+        super(DINOSpikeAugmentation, self).__init__()
+
+        self.max_noise_lvl = max_noise_lvl
+
+        self.crop_pcts = crop_pcts
+
+        self.number_local_crops = number_local_crops
+
+    def call(self, inputs):
+
+        # noise
+
+        noise_lvl = np.random.uniform(0, self.max_noise_lvl)
+
+        noise = tf.random.normal(shape=tf.shape(inputs), stddev=noise_lvl)
+
+        inputs += noise
+
+        # 0.5 flip the traces
+
+        if np.random.rand() < 0.5:
+            inputs = np.flip(inputs, axis=1)
+
+        # Horizontal shit
+
+        seq_len = inputs.shape[1]
+
+        shift = np.random.randint(seq_len, size=1)
+
+        inputs = np.roll(inputs, shift[0], axis=1)
+
+        # Sub-setting for teacher and student
+
+        augs = []
+
+        for j in range(2):
+            aug_t = random_spike_subsetting(inputs, self.crop_pcts[0])
+
+            augs.append(aug_t)
+
+        for i in range(self.number_local_crops):
+            aug_s = random_spike_subsetting(inputs, self.crop_pcts[1])
+
+            augs.append(aug_s)
+
+        return augs[:2], augs
+
+
 def train(batches_train, batches_test, loss_object, epochs, plot, save):
 
     if plot:
@@ -79,42 +217,6 @@ def train(batches_train, batches_test, loss_object, epochs, plot, save):
         if (epoch + 1) == epochs and save:
             transformer.save(
                 f'saved_models/trials_model_epochs_{epochs}_{method_plot_annotation}_dataPrep_{data_prep}_dimsRed_{str(dims_red)}_numLayers_{num_layers}_dModel_{d_model}_dff_{dff}_numHeads_{num_heads}_dropout_{dropout_rate}')
-
-"""
-def train_transformer(batches_train, batches_test, signal_length, data_prep, num_layers, d_model, num_heads, dff, dropout_rate, dec_dims, epochs, plot):
-
-    # data_prep =  'embedding', 'broadcasting', 'spectrogram' (string unqual to former two uses broadcasting as well)
-    # num_layers = number of attention modules
-    # d_model: embedding dimension --> ['gradient', 'perceiver-style', 'FT'] = [choose, 8, choose] #128
-    # num_heads = (assert d_model//num_heads)
-    # dff = shape of dense layer in attention module
-    # dropout
-    # dec_dims: list of dimensions of dense decoder
-    # epochs: int specify number of epochs to train
-    # plot: boolean plot reconstruction after every 10 epochs
-
-    global learning_rate, optimizer, loss_object, train_loss, test_loss, transformer
-
-    learning_rate = CustomSchedule(d_model)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9) #learning_rate
-
-    loss_object = tf.keras.losses.MeanSquaredError()
-    train_loss = tf.keras.metrics.Mean(name='train_loss')
-    test_loss = tf.keras.metrics.Mean(name='test_loss')
-
-    transformer = TransformerEncoder_AEDecoder(
-        data_prep=data_prep,
-        num_layers=num_layers,
-        d_model=d_model,
-        num_heads=num_heads,
-        dff=dff,
-        pe_input=signal_length,
-        dropout=dropout_rate,
-        dec_dims=dec_dims)
-
-    train(batches_train=batches_train, batches_test=batches_test, loss_object=loss_object, epochs=epochs, plot=plot,
-          save=False)
-"""
 
 
 def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
