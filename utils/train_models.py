@@ -22,9 +22,11 @@ class SpikeAugmentation(tf.keras.Model):
 
     def __init__(self,
 
+                 apply_noise=True,
+
                  max_noise_lvl=0.1,
 
-                 apply_noise=True,
+                 apply_flip=True,
 
                  flip_probability=0.5,
 
@@ -34,9 +36,11 @@ class SpikeAugmentation(tf.keras.Model):
 
         super(SpikeAugmentation, self).__init__()
 
+        self.apply_noise = apply_noise
+
         self.max_noise_lvl = max_noise_lvl
 
-        self.apply_noise = apply_noise
+        self.apply_flip = apply_flip
 
         self.flip_probability = flip_probability
 
@@ -60,9 +64,11 @@ class SpikeAugmentation(tf.keras.Model):
 
         #Horiz Trace Flipping
 
-        if np.random.rand() < self.flip_probability:
+        if self.apply_flip:
 
-            inputs = np.flip(inputs, axis=1)
+            if np.random.rand() < self.flip_probability:
+
+                inputs = np.flip(inputs, axis=1)
 
         # Horizontal shit
 
@@ -238,13 +244,17 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
     test_loss_lst = []
     mse = tf.keras.losses.MeanSquaredError()
 
+    augmenter = SpikeAugmentation(apply_noise=config.APPLY_NOISE, max_noise_lvl=config.MAX_NOISE_LVL,
+                                  apply_flip=config.APPLY_FLIP, flip_probability=config.FLIP_PROBABILITY,
+                                  apply_hshift=config.APPLY_HSHIFT, max_hshift=config.MAX_HSHIFT)
+
     for epoch in range(config.NUM_EPOCHS):
 
         optimizer.learning_rate = lr_schedule[epoch]
         optimizer.weight_decay = wd_schedule[epoch]
 
         for step, batch in enumerate(dataset):
-            batch_s = batch[0]
+            batch_s = augmenter(batch[0])
             with tf.GradientTape() as tape:
                 [_, _, output] = model(batch_s)
 
