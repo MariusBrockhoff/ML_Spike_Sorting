@@ -69,10 +69,10 @@ def data_preparation(config, path_spike_file, data_prep_method, normalization, t
 
     if benchmark:
         split = train_test_split
-        k_sets = int(1/split)
+        #k_sets = int(1/split)
         dataset_lst = []
         dataset_test_lst = []
-        for j in range(k_sets):
+        for j in range(config.BENCHMARK_START_IDX, config.BENCHMARK_END_IDX):
             number_of_test_samples = int(split*spikes.shape[0])
             x_test = spikes[number_of_test_samples*j:number_of_test_samples*(j+1), :]
             y_test = labels[number_of_test_samples*j:number_of_test_samples*(j+1)]

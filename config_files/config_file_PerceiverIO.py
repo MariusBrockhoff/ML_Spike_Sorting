@@ -16,6 +16,10 @@ class Config_PerceiverIO(object):
 
         self.TRAIN_TEST_SPLIT = 0.1
 
+        self.BENCHMARK_START_IDX = 0
+
+        self.BENCHMARK_END_IDX = 5 #int(1/self.TRAIN_TEST_SPLIT)
+
 
         #Data Augmentation
 
