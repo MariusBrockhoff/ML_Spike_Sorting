@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from scipy.optimize import linear_sum_assignment
 
+
 ###auxilary functions for transformer build-up: positional encoding, masks, scaled_dot_product, point-wise feed forwards layer
 ###                   for data preprocessing: gradient_transform, make_batches
 ###                   for data visualization: reconstruction, spectrogram
@@ -197,7 +198,6 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
         self.warmup_steps = warmup_steps
 
     def __call__(self, step):
-
         arg1 = tf.math.rsqrt(float(step))
         arg2 = float(step) * (self.warmup_steps ** -1.5)
 
@@ -280,6 +280,7 @@ class EncoderLayer(tf.keras.layers.Layer):
 
         return out2
 
+
 # AttnEncoder
 class AttnEncoder(tf.keras.layers.Layer):
     def __init__(self, num_layers, d_model, num_heads, dff,
@@ -289,7 +290,7 @@ class AttnEncoder(tf.keras.layers.Layer):
         self.d_model = d_model
         self.num_layers = num_layers
 
-        #self.embedding = OneDtoTwoDLayer(seq_length=maximum_position_encoding, d_model=d_model)
+        # self.embedding = OneDtoTwoDLayer(seq_length=maximum_position_encoding, d_model=d_model)
         self.embedding = tf.keras.layers.Dense(d_model, name='dense_embedding')
 
         self.pos_encoding = positional_encoding(maximum_position_encoding,
@@ -300,7 +301,7 @@ class AttnEncoder(tf.keras.layers.Layer):
 
         self.dropout = tf.keras.layers.Dropout(dropout)
 
-    def call(self, x, training, mask, data_prep):
+    def call(self, x, training, mask):
 
         seq_len = tf.shape(x)[1]  # shape of x: (batch_size, input_seq_len, d_model)
 
@@ -308,13 +309,9 @@ class AttnEncoder(tf.keras.layers.Layer):
 
         # x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32)) #TODO: maybe insert here normalization step
 
-        if data_prep == 'gradient' or data_prep == 'FT':
-            x = tf.expand_dims(x, axis=-1)
-
-        elif data_prep == 'embedding':
-            x = tf.expand_dims(x, -1)
-            x = self.embedding(x)
-            #print('After Embedding Shape: {}'.format(x.shape))
+        x = tf.expand_dims(x, -1)
+        x = self.embedding(x)
+        #print('After Embedding Shape: {}'.format(x.shape))
 
         x += self.pos_encoding
         #print('After Pos Encoding Shape: {}'.format(x.shape))
@@ -326,6 +323,7 @@ class AttnEncoder(tf.keras.layers.Layer):
             #print('Encoder Layer {} Output Shape: {}'.format(i, x.shape))
 
         return x  # (batch_size, input_seq_len, d_model)
+
 
 # OneDtoTwoDLayer
 class OneDtoTwoDLayer(tf.keras.layers.Layer):
@@ -347,8 +345,7 @@ class OneDtoTwoDLayer(tf.keras.layers.Layer):
             range(self.seq_length)]
 
     def call(self, x, training):
-        #print('seq_length: ', self.seq_length)
-        #print('embedding input shape: ', x.shape)
+
         scalars = tf.split(x, num_or_size_splits=self.seq_length, axis=-1)
 
         output_list = []
@@ -365,10 +362,16 @@ class OneDtoTwoDLayer(tf.keras.layers.Layer):
 
 # TransformerEncoder + AEDecoder
 class TransformerEncoder_AEDecoder(tf.keras.Model):
-    def __init__(self, data_prep, num_layers, d_model, num_heads, dff, pe_input, dropout, dec_dims):
+    def __init__(self, num_layers, d_model, num_heads, dff, pe_input, dropout, dec_dims, reg_value,
+                 latent_len):
         super(TransformerEncoder_AEDecoder, self).__init__()
 
         self.encoder = AttnEncoder(num_layers, d_model, num_heads, dff, pe_input, dropout)
+
+        self.reduce_pos_enc = tf.keras.layers.Dense(1, activation='relu') #activity_regularizer=tf.keras.regularizers.l1(reg_value)
+        self.reshape_pos_enc = tf.keras.layers.Reshape((pe_input,), input_shape=(pe_input, 1))
+
+        self.latent_map = tf.keras.layers.Dense(latent_len, activation='relu') #activity_regularizer=tf.keras.regularizers.l1(reg_value)
 
         self.decoder_layers = [
             tf.keras.layers.Dense(dec_dims[i], activation='relu', kernel_initializer='glorot_uniform',
@@ -376,18 +379,22 @@ class TransformerEncoder_AEDecoder(tf.keras.Model):
         self.dropout = tf.keras.layers.Dropout(dropout)
         self.final_dense = tf.keras.layers.Dense(pe_input)
 
-        self.data_prep = data_prep
         self.d_model = d_model
 
     def call(self, inp, training):
         # Keras models prefer if you pass all your inputs in the first argument
 
-        #print('inp input',inp.shape)
-        enc_output = self.encoder(inp, training, mask=None, data_prep=self.data_prep)  # (batch_size, inp_seq_len, d_model)
-        #print('enc_output input',enc_output.shape)
+        #print('inp input', inp.shape)
+        enc_output = self.encoder(inp, training, mask=None)  # (batch_size, inp_seq_len, d_model)
+        #print('enc_output input', enc_output.shape)
 
-        latent_vec = tf.math.reduce_mean(enc_output, axis=-1)
-        #print('latent_vec input',latent_vec.shape)
+        latent_vec = self.reduce_pos_enc(enc_output)
+        latent_vec = self.reshape_pos_enc(latent_vec)
+        # latent_vec = tf.math.reduce_mean(enc_output, axis=-1)
+        #print('shape after reduce_pos_enc', latent_vec.shape)
+
+        latent_vec = self.latent_map(latent_vec)
+        #print('shape of latent_vec', latent_vec.shape)
 
         x = latent_vec
 

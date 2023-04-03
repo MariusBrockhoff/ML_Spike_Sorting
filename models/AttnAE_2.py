@@ -240,6 +240,7 @@ class Encoder(tf.keras.layers.Layer):
     def call(self, x):
         for i in range(self.ENC_depth):
             x = self.enc_layers[i](x)
+            #print('shape after encoder layer:', x.shape)
 
         return x
 
@@ -299,12 +300,14 @@ class Attention_AE(tf.keras.Model):
                                self.ENC_dropout_rate)
 
         self.reduc_pos_enc = Sequential(
-            [KL.Dense(1, activation='relu', activity_regularizer=tf.keras.regularizers.l1(self.reg_value)),
+            [KL.Dense(1, activation='relu'),
 
-             KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))])
+             KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))]) #PREVIOUS: self.reduc_pos_enc = Sequential(
+            #[KL.Dense(1, activation='relu', activity_regularizer=tf.keras.regularizers.l1(self.reg_value)),
+            # KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))])
 
-        self.ENC_to_logits = Sequential([KL.Dense(self.latent_len, activation='relu',
-                                                  activity_regularizer=tf.keras.regularizers.l1(self.reg_value))])
+        self.ENC_to_logits = Sequential([KL.Dense(self.latent_len, activation='relu')]) #PREVIOUS: self.ENC_to_logits = Sequential([KL.Dense(self.latent_len, activation='relu',
+                                                  #activity_regularizer=tf.keras.regularizers.l1(self.reg_value))])
 
         self.decoder_layers = [KL.Dense(self.DEC_layers[i], kernel_initializer='glorot_uniform') for i in
                                range(len(self.DEC_layers))]
@@ -314,21 +317,29 @@ class Attention_AE(tf.keras.Model):
     def call(self, inputs):
         # Input + Pos ENC
 
+        #print('shape input:', inputs.shape)
+
         inputs = rearrange(inputs, "a b -> a b 1")
+        #print('shape after rearrange:', inputs.shape)
 
         inputs = self.embedding(inputs)
+        #print('shape after embedding:', inputs.shape)
 
         # inputs = self.fourier_enc(inputs)
 
         inputs += self.positional_enc
+        #print('shape after positional_enc:', inputs.shape)
 
         # Encoder
 
         encoded = self.encoder(inputs)
+        #print('shape after encoder:', encoded.shape)
 
         encoded = self.reduc_pos_enc(encoded)
+        #print('shape after reduc_pos_enc:', encoded.shape)
 
         latents = self.ENC_to_logits(encoded)
+        #print('shape latents:', latents.shape)
 
         x = latents
 
@@ -336,7 +347,9 @@ class Attention_AE(tf.keras.Model):
 
         for i in range(len(self.decoder_layers)):
             x = self.decoder_layers[i](x)
+            #print('shape after decoder layer:', x.shape)
 
         output = self.outputadapter(x)
+        #print('shape of output:', output.shape)
 
         return encoded, latents, output
