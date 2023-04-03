@@ -7,9 +7,12 @@ import statistics
 import tensorflow as tf
 import time
 
-from utils.filter_signal import *
+#print start time of code execution
+print("Start Time Code Exec: ", time.asctime(time.localtime(time.time())))
+
+#from utils.filter_signal import *
 # from utils.file_opener_raw_recording_data import *
-from utils.spike_detection import *
+#from utils.spike_detection import *
 from utils.data_preparation import *
 from utils.train_models import *
 from utils.model_predict import *
@@ -154,14 +157,17 @@ class Run:
                 train_acc, test_acc = run.evaluate_spike_sorting(y_pred, y_pred_test, y_true, y_true_test)
                 train_acc_lst.append(train_acc)
                 test_acc_lst.append(test_acc)
+                end_time = time.time()
+                print("Time Run Execution: ", end_time - start_time)
+                print("Train Acc: ", train_acc)
+                print("Test Acc: ", test_acc)
             print("Train Accuracies: ", train_acc_lst)
             print("Test Accuracies: ", test_acc_lst)
             print("Mean Train Accuracy: ", statistics.mean(train_acc_lst), ", Standarddeviation: ",
                   statistics.stdev(train_acc_lst))
             print("Mean Test Accuracy: ", statistics.mean(test_acc_lst), ", Standarddeviation: ",
                   statistics.stdev(test_acc_lst))
-            end_time = time.time()
-            print("Time Run Execution: ", end_time - start_time)
+
 
         else:
             start_time = time.time()

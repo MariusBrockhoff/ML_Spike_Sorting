@@ -17,6 +17,21 @@ class Config_PerceiverIO(object):
         self.TRAIN_TEST_SPLIT = 0.1
 
 
+        #Data Augmentation
+
+        self.APPLY_NOISE = False
+
+        self.MAX_NOISE_LVL = 0.1
+
+        self.APPLY_FLIP = False
+
+        self.FLIP_PROBABILITY = 0.5
+
+        self.APPLY_HSHIFT = False
+
+        self.MAX_HSHIFT = None
+
+
         # General
 
         self.SAVE_WEIGHTS = False
@@ -32,7 +47,7 @@ class Config_PerceiverIO(object):
 
         self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
 
-        self.WITH_WARMUP = False
+        self.WITH_WARMUP = True
 
         self.LR_WARMUP = 10 #2 #10
 
@@ -44,7 +59,7 @@ class Config_PerceiverIO(object):
 
         self.WD_FINAL = 1e-4    #1e-41e-6
 
-        self.NUM_EPOCHS = 20
+        self.NUM_EPOCHS = 100
 
         self.BATCH_SIZE = 512
 
