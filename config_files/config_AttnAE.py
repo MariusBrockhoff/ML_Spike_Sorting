@@ -24,7 +24,7 @@ class Config_AttnAE(object):
         self.BATCH_SIZE = 128
         self.LEARNING_RATE = 0.001 #1e-5
         self.WITH_WARMUP = True #False
-        self.LR_WARMUP = 0.0001 #10
+        self.LR_WARMUP = 10
         self.LR_FINAL = 1e-7
         self.WITH_WD = True #False
         self.WD_FINAL = 1e-4 #1e-4
