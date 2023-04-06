@@ -4,6 +4,7 @@ class Config_PerceiverIO(object):
     def __init__(self, data_path):
         super(Config_PerceiverIO, self).__init__()
         self.data_path = data_path
+        self.EARLY_STOPPING = False
 
 
         # Data

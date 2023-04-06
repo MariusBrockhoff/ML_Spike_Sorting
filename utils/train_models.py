@@ -17,6 +17,23 @@ def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_war
     assert len(schedule) == epochs
     return schedule
 
+class EarlyStopper:
+    def __init__(self, patience=5, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = np.inf
+
+    def early_stop(self, validation_loss):
+        if (validation_loss + self.min_delta) < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        else:
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
+
 
 class SpikeAugmentation(tf.keras.Model):
 
@@ -163,6 +180,9 @@ class DINOSpikeAugmentation(tf.keras.Model):
 
 def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
 
+    if config.EARLY_STOPPING:
+        early_stopper = EarlyStopper(patience=5, min_delta=0)
+
     if config.WITH_WARMUP:
         lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
                                        warmup_epochs=config.LR_WARMUP, start_warmup_value=0)
@@ -212,6 +232,11 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
         test_loss = mse(batch_t, output)
         test_loss_lst.append(test_loss)
 
+        if config.EARLY_STOPPING:
+            if early_stopper.early_stop(test_loss):
+                current_epoch = epoch + 1
+                break
+
         print("Epoch: ", epoch+1, ", Train loss: ", loss, ", Test loss: ", test_loss)
 
     if save_weights:
@@ -219,7 +244,10 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
 
         if config.MODEL_TYPE[:-2] == 'AttnAE':
             AttnAE_log = pd.read_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
+            last_slash = config.data_path.rfind('/')
             AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
+                                               config.data_path[last_slash + 1:],
+                                               current_epoch,
                                                config.MODEL_TYPE,
                                                config.DATA_PREP_METHOD,
                                                config.DATA_NORMALIZATION,

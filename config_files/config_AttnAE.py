@@ -8,6 +8,7 @@ class Config_AttnAE(object):
         self.MODEL_TYPE = "AttnAE"
         self.LOAD = False
         self.LOAD_DIR = None
+        self.EARLY_STOPPING = True
 
         ###DATA
         self.DATA_SAVE_PATH = self.data_path
@@ -80,5 +81,5 @@ class Config_AttnAE(object):
             D_MODEL=self.D_MODEL,
             LATENT_LEN=self.LATENT_LEN,
             DATA_AUG=self.DATA_AUG)
-        
+
 
