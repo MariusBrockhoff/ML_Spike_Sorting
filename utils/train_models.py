@@ -2,6 +2,7 @@
 import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
+import pandas as pd
 
 
 def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_warmup_value=0):
@@ -215,5 +216,23 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
 
     if save_weights:
         model.save_weights(save_dir)
+
+        if config.MODEL_TYPE[:-2] == 'AttnAE':
+            AttnAE_log = pd.read_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
+            AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
+                                               config.MODEL_TYPE,
+                                               config.DATA_PREP_METHOD,
+                                               config.DATA_NORMALIZATION,
+                                               config.REG_VALUE,
+                                               config.DROPOUT_RATE,
+                                               config.DATA_PREP,
+                                               config.ENC_DEPTH,
+                                               config.DFF,
+                                               config.DEC_LAYERS,
+                                               config.D_MODEL,
+                                               config.LATENT_LEN,
+                                               config.DATA_AUG]
+
+            AttnAE_log.to_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
 
     return loss_lst, test_loss_lst

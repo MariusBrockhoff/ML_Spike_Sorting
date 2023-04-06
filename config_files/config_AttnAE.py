@@ -6,7 +6,6 @@ class Config_AttnAE(object):
         self.data_path = data_path
 
         self.MODEL_TYPE = "AttnAE"
-        self.SAVE_DIR = None
         self.LOAD = False
         self.LOAD_DIR = None
 
@@ -29,7 +28,6 @@ class Config_AttnAE(object):
         self.WITH_WD = True #False
         self.WD_FINAL = 1e-4 #1e-4
         self.WEIGHT_DECAY = 0.0001 #1e-2
-        self.SAVE_WEIGHTS = False
 
         ### MODEL ARCHITECTURE
         self.DATA_PREP = 'embedding'
@@ -53,14 +51,12 @@ class Config_AttnAE(object):
         self.LATENT_LEN = 30
 
         # Clustering
-
         self.CLUSTERING_METHOD = "Kmeans"
         self.N_CLUSTERS = 5
         self.EPS = None
         self.MIN_CLUSTER_SIZE = 1000
 
         #AUGMENTATION
-
         self.DATA_AUG = False
         self.APPLY_NOISE = False
         self.MAX_NOISE_LVL = 0.1
@@ -68,4 +64,21 @@ class Config_AttnAE(object):
         self.FLIP_PROBABILITY = 0.5
         self.APPLY_HSHIFT = False
         self.MAX_HSHIFT = None
+
+        #SAVE MODEL
+        self.SAVE_WEIGHTS = True
+        self.SAVE_DIR = '/home/jnt27/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}_{REG_VALUE}_{DROPOUT_RATE}_{DATA_PREP}_{ENC_DEPTH}_{DFF}_{DEC_LAYERS}_{D_MODEL}_{LATENT_LEN}_{DATA_AUG}.pth'.format(
+            MODEL_TYPE=self.MODEL_TYPE,
+            DATA_PREP_METHOD=self.DATA_PREP_METHOD,
+            DATA_NORMALIZATION=self.DATA_NORMALIZATION,
+            REG_VALUE=self.REG_VALUE,
+            DROPOUT_RATE=self.DROPOUT_RATE,
+            DATA_PREP=self.DATA_PREP,
+            ENC_DEPTH=self.ENC_DEPTH,
+            DFF=self.DFF,
+            DEC_LAYERS=self.DEC_LAYERS,
+            D_MODEL=self.D_MODEL,
+            LATENT_LEN=self.LATENT_LEN,
+            DATA_AUG=self.DATA_AUG)
+        
 
