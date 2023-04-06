@@ -253,7 +253,12 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
         optimizer.weight_decay = wd_schedule[epoch]
 
         for step, batch in enumerate(dataset):
-            batch_s = augmenter(batch[0])
+            
+            if config.DATA_AUG:
+                batch_s = augmenter(batch[0])
+            else:
+                batch_s = batch[0]
+                
             with tf.GradientTape() as tape:
                 [_, _, output] = model(batch_s)
 
