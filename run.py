@@ -199,19 +199,23 @@ class Run:
 
 if args.Model == "PerceiverIO":
     config = Config_PerceiverIO(data_path=args.PathData)
+    
 elif args.Model == "AttnAE_1":
     config = Config_AttnAE(data_path=args.PathData)
     config.MODEL_TYPE = "AttnAE_1"
     assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
+    
 elif args.Model == "AttnAE_2":
     config = Config_AttnAE(data_path=args.PathData)
     config.MODEL_TYPE = "AttnAE_2"
     assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
+    
 else:
     raise ValueError("please choose a valid Model Type. See Documentation!")
 
 if args.Benchmark:
     run = Run(config=config, benchmark=True)
+    
 else:
     run = Run(config=config, benchmark=False)
 
