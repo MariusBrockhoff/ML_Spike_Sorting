@@ -23,6 +23,8 @@ class Config_PerceiverIO(object):
 
         #Data Augmentation
 
+        self.DATA_AUG = True
+
         self.APPLY_NOISE = False
 
         self.MAX_NOISE_LVL = 0.1

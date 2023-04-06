@@ -59,4 +59,13 @@ class Config_AttnAE(object):
         self.EPS = None
         self.MIN_CLUSTER_SIZE = 1000
 
+        #AUGMENTATION
+
+        self.DATA_AUG = False
+        self.APPLY_NOISE = False
+        self.MAX_NOISE_LVL = 0.1
+        self.APPLY_FLIP = False
+        self.FLIP_PROBABILITY = 0.5
+        self.APPLY_HSHIFT = False
+        self.MAX_HSHIFT = None
 
