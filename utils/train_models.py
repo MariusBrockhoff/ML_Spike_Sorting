@@ -181,7 +181,7 @@ class DINOSpikeAugmentation(tf.keras.Model):
 def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
 
     if config.EARLY_STOPPING:
-        early_stopper = EarlyStopper(patience=5, min_delta=0)
+        early_stopper = EarlyStopper(patience=5, min_delta=0.0001)
 
     if config.WITH_WARMUP:
         lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
@@ -234,20 +234,17 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
 
         if config.EARLY_STOPPING:
             if early_stopper.early_stop(test_loss):
-                current_epoch = epoch + 1
                 break
 
         print("Epoch: ", epoch+1, ", Train loss: ", loss, ", Test loss: ", test_loss)
 
-    if save_weights:
-        model.save_weights(save_dir)
 
         if config.MODEL_TYPE[:-2] == 'AttnAE':
             AttnAE_log = pd.read_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
             last_slash = config.data_path.rfind('/')
             AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
                                                config.data_path[last_slash + 1:],
-                                               current_epoch,
+                                               epoch+1,
                                                config.MODEL_TYPE,
                                                config.DATA_PREP_METHOD,
                                                config.DATA_NORMALIZATION,
@@ -262,5 +259,35 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
                                                config.DATA_AUG]
 
             AttnAE_log.to_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
+
+        elif config.MODEL_TYPE == 'PerceiverIO':
+            AttnAE_log = pd.read_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
+            last_slash = config.data_path.rfind('/')
+            AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
+                                               config.data_path[last_slash + 1:],
+                                               epoch+1,
+                                               config.MODEL_TYPE,
+                                               config.DATA_PREP_METHOD,
+                                               config.DATA_NORMALIZATION,
+                                               config.DATA_AUG,
+                                               config.LEARNING_RATE,
+                                               config.LR_FINAL,
+                                               config.BATCH_SIZE,
+                                               config.EMBEDDING_DIM,
+                                               config.ENC_NUMBER_OF_LAYERS,
+                                               config.ENC_STATE_INDEX,
+                                               config.ENC_STATE_CHANNELS,
+                                               config.ENC_DEPTH,
+                                               config.ENC_DROPOUT_RATE,
+                                               config.DEC_NUMBER_OF_LAYERS,
+                                               config.DEC_STATE_INDEX,
+                                               config.DEC_STATE_CHANNELS,
+                                               config.DEC_DEPTH,
+                                               config.DEC_DROPOUT_RATE]
+
+            AttnAE_log.to_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
+
+    if save_weights:
+        model.save_weights(save_dir)
 
     return loss_lst, test_loss_lst
