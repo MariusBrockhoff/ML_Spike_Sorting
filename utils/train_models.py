@@ -239,6 +239,9 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
         print("Epoch: ", epoch+1, ", Train loss: ", loss, ", Test loss: ", test_loss)
 
 
+    if save_weights:
+        model.save_weights(save_dir)
+
         if config.MODEL_TYPE[:-2] == 'AttnAE':
             AttnAE_log = pd.read_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
             last_slash = config.data_path.rfind('/')
@@ -286,8 +289,5 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
                                                config.DEC_DROPOUT_RATE]
 
             AttnAE_log.to_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
-
-    if save_weights:
-        model.save_weights(save_dir)
 
     return loss_lst, test_loss_lst
