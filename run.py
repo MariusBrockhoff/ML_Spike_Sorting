@@ -114,7 +114,7 @@ class Run:
     def train(self, model, dataset, dataset_test):
         print('---' * 30)
         print('TRAINING MODEL...')
-        loss_lst, test_loss_lst = train_model(model=model, config=self.config, dataset=dataset,
+        loss_lst, test_loss_lst, final_epoch = train_model(model=model, config=self.config, dataset=dataset,
                                               dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS,
                                               save_dir=self.config.SAVE_DIR)
         # get number of trainable parameters of model
@@ -128,7 +128,7 @@ class Run:
         print('total parameters', totalParams)
         print('-' * 20)
 
-        return loss_lst, test_loss_lst
+        return loss_lst, test_loss_lst, final_epoch
 
     def predict(self, model, dataset, dataset_test):
         encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(model=model, dataset=dataset,
@@ -160,7 +160,7 @@ class Run:
             for i in range(len(dataset)):
                 start_time = time.time()
                 model = run.initialize_model()
-                loss_lst, test_loss_lst = run.train(model=model, dataset=dataset[i], dataset_test=dataset_test[i])
+                loss_lst, test_loss_lst, final_epoch = run.train(model=model, dataset=dataset[i], dataset_test=dataset_test[i])
                 encoded_data, encoded_data_test, y_true, y_true_test = run.predict(model=model, dataset=dataset[i],
                                                                                    dataset_test=dataset_test[i])
                 y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data(encoded_data=encoded_data,
@@ -184,7 +184,7 @@ class Run:
             start_time = time.time()
             dataset, dataset_test = run.prepare_data()
             model = run.initialize_model()
-            loss_lst, test_loss_lst = run.train(model=model, dataset=dataset, dataset_test=dataset_test)
+            loss_lst, test_loss_lst, final_epoch = run.train(model=model, dataset=dataset, dataset_test=dataset_test)
             encoded_data, encoded_data_test, y_true, y_true_test = run.predict(model=model, dataset=dataset,
                                                                                dataset_test=dataset_test)
             y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data(encoded_data=encoded_data,
@@ -195,6 +195,58 @@ class Run:
             print("Test Accuracy: ", test_acc)
             end_time = time.time()
             print("Time Run Execution: ", end_time - start_time)
+
+            if self.config.MODEL_TYPE[:-2] == 'AttnAE':
+                AttnAE_log = pd.read_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
+                last_slash = config.data_path.rfind('/')
+                AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
+                                                   config.data_path[last_slash + 1:],
+                                                   config.MODEL_TYPE,
+                                                   final_epoch,
+                                                   train_acc,
+                                                   test_acc,
+                                                   config.DATA_PREP_METHOD,
+                                                   config.DATA_NORMALIZATION,
+                                                   config.REG_VALUE,
+                                                   config.DROPOUT_RATE,
+                                                   config.DATA_PREP,
+                                                   config.ENC_DEPTH,
+                                                   config.DFF,
+                                                   config.DEC_LAYERS,
+                                                   config.D_MODEL,
+                                                   config.LATENT_LEN,
+                                                   config.DATA_AUG]
+
+                AttnAE_log.to_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
+
+            elif config.MODEL_TYPE == 'PerceiverIO':
+                AttnAE_log = pd.read_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
+                last_slash = config.data_path.rfind('/')
+                AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
+                                                   config.data_path[last_slash + 1:],
+                                                   config.MODEL_TYPE,
+                                                   final_epoch,
+                                                   train_acc,
+                                                   test_acc,
+                                                   config.DATA_PREP_METHOD,
+                                                   config.DATA_NORMALIZATION,
+                                                   config.DATA_AUG,
+                                                   config.LEARNING_RATE,
+                                                   config.LR_FINAL,
+                                                   config.BATCH_SIZE,
+                                                   config.EMBEDDING_DIM,
+                                                   config.ENC_NUMBER_OF_LAYERS,
+                                                   config.ENC_STATE_INDEX,
+                                                   config.ENC_STATE_CHANNELS,
+                                                   config.ENC_DEPTH,
+                                                   config.ENC_DROPOUT_RATE,
+                                                   config.DEC_NUMBER_OF_LAYERS,
+                                                   config.DEC_STATE_INDEX,
+                                                   config.DEC_STATE_CHANNELS,
+                                                   config.DEC_DEPTH,
+                                                   config.DEC_DROPOUT_RATE]
+
+                AttnAE_log.to_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
 
 
 if args.Model == "PerceiverIO":
