@@ -198,6 +198,7 @@ class Run:
 
             if self.config.MODEL_TYPE[:-2] == 'AttnAE':
                 AttnAE_log = pd.read_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
+                AttnAE_log = AttnAE_log.drop(AttnAE_log.columns[1], axis=1)
                 last_slash = config.data_path.rfind('/')
                 AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
                                                    config.data_path[last_slash + 1:],
