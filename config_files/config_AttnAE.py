@@ -22,13 +22,13 @@ class Config_AttnAE(object):
         self.NUM_EPOCHS = 100 #75
         self.PLOT = False
         self.BATCH_SIZE = 128
-        self.LEARNING_RATE = 0.001 #1e-5
+        self.LEARNING_RATE = 1e-5 #1e-5
         self.WITH_WARMUP = True #False
         self.LR_WARMUP = 10
-        self.LR_FINAL = 1e-7
-        self.WITH_WD = True #False
+        self.LR_FINAL = 1e-9
+        self.WITH_WD = False #False
         self.WD_FINAL = 1e-4 #1e-4
-        self.WEIGHT_DECAY = 0.0001 #1e-2
+        self.WEIGHT_DECAY = 1e-2 #1e-2
 
         ### MODEL ARCHITECTURE
         self.DATA_PREP = 'embedding'
