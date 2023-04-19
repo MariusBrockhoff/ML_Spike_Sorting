@@ -181,7 +181,7 @@ class DINOSpikeAugmentation(tf.keras.Model):
 def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
 
     if config.EARLY_STOPPING:
-        early_stopper = EarlyStopper(patience=10, min_delta=0.0001)
+        early_stopper = EarlyStopper(patience=3, min_delta=0.0001)
 
     if config.WITH_WARMUP:
         lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
