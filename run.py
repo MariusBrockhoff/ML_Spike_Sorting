@@ -5,7 +5,7 @@ import numpy as np
 import argparse
 import statistics
 import tensorflow as tf
-import panda as pd
+import pandas as pd
 import time
 
 #print start time of code execution
