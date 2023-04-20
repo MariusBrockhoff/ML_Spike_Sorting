@@ -117,13 +117,15 @@ class Config_PerceiverIO(object):
 
         #Clustering
 
-        self.CLUSTERING_METHOD = "Kmeans"
+        self.CLUSTERING_METHOD = "FHC_LPD"
 
         self.N_CLUSTERS = 5
 
         self.EPS = None
 
         self.MIN_CLUSTER_SIZE = 1000
+
+        self.KNN = 1000
 
         # SAVE MODEL
 
