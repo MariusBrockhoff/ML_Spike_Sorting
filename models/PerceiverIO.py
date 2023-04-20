@@ -8,6 +8,7 @@ import math
 
 
 from einops import rearrange, repeat
+import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers as KL
 
@@ -119,6 +120,13 @@ def positional_encoding(position, d_model):
 
     return x
 
+class RegL1(tf.keras.regularizers.Regularizer):
+
+    def __init__(self, reg_value):
+        self.reg_value = reg_value
+
+    def __call__(self, x):
+        return self.reg_value * tf.reduce_sum(tf.abs(x))
 
 class SelfAttention(tf.keras.Model):
 
@@ -158,11 +166,11 @@ class SelfAttention(tf.keras.Model):
 
         self.attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
-                                    KL.Dense(self.dff, activation=tf.keras.activations.gelu),
+                                    KL.Dense(self.dff, activation=tf.keras.activations.gelu, activity_regularizer=RegL1(0.01)),
 
                                     KL.Dropout(self.dropout_rate),
 
-                                    KL.Dense(self.state_channels)])
+                                    KL.Dense(self.state_channels, activity_regularizer=RegL1(0.01))])
 
     def call(self, inputs):
         
@@ -215,11 +223,11 @@ class CrossAttention(tf.keras.Model):
 
         self.x_attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
                                       
-                                      KL.Dense(self.dff, activation=tf.keras.activations.gelu),
+                                      KL.Dense(self.dff, activation=tf.keras.activations.gelu, activity_regularizer=RegL1(0.01)),
 
                                       KL.Dropout(self.dropout_rate),
 
-                                      KL.Dense(self.state_channels)])
+                                      KL.Dense(self.state_channels, activity_regularizer=RegL1(0.01))])
 
     def call(self, inputs):
 
