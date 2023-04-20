@@ -131,7 +131,7 @@ class Config_PerceiverIO(object):
 
         self.LOAD_DIR = "C:\\Users\\marib\\Documents\\Github\\ML_Spike_Sorting\\Data\\Model_test.tf"
 
-        self.SAVE_WEIGHTS = True
+        self.SAVE_WEIGHTS = False
 
         self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
                         '_{DATA_AUG}_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{EMBEDDING_DIM}_{ENC_NUMBER_OF_LAYERS}' \
