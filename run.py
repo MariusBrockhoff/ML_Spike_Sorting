@@ -110,6 +110,12 @@ class Run:
                                  DEC_layers=self.config.DEC_LAYERS,
                                  reg_value=self.config.REG_VALUE)
 
+        elif self.config.MODEL_TYPE == "AE":
+            model = autoencoder(dims=self.config.DEC_LAYERS,
+                                dropout=self.config.DROPOUT_RATE,
+                                d_model=self.config.D_MODEL,
+                                signal_length=self.config.SEQ_LEN)
+
         return model
 
     def train(self, model, dataset, dataset_test):
@@ -267,6 +273,10 @@ elif args.Model == "AttnAE_2":
     config = Config_AttnAE(data_path=args.PathData)
     config.MODEL_TYPE = "AttnAE_2"
     assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
+
+elif args.Model == "AE":
+    config = Config_AttnAE(data_path=args.PathData)
+    config.MODEL_TYPE = "AE"
     
 else:
     raise ValueError("please choose a valid Model Type. See Documentation!")

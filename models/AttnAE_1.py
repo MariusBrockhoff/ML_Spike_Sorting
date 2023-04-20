@@ -8,6 +8,55 @@ from scipy.optimize import linear_sum_assignment
 ###                   for data visualization: reconstruction, spectrogram
 ###                   for training: train, eval, loss, acc
 
+class autoencoder(tf.keras.layers.Layer):
+    def __init__(self, dims, dropout, d_model, signal_length, act='relu', init='glorot_uniform'):
+        super(autoencoder, self).__init__()
+
+        self.dims = dims
+        self.act = act
+        self.init = init
+        self.signal_length = signal_length
+
+        self.encoder_layers = [tf.keras.layers.Dense(self.dims[i], activation=self.act, kernel_initializer=self.init,
+                                                     name='ae_encoder_%d' % i) for i in range(len(self.dims[:-1]))]
+        self.hidden = tf.keras.layers.Dense(self.dims[-1], kernel_initializer=self.init,
+                                            name='ae_encoder_%d' % (len(self.dims) - 1))
+        self.decoder_layers = [tf.keras.layers.Dense(self.dims[i], activation=self.act, kernel_initializer=self.init,
+                                                     name='ae_decoder_%d' % i) for i in
+                               range(len(self.dims[:-1]) - 1, -1, -1)]
+        self.last_dense_layer = tf.keras.layers.Dense(self.signal_length, kernel_initializer=self.init,
+                                                      name='ae_decoder_last1D')
+
+        self.dropout = tf.keras.layers.Dropout(dropout)
+
+    def call(self, x, training):
+
+        #print('shape input:', x.shape)
+
+        # internal layers in ae_encoder
+        for i in range(len(self.dims[:-1])):
+            x = self.encoder_layers[i](x)
+            x = self.dropout(x, training=training)
+            #print('shape after encoder layer:', x.shape)
+
+        # hidden layer
+        latent_vec = self.hidden(x)  # hidden layer, features are extracted from here
+        #print('shape after latent_vec:', latent_vec.shape)
+        x = latent_vec
+
+        # internal layers in ae_decoder
+        # for i in range(len(self.dims[:-1])-1, -1, -1):
+        for i in range(len(self.dims[:-1])):
+            x = self.decoder_layers[i](x)
+            x = self.dropout(x, training=training)
+            #print('shape after decoder layer:', x.shape)
+
+        # back to default signal_length
+        x = self.last_dense_layer(x)
+        #print('shape after last decoder layer:', x.shape)
+
+        return x, latent_vec, x
+
 # positional encoding
 def get_angles(pos, i, d_model):
     # args:  - pos: is the position of the input embedding in the sequence (hello world, how are you: pos(world)=2)
@@ -151,15 +200,6 @@ def concatenate2D1D(vec):
     # 1040 dims for num_heads=4, d_model=16; 520 dims for num_heads=4, d_model=8
     print('dim:', vec.shape[0] * vec.shape[1])
     return tf.reshape(vec, shape=(vec.shape[0] * vec.shape[1]))
-
-
-def predict_and_latent(data, architecture):
-    predict_vec, latent_vec, _ = transformer([data, data[:, :-1]], training=False)
-
-    if architecture == 'untouched':
-        latent_vec = concatenate2D1D(latent_vec)
-
-    return predict_vec, latent_vec
 
 
 def acc(y_true, y_pred):
