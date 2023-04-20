@@ -147,10 +147,10 @@ class Run:
         print('CLUSTERING...')
         y_pred, n_clusters = clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
                                         n_clusters=self.config.N_CLUSTERS,
-                                        eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE)
+                                        eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
         y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
                                                   n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
-                                                  min_cluster_size=self.config.MIN_CLUSTER_SIZE)
+                                                  min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
         return y_pred, n_clusters, y_pred_test, n_clusters_test
 
     def evaluate_spike_sorting(self, y_pred, y_pred_test, y_true, y_true_test):
