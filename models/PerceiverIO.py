@@ -2,7 +2,6 @@
 """
 Definition of the PerceiverIO Class for Spike Sorting
 """
-import tensorflow as tf
 import numpy as np
 import math
 
@@ -166,11 +165,11 @@ class SelfAttention(tf.keras.Model):
 
         self.attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
-                                    KL.Dense(self.dff, activation=tf.keras.activations.gelu, activity_regularizer=RegL1(0.01)),
+                                    KL.Dense(self.dff, activation=tf.keras.activations.gelu), #, activity_regularizer=RegL1(0.01)),
 
                                     KL.Dropout(self.dropout_rate),
 
-                                    KL.Dense(self.state_channels, activity_regularizer=RegL1(0.01))])
+                                    KL.Dense(self.state_channels)]) #, activity_regularizer=RegL1(0.01))])
 
     def call(self, inputs):
         
@@ -223,11 +222,11 @@ class CrossAttention(tf.keras.Model):
 
         self.x_attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
                                       
-                                      KL.Dense(self.dff, activation=tf.keras.activations.gelu, activity_regularizer=RegL1(0.01)),
+                                      KL.Dense(self.dff, activation=tf.keras.activations.gelu), #, activity_regularizer=RegL1(0.01)),
 
                                       KL.Dropout(self.dropout_rate),
 
-                                      KL.Dense(self.state_channels, activity_regularizer=RegL1(0.01))])
+                                      KL.Dense(self.state_channels)]) #, activity_regularizer=RegL1(0.01))])
 
     def call(self, inputs):
 
