@@ -68,7 +68,7 @@ class Config_PerceiverIO(object):
 
         self.SEQ_LEN = 63
 
-        self.LATENT_LEN = 256
+        self.LATENT_LEN = 512
 
 
         # Encoder
@@ -119,7 +119,7 @@ class Config_PerceiverIO(object):
 
         #Clustering
 
-        self.CLUSTERING_METHOD = "FHC_LPD"
+        self.CLUSTERING_METHOD = "Kmeans"
 
         self.N_CLUSTERS = 5
 
