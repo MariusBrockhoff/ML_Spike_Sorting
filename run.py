@@ -65,6 +65,7 @@ class Run:
         if self.config.MODEL_TYPE == "PerceiverIO":
             model = AutoPerceiver(embedding_dim=self.config.EMBEDDING_DIM,
                                   seq_len=self.config.SEQ_LEN,
+                                  latent_len=self.config.LATENT_LEN,
                                   ENC_number_of_layers=self.config.ENC_NUMBER_OF_LAYERS,
                                   ENC_state_index=self.config.ENC_STATE_INDEX,
                                   ENC_state_channels=self.config.ENC_STATE_CHANNELS,
@@ -247,6 +248,7 @@ class Run:
                                                    config.LR_FINAL,
                                                    config.BATCH_SIZE,
                                                    config.EMBEDDING_DIM,
+                                                   config.LATENT_LEN,
                                                    config.ENC_NUMBER_OF_LAYERS,
                                                    config.ENC_STATE_INDEX,
                                                    config.ENC_STATE_CHANNELS,

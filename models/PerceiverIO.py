@@ -435,6 +435,8 @@ class Encoder(tf.keras.layers.Layer):
 
                  seq_len = 64,
 
+                 latent_len = 256,
+
                  number_of_layers=3,
 
                  state_index=256,
@@ -460,6 +462,8 @@ class Encoder(tf.keras.layers.Layer):
         self.Embedding_dim = embedding_dim
 
         self.seq_len = seq_len
+
+        self.latent_len =latent_len
 
         self.number_of_layers = number_of_layers
 
@@ -514,7 +518,11 @@ class Encoder(tf.keras.layers.Layer):
 
                                            dropout_rate=self.dropout_rate)
 
-        self.logs = Sequential([KL.Lambda(lambda x: tf.reduce_mean(x,axis=-2), trainable=False)])
+        self.logs = Sequential([KL.Lambda(lambda x: tf.reduce_mean(x, axis=-2), trainable=False),
+
+                                KL.LayerNormalization(axis=-1, trainable=False)])
+
+        self.logits_to_latent = Sequential([KL.Dense(self.latent_len)])
 
     def call(self, inputs):
 
@@ -530,6 +538,8 @@ class Encoder(tf.keras.layers.Layer):
 
         logits = self.logs(ENC_state)
 
+        logits = self.logits_to_latent(logits)
+
         return ENC_state, logits
 
 
@@ -540,6 +550,8 @@ class Decoder(tf.keras.layers.Layer):
                  embedding_dim=65,
 
                  seq_len=64,
+
+                 latent_len=256,
 
                  number_of_layers=3,
 
@@ -567,6 +579,8 @@ class Decoder(tf.keras.layers.Layer):
 
         self.seq_len = seq_len
 
+        self.latent_len = latent_len
+
         self.number_of_layers = number_of_layers
 
         self.state_index = state_index
@@ -587,6 +601,9 @@ class Decoder(tf.keras.layers.Layer):
 
         self.dropout_rate = dropout_rate
 
+        self.project_inp = Sequential([KL.Dense(self.Embedding_dim)])
+
+        self.positional_inp = positional_encoding(self.latent_len, self.Embedding_dim)
 
         self.state = tf.clip_by_value(tf.Variable(tf.random.normal((self.state_index,
 
@@ -623,6 +640,12 @@ class Decoder(tf.keras.layers.Layer):
                                         KL.Dense(self.seq_len)])
     def call(self, inputs):
 
+        inputs = rearrange(inputs, "a b -> a b 1")
+
+        inputs = self.project_inp(inputs)
+
+        inputs += self.positional_inp
+
         state = self.state
 
         state = self.AttentionPipe(state, inputs)
@@ -639,6 +662,8 @@ class AutoPerceiver(tf.keras.Model):
                  embedding_dim=65,
 
                  seq_len = 64,
+
+                 latent_len = 256,
 
                  ENC_number_of_layers=3,
 
@@ -686,6 +711,8 @@ class AutoPerceiver(tf.keras.Model):
 
         self.seq_len = seq_len
 
+        self.latent_len = latent_len
+
         self.ENC_number_of_layers = ENC_number_of_layers
 
         self.ENC_state_index = ENC_state_index
@@ -731,6 +758,8 @@ class AutoPerceiver(tf.keras.Model):
 
                                seq_len=self.seq_len,
 
+                               latent_len=self.latent_len,
+
                                number_of_layers=self.ENC_number_of_layers,
 
                                state_index=self.ENC_state_index,
@@ -753,7 +782,9 @@ class AutoPerceiver(tf.keras.Model):
 
         self.Decoder = Decoder(embedding_dim=self.embedding_dim,
 
-                               seq_len=seq_len,
+                               seq_len=self.seq_len,
+
+                               latent_len=self.latent_len,
 
                                number_of_layers=self.DEC_number_of_layers,
 
@@ -779,6 +810,6 @@ class AutoPerceiver(tf.keras.Model):
 
         ENC_state, logits = self.Encoder(inputs)
 
-        output = self.Decoder(ENC_state)
+        output = self.Decoder(logits)
 
         return ENC_state, logits, output

@@ -68,6 +68,8 @@ class Config_PerceiverIO(object):
 
         self.SEQ_LEN = 63
 
+        self.LATENT_LEN = 256
+
 
         # Encoder
 
@@ -136,7 +138,7 @@ class Config_PerceiverIO(object):
         self.SAVE_WEIGHTS = False
 
         self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
-                        '_{DATA_AUG}_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{EMBEDDING_DIM}_{ENC_NUMBER_OF_LAYERS}' \
+                        '_{DATA_AUG}_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{EMBEDDING_DIM}_{LATENT_LEN}_{ENC_NUMBER_OF_LAYERS}' \
                         '_{ENC_STATE_INDEX}_{ENC_STATE_CHANNELS}_{ENC_DEPTH}_{ENC_DROPOUT_RATE}_{DEC_NUMBER_OF_LAYERS}' \
                         '_{DEC_STATE_INDEX}_{DEC_STATE_CHANNELS}_{DEC_DEPTH}_{DEC_DROPOUT_RATE}.pth'.format(
             MODEL_TYPE=self.MODEL_TYPE,
@@ -147,6 +149,7 @@ class Config_PerceiverIO(object):
             LR_FINAL=self.LR_FINAL,
             BATCH_SIZE=self.BATCH_SIZE,
             EMBEDDING_DIM=self.EMBEDDING_DIM,
+            LATENT_LEN=self.LATENT_LEN,
             ENC_NUMBER_OF_LAYERS=self.ENC_NUMBER_OF_LAYERS,
             ENC_STATE_INDEX=self.ENC_STATE_INDEX,
             ENC_STATE_CHANNELS=self.ENC_STATE_CHANNELS,
