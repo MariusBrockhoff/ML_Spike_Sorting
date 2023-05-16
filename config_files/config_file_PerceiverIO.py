@@ -43,7 +43,7 @@ class Config_PerceiverIO(object):
 
         self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
 
-        self.WITH_WARMUP = True
+        self.WITH_WARMUP = False
 
         self.LR_WARMUP = 10 #2 #10
 
