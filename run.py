@@ -7,6 +7,7 @@ import statistics
 import tensorflow as tf
 import pandas as pd
 import time
+import wandb
 
 #print start time of code execution
 print("Start Time Code Exec: ", time.asctime(time.localtime(time.time())))
@@ -161,6 +162,24 @@ class Run:
         return train_acc, test_acc
 
     def execute_run(self):
+        wandb.init(
+            # set the wandb project where this run will be logged
+            project=args.Model,
+
+            # track hyperparameters and run metadata with wandb.config
+            config={
+                "layer_1": 512,
+                "activation_1": "relu",
+                "dropout": 0.8,
+                "layer_2": 10,
+                "activation_2": "softmax",
+                "optimizer": "sgd",
+                "loss": "sparse_categorical_crossentropy",
+                "metric": "accuracy",
+                "epoch": 8,
+                "batch_size": 256
+            }
+        )
         if self.benchmark:
             dataset, dataset_test = run.prepare_data()
             train_acc_lst = []
@@ -204,64 +223,6 @@ class Run:
             end_time = time.time()
             print("Time Run Execution: ", end_time - start_time)
 
-            if self.config.MODEL_TYPE[:-2] == 'AttnAE':
-                AttnAE_log = pd.read_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
-                AttnAE_log = AttnAE_log.drop(AttnAE_log.columns[1], axis=1)
-                last_slash = config.data_path.rfind('/')
-                AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
-                                                   config.data_path[last_slash + 1:],
-                                                   config.MODEL_TYPE,
-                                                   final_epoch,
-                                                   train_acc,
-                                                   test_acc,
-                                                   loss_lst[-1],
-                                                   test_loss_lst[-1],
-                                                   config.DATA_PREP_METHOD,
-                                                   config.DATA_NORMALIZATION,
-                                                   config.REG_VALUE,
-                                                   config.DROPOUT_RATE,
-                                                   config.DATA_PREP,
-                                                   config.ENC_DEPTH,
-                                                   config.DFF,
-                                                   config.DEC_LAYERS,
-                                                   config.D_MODEL,
-                                                   config.LATENT_LEN,
-                                                   config.DATA_AUG]
-
-                AttnAE_log.to_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
-
-            elif config.MODEL_TYPE == 'PerceiverIO':
-                AttnAE_log = pd.read_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
-                AttnAE_log = AttnAE_log.drop(AttnAE_log.columns[1], axis=1)
-                last_slash = config.data_path.rfind('/')
-                new_entry = [len(AttnAE_log),
-                       config.data_path[last_slash + 1:],
-                       config.MODEL_TYPE,
-                       final_epoch,
-                       train_acc,
-                       test_acc,
-                       loss_lst[-1],
-                       test_loss_lst[-1],
-                       config.DATA_PREP_METHOD,
-                       config.DATA_NORMALIZATION,
-                       config.DATA_AUG,
-                       config.LEARNING_RATE,
-                       config.LR_FINAL,
-                       config.BATCH_SIZE,
-                       config.EMBEDDING_DIM,
-                       config.LATENT_LEN,
-                       config.ENC_NUMBER_OF_LAYERS,
-                       config.ENC_STATE_INDEX,
-                       config.ENC_STATE_CHANNELS,
-                       config.ENC_DEPTH,
-                       config.ENC_DROPOUT_RATE,
-                       config.DEC_NUMBER_OF_LAYERS,
-                       config.DEC_STATE_INDEX,
-                       config.DEC_STATE_CHANNELS,
-                       config.DEC_DEPTH,
-                       config.DEC_DROPOUT_RATE]
-                AttnAE_log = AttnAE_log.append(pd.Series(new_entry, index=AttnAE_log.columns[:len(new_entry)]), ignore_index=True)
-                AttnAE_log.to_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
 
 
 if args.Model == "PerceiverIO":

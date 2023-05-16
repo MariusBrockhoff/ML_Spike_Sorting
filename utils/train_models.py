@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
 import pandas as pd
+import wandb
 
 
 def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_warmup_value=0):
@@ -231,6 +232,11 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
             break
         test_loss = mse(batch_t, output)
         test_loss_lst.append(test_loss)
+
+        wandb.log({
+            "Epoch": epoch,
+            "Train Loss": loss.numpy(),
+            "Valid Loss": test_loss.numpy()})
 
         if config.EARLY_STOPPING:
             if early_stopper.early_stop(test_loss):
