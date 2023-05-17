@@ -4,7 +4,7 @@ class Config_PerceiverIO(object):
     def __init__(self, data_path):
         super(Config_PerceiverIO, self).__init__()
         self.data_path = data_path
-        self.EARLY_STOPPING = True
+
 
 
         # Data
@@ -58,6 +58,14 @@ class Config_PerceiverIO(object):
         self.NUM_EPOCHS = 2
 
         self.BATCH_SIZE = 512
+
+        self.EARLY_STOPPING = True
+
+        self.PATIENCE = 15
+
+        self.MIN_DELTA = 0
+
+        self.BASELINE = 0
 
 
         #Architecture

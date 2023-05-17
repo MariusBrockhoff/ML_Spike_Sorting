@@ -9,6 +9,9 @@ class Config_AttnAE(object):
         self.LOAD = False
         self.LOAD_DIR = None
         self.EARLY_STOPPING = True
+        self.PATIENCE = 15
+        self.MIN_DELTA = 0
+        self.BASELINE = 0
 
         ###DATA
         self.DATA_SAVE_PATH = self.data_path
