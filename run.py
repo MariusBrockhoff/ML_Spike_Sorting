@@ -5,7 +5,6 @@ import numpy as np
 import argparse
 import statistics
 import tensorflow as tf
-import pandas as pd
 import time
 import wandb
 
@@ -22,9 +21,11 @@ from utils.clustering import *
 from utils.evaluation import *
 
 from config_files.config_file_PerceiverIO import *
+from config_files.config_file_DINO import *
 from config_files.config_AttnAE import *
 
 from models.PerceiverIO import *
+from models.DINOPerceiver import *
 from models.AttnAE_1 import *
 from models.AttnAE_2 import *
 
@@ -118,47 +119,103 @@ class Run:
                                 d_model=self.config.D_MODEL,
                                 signal_length=self.config.SEQ_LEN)
 
+        elif self.config.MODEL_TYPE == "DINO":
+            m_student = Perceiver(Embedding_dim=self.config.EMBEDDING_DIM,
+                                  seq_len=self.config.CROP_PCTS[1],
+                                  number_of_layers=self.config.NUMBER_OF_LAYERS,
+                                  latent_len=self.config.LATENT_LEN,
+                                  state_index=self.config.STATE_INDEX,
+                                  state_channels=self.config.STATE_CHANNEL,
+                                  dff=self.config.DFF,
+                                  x_attn_dim=self.config.X_ATTN_DIM,
+                                  x_attn_heads=self.config.X_ATTN_HEADS,
+                                  depth=self.config.DEPTH,
+                                  attn_dim=self.config.SELF_ATTN_DIM,
+                                  attn_heads=self.config.NUM_ATTN_HEADS,
+                                  dropout_rate=self.config.DROPOUT_RATE)
+
+            m_teacher = Perceiver(Embedding_dim=self.config.EMBEDDING_DIM,
+                                  seq_len=self.config.CROP_PCTS[0],
+                                  number_of_layers=self.config.NUMBER_OF_LAYERS,
+                                  latent_len=self.config.LATENT_LEN,
+                                  state_index=self.config.STATE_INDEX,
+                                  state_channels=self.config.STATE_CHANNEL,
+                                  dff=self.config.DFF,
+                                  x_attn_dim=self.config.X_ATTN_DIM,
+                                  x_attn_heads=self.config.X_ATTN_HEADS,
+                                  depth=self.config.DEPTH,
+                                  attn_dim=self.config.SELF_ATTN_DIM,
+                                  attn_heads=self.config.NUM_ATTN_HEADS,
+                                  dropout_rate=self.config.DROPOUT_RATE)
+
+
+            model = [m_student, m_teacher]
+
         return model
 
     def train(self, model, dataset, dataset_test):
         print('---' * 30)
         print('TRAINING MODEL...')
-        loss_lst, test_loss_lst, final_epoch = train_model(model=model, config=self.config, dataset=dataset,
+
+        if self.config.MODEL_TYPE == "DINO":
+            loss_lst, test_loss_lst, final_epoch = train_DINO(model=model, config=self.config, dataset=dataset,
                                               dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS,
                                               save_dir=self.config.SAVE_DIR)
-        # get number of trainable parameters of model
-        trainableParams = np.sum([np.prod(v.get_shape()) for v in model.trainable_weights])
-        nonTrainableParams = np.sum([np.prod(v.get_shape()) for v in model.non_trainable_weights])
-        totalParams = trainableParams + nonTrainableParams
 
-        print('-' * 20)
-        print('trainable parameters:', trainableParams)
-        print('non-trainable parameters', nonTrainableParams)
-        print('total parameters', totalParams)
-        print('-' * 20)
+        else:
+            loss_lst, test_loss_lst, final_epoch = train_model(model=model, config=self.config, dataset=dataset,
+                                              dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS,
+                                              save_dir=self.config.SAVE_DIR)
+            # get number of trainable parameters of model
+            trainableParams = np.sum([np.prod(v.get_shape()) for v in model.trainable_weights])
+            nonTrainableParams = np.sum([np.prod(v.get_shape()) for v in model.non_trainable_weights])
+            totalParams = trainableParams + nonTrainableParams
+
+            print('-' * 20)
+            print('trainable parameters:', trainableParams)
+            print('non-trainable parameters', nonTrainableParams)
+            print('total parameters', totalParams)
+            print('-' * 20)
 
         return loss_lst, test_loss_lst, final_epoch
 
     def predict(self, model, dataset, dataset_test):
-        encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(model=model, dataset=dataset,
+        if self.config.MODEL_TYPE == "DINO":
+            encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents_DINO(model=model, dataset=dataset,
+                                                                                         dataset_test=dataset_test)
+        else:
+            encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(model=model, dataset=dataset,
                                                                                      dataset_test=dataset_test)
         return encoded_data, encoded_data_test, y_true, y_true_test
 
     def cluster_data(self, encoded_data, encoded_data_test):
         print('---' * 30)
         print('CLUSTERING...')
-        y_pred, n_clusters = clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
-                                        n_clusters=self.config.N_CLUSTERS,
-                                        eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
-        y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
-                                                  n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
-                                                  min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
+        if self.config.MODEL_TYPE == "DINO":
+            y_pred, n_clusters = DINO_clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
+                                            n_clusters=self.config.N_CLUSTERS,
+                                            eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE,
+                                            knn=self.config.KNN)
+            y_pred_test, n_clusters_test = DINO_clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
+                                                      n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
+                                                      min_cluster_size=self.config.MIN_CLUSTER_SIZE,
+                                                      knn=self.config.KNN)
+        else:
+            y_pred, n_clusters = clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
+                                            n_clusters=self.config.N_CLUSTERS,
+                                            eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
+            y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
+                                                      n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
+                                                      min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
         return y_pred, n_clusters, y_pred_test, n_clusters_test
 
     def evaluate_spike_sorting(self, y_pred, y_pred_test, y_true, y_true_test):
         print('---' * 30)
         print('EVALUATE RESULTS...')
-        train_acc, test_acc = evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test)
+        if self.config.MODEL_TYPE == "DINO":
+            train_acc, test_acc = DINO_evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test)
+        else:
+            train_acc, test_acc = evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test)
         return train_acc, test_acc
 
     def execute_run(self):
@@ -318,6 +375,43 @@ class Run:
                             "D_MODEL": self.config.D_MODEL,
                             "LATENT_LEN": self.config.LATENT_LEN,
                             "DATA_AUG": self.config.DATA_AUG})
+            if self.config.MODEL_TYPE == "DINO":
+                wandb.init(
+                    # set the wandb project where this run will be logged
+                    project=self.config.MODEL_TYPE,
+                    # track hyperparameters and run metadata with wandb.config
+                    config={"Model": self.config.MODEL_TYPE,
+                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                            "TRAIN_TEST_SPLIT": self.config.TRAIN_TEST_SPLIT,
+                            "LEARNING_RATE": self.config.LEARNING_RATE,
+                            "WITH_WARMUP": self.config.WITH_WARMUP,
+                            "LR_WARMUP": self.config.LR_WARMUP,
+                            "LR_FINAL": self.config.LR_FINAL,
+                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                            "BATCH_SIZE": self.config.BATCH_SIZE,
+                            "CENTERING_RATE": self.config.CENTERING_RATE,
+                            "LEARNING_MOMENTUM_RATE": self.config.LEARNING_MOMENTUM_RATE,
+                            "STUDENT_TEMPERATURE": self.config.STUDENT_TEMPERATURE,
+                            "TEACHER_TEMPERATURE": self.config.TEACHER_TEMPERATURE,
+                            "TEACHER_TEMPERATURE_FINAL": self.config.TEACHER_TEMPERATURE_FINAL,
+                            "TEACHER_WARMUP": self.config.TEACHER_WARMUP,
+                            "EMBEDDING_DIM": self.config.EMBEDDING_DIM,
+                            "SEQ_LEN": self.config.SEQ_LEN,
+                            "LATENT_LEN": self.config.LATENT_LEN,
+                            "NUMBER_OF_LAYERS": self.config.NUMBER_OF_LAYERS,
+                            "STATE_INDEX": self.config.STATE_INDEX,
+                            "STATE_CHANNELS": self.config.STATE_CHANNELS,
+                            "DFF": self.config.DFF,
+                            "X_ATTN_HEADS": self.config.X_ATTN_HEADS,
+                            "X_ATTN_DIM": self.config.X_ATTN_DIM,
+                            "DEPTH": self.config.DEPTH,
+                            "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
+                            "SELF_ATTN_DIM": self.config.SELF_ATTN_DIM,
+                            "ENC_DROPOUT_RATE": self.config.ENC_DROPOUT_RATE,
+                            "DROPOUT_RATE": self.config.DROPOUT_RATE,
+                            "N_CLUSTERS": self.config.N_CLUSTERS})
+
             start_time = time.time()
             dataset, dataset_test = run.prepare_data()
             model = run.initialize_model()
@@ -337,7 +431,10 @@ class Run:
 
 if args.Model == "PerceiverIO":
     config = Config_PerceiverIO(data_path=args.PathData)
-    
+
+elif args.Model == "DINO":
+    config = Config_DINO(data_path=args.PathData)
+
 elif args.Model == "AttnAE_1":
     config = Config_AttnAE(data_path=args.PathData)
     config.MODEL_TYPE = "AttnAE_1"

@@ -35,3 +35,26 @@ def evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
             "Test ACC": test_acc})
 
     return train_acc, test_acc
+
+
+def DINO_evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
+    # Split data in student and teacher
+    y_pred_s = y_pred[:int(len(y_pred) / 2), :]
+    y_pred_t = y_pred[int(len(y_pred) / 2):, :]
+    y_pred_test_s = y_pred_test[:int(len(y_pred_test) / 2), :]
+    y_pred_test_t = y_pred_test[int(len(y_pred_test) / 2):, :]
+
+    train_acc_s = acc(y_true, y_pred_s)
+    train_acc_t = acc(y_true, y_pred_t)
+    test_acc_s = acc(y_true_test, y_pred_test_s)
+    test_acc_t = acc(y_true_test, y_pred_test_t)
+
+    #Log with WandB
+    wandb.log({
+            "Train ACC Student": train_acc_s,
+            "Test ACC Student": test_acc_s,
+            "Train ACC Student": train_acc_t,
+            "Test ACC Student": test_acc_t})
+    train_acc = [train_acc_s, train_acc_t]
+    test_acc = [train_acc_t, test_acc_t]
+    return train_acc, test_acc
