@@ -4,7 +4,7 @@ class Config_PerceiverIO(object):
     def __init__(self, data_path):
         super(Config_PerceiverIO, self).__init__()
         self.data_path = data_path
-        self.EARLY_STOPPING = True
+
 
 
         # Data
@@ -15,7 +15,7 @@ class Config_PerceiverIO(object):
 
         self.DATA_NORMALIZATION = "MinMax"
 
-        self.TRAIN_TEST_SPLIT = 0.1
+        self.TRAIN_TEST_SPLIT = 0.2
 
         self.BENCHMARK_START_IDX = 0
 
@@ -43,7 +43,7 @@ class Config_PerceiverIO(object):
 
         self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
 
-        self.WITH_WARMUP = True
+        self.WITH_WARMUP = False
 
         self.LR_WARMUP = 10 #2 #10
 
@@ -57,7 +57,15 @@ class Config_PerceiverIO(object):
 
         self.NUM_EPOCHS = 100
 
-        self.BATCH_SIZE = 512
+        self.BATCH_SIZE = 256
+
+        self.EARLY_STOPPING = True
+
+        self.PATIENCE = 20
+
+        self.MIN_DELTA = 0
+
+        self.BASELINE = 0.0005
 
 
         #Architecture

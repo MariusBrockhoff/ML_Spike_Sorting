@@ -7,6 +7,7 @@ import statistics
 import tensorflow as tf
 import pandas as pd
 import time
+import wandb
 
 #print start time of code execution
 print("Start Time Code Exec: ", time.asctime(time.localtime(time.time())))
@@ -166,6 +167,70 @@ class Run:
             train_acc_lst = []
             test_acc_lst = []
             for i in range(len(dataset)):
+                if self.config.MODEL_TYPE == "PerceiverIO":
+                    wandb.init(
+                        # set the wandb project where this run will be logged
+                        project=self.config.MODEL_TYPE,
+                        # track hyperparameters and run metadata with wandb.config
+                        config={"Model": self.config.MODEL_TYPE,
+                                "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                                "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                                "TRAIN_TEST_SPLIT": self.config.TRAIN_TEST_SPLIT,
+                                "LEARNING_RATE": self.config.LEARNING_RATE,
+                                "WITH_WARMUP": self.config.WITH_WARMUP,
+                                "LR_WARMUP": self.config.LR_WARMUP,
+                                "LR_FINAL": self.config.LR_FINAL,
+                                "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                                "BATCH_SIZE": self.config.BATCH_SIZE,
+                                "EMBEDDING_DIM": self.config.EMBEDDING_DIM,
+                                "SEQ_LEN": self.config.SEQ_LEN,
+                                "LATENT_LEN": self.config.LATENT_LEN,
+                                "ENC_NUMBER_OF_LAYERS": self.config.ENC_NUMBER_OF_LAYERS,
+                                "ENC_STATE_INDEX": self.config.ENC_STATE_INDEX,
+                                "ENC_STATE_CHANNELS": self.config.ENC_STATE_CHANNELS,
+                                "ENC_DFF": self.config.ENC_DFF,
+                                "ENC_X_ATTN_HEADS": self.config.ENC_X_ATTN_HEADS,
+                                "ENC_X_ATTN_DIM": self.config.ENC_X_ATTN_DIM,
+                                "ENC_DEPTH": self.config.ENC_DEPTH,
+                                "ENC_NUM_ATTN_HEADS": self.config.ENC_NUM_ATTN_HEADS,
+                                "ENC_SELF_ATTN_DIM": self.config.ENC_SELF_ATTN_DIM,
+                                "ENC_DROPOUT_RATE": self.config.ENC_DROPOUT_RATE,
+                                "DEC_NUMBER_OF_LAYERS": self.config.DEC_NUMBER_OF_LAYERS,
+                                "DEC_STATE_INDEX": self.config.DEC_STATE_INDEX,
+                                "DEC_STATE_CHANNELS": self.config.DEC_STATE_CHANNELS,
+                                "DEC_DFF": self.config.DEC_DFF,
+                                "DEC_X_ATTN_HEADS": self.config.DEC_X_ATTN_HEADS,
+                                "DEC_X_ATTN_DIM": self.config.DEC_X_ATTN_DIM,
+                                "DEC_DEPTH": self.config.DEC_DEPTH,
+                                "DEC_NUM_ATTN_HEADS": self.config.DEC_NUM_ATTN_HEADS,
+                                "DEC_SELF_ATTN_DIM": self.config.DEC_SELF_ATTN_DIM,
+                                "DEC_DROPOUT_RATE": self.config.DEC_DROPOUT_RATE,
+                                "CLUSTERING_METHOD": self.config.CLUSTERING_METHOD,
+                                "N_CLUSTERS": self.config.N_CLUSTERS})
+                elif self.config.MODEL_TYPE == "AttnAE_1":
+                    wandb.init(
+                        # set the wandb project where this run will be logged
+                        project=self.config.MODEL_TYPE,
+                        # track hyperparameters and run metadata with wandb.config
+                        config={"Model": self.config.MODEL_TYPE,
+                                "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                                "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                                "LEARNING_RATE": self.config.LEARNING_RATE,
+                                "WITH_WARMUP": self.config.WITH_WARMUP,
+                                "LR_WARMUP": self.config.LR_WARMUP,
+                                "LR_FINAL": self.config.LR_FINAL,
+                                "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                                "BATCH_SIZE": self.config.BATCH_SIZE,
+                                "REG_VALUE": self.config.REG_VALUE,
+                                "DROPOUT_RATE": self.config.DROPOUT_RATE,
+                                "DATA_PREP": self.config.DATA_PREP,
+                                "ENC_DEPTH": self.config.ENC_DEPTH,
+                                "DFF": self.config.DFF,
+                                "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
+                                "DEC_LAYERS": self.config.DEC_LAYERS,
+                                "D_MODEL": self.config.D_MODEL,
+                                "LATENT_LEN": self.config.LATENT_LEN,
+                                "DATA_AUG": self.config.DATA_AUG})
                 start_time = time.time()
                 model = run.initialize_model()
                 loss_lst, test_loss_lst, final_epoch = run.train(model=model, dataset=dataset[i], dataset_test=dataset_test[i])
@@ -189,6 +254,70 @@ class Run:
 
 
         else:
+            if self.config.MODEL_TYPE == "PerceiverIO":
+                wandb.init(
+                    # set the wandb project where this run will be logged
+                    project=self.config.MODEL_TYPE,
+                    # track hyperparameters and run metadata with wandb.config
+                    config={"Model": self.config.MODEL_TYPE,
+                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                            "TRAIN_TEST_SPLIT": self.config.TRAIN_TEST_SPLIT,
+                            "LEARNING_RATE": self.config.LEARNING_RATE,
+                            "WITH_WARMUP": self.config.WITH_WARMUP,
+                            "LR_WARMUP": self.config.LR_WARMUP,
+                            "LR_FINAL": self.config.LR_FINAL,
+                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                            "BATCH_SIZE": self.config.BATCH_SIZE,
+                            "EMBEDDING_DIM": self.config.EMBEDDING_DIM,
+                            "SEQ_LEN": self.config.SEQ_LEN,
+                            "LATENT_LEN": self.config.LATENT_LEN,
+                            "ENC_NUMBER_OF_LAYERS": self.config.ENC_NUMBER_OF_LAYERS,
+                            "ENC_STATE_INDEX": self.config.ENC_STATE_INDEX,
+                            "ENC_STATE_CHANNELS": self.config.ENC_STATE_CHANNELS,
+                            "ENC_DFF": self.config.ENC_DFF,
+                            "ENC_X_ATTN_HEADS": self.config.ENC_X_ATTN_HEADS,
+                            "ENC_X_ATTN_DIM": self.config.ENC_X_ATTN_DIM,
+                            "ENC_DEPTH": self.config.ENC_DEPTH,
+                            "ENC_NUM_ATTN_HEADS": self.config.ENC_NUM_ATTN_HEADS,
+                            "ENC_SELF_ATTN_DIM": self.config.ENC_SELF_ATTN_DIM,
+                            "ENC_DROPOUT_RATE": self.config.ENC_DROPOUT_RATE,
+                            "DEC_NUMBER_OF_LAYERS": self.config.DEC_NUMBER_OF_LAYERS,
+                            "DEC_STATE_INDEX": self.config.DEC_STATE_INDEX,
+                            "DEC_STATE_CHANNELS": self.config.DEC_STATE_CHANNELS,
+                            "DEC_DFF": self.config.DEC_DFF,
+                            "DEC_X_ATTN_HEADS": self.config.DEC_X_ATTN_HEADS,
+                            "DEC_X_ATTN_DIM": self.config.DEC_X_ATTN_DIM,
+                            "DEC_DEPTH": self.config.DEC_DEPTH,
+                            "DEC_NUM_ATTN_HEADS": self.config.DEC_NUM_ATTN_HEADS,
+                            "DEC_SELF_ATTN_DIM": self.config.DEC_SELF_ATTN_DIM,
+                            "DEC_DROPOUT_RATE": self.config.DEC_DROPOUT_RATE,
+                            "CLUSTERING_METHOD": self.config.CLUSTERING_METHOD,
+                            "N_CLUSTERS": self.config.N_CLUSTERS})
+            elif self.config.MODEL_TYPE == "AttnAE_1":
+                wandb.init(
+                    # set the wandb project where this run will be logged
+                    project=self.config.MODEL_TYPE,
+                    # track hyperparameters and run metadata with wandb.config
+                    config={"Model": self.config.MODEL_TYPE,
+                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                            "LEARNING_RATE": self.config.LEARNING_RATE,
+                            "WITH_WARMUP": self.config.WITH_WARMUP,
+                            "LR_WARMUP": self.config.LR_WARMUP,
+                            "LR_FINAL": self.config.LR_FINAL,
+                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                            "BATCH_SIZE": self.config.BATCH_SIZE,
+                            "REG_VALUE": self.config.REG_VALUE,
+                            "DROPOUT_RATE": self.config.DROPOUT_RATE,
+                            "DATA_PREP": self.config.DATA_PREP,
+                            "ENC_DEPTH": self.config.ENC_DEPTH,
+                            "DFF": self.config.DFF,
+                            "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
+                            "DEC_LAYERS": self.config.DEC_LAYERS,
+                            "D_MODEL": self.config.D_MODEL,
+                            "LATENT_LEN": self.config.LATENT_LEN,
+                            "DATA_AUG": self.config.DATA_AUG})
             start_time = time.time()
             dataset, dataset_test = run.prepare_data()
             model = run.initialize_model()
@@ -204,64 +333,6 @@ class Run:
             end_time = time.time()
             print("Time Run Execution: ", end_time - start_time)
 
-            if self.config.MODEL_TYPE[:-2] == 'AttnAE':
-                AttnAE_log = pd.read_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
-                AttnAE_log = AttnAE_log.drop(AttnAE_log.columns[1], axis=1)
-                last_slash = config.data_path.rfind('/')
-                AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
-                                                   config.data_path[last_slash + 1:],
-                                                   config.MODEL_TYPE,
-                                                   final_epoch,
-                                                   train_acc,
-                                                   test_acc,
-                                                   loss_lst[-1],
-                                                   test_loss_lst[-1],
-                                                   config.DATA_PREP_METHOD,
-                                                   config.DATA_NORMALIZATION,
-                                                   config.REG_VALUE,
-                                                   config.DROPOUT_RATE,
-                                                   config.DATA_PREP,
-                                                   config.ENC_DEPTH,
-                                                   config.DFF,
-                                                   config.DEC_LAYERS,
-                                                   config.D_MODEL,
-                                                   config.LATENT_LEN,
-                                                   config.DATA_AUG]
-
-                AttnAE_log.to_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
-
-            elif config.MODEL_TYPE == 'PerceiverIO':
-                AttnAE_log = pd.read_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
-                AttnAE_log = AttnAE_log.drop(AttnAE_log.columns[1], axis=1)
-                last_slash = config.data_path.rfind('/')
-                new_entry = [len(AttnAE_log),
-                       config.data_path[last_slash + 1:],
-                       config.MODEL_TYPE,
-                       final_epoch,
-                       train_acc,
-                       test_acc,
-                       loss_lst[-1],
-                       test_loss_lst[-1],
-                       config.DATA_PREP_METHOD,
-                       config.DATA_NORMALIZATION,
-                       config.DATA_AUG,
-                       config.LEARNING_RATE,
-                       config.LR_FINAL,
-                       config.BATCH_SIZE,
-                       config.EMBEDDING_DIM,
-                       config.LATENT_LEN,
-                       config.ENC_NUMBER_OF_LAYERS,
-                       config.ENC_STATE_INDEX,
-                       config.ENC_STATE_CHANNELS,
-                       config.ENC_DEPTH,
-                       config.ENC_DROPOUT_RATE,
-                       config.DEC_NUMBER_OF_LAYERS,
-                       config.DEC_STATE_INDEX,
-                       config.DEC_STATE_CHANNELS,
-                       config.DEC_DEPTH,
-                       config.DEC_DROPOUT_RATE]
-                AttnAE_log = AttnAE_log.append(pd.Series(new_entry, index=AttnAE_log.columns[:len(new_entry)]), ignore_index=True)
-                AttnAE_log.to_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
 
 
 if args.Model == "PerceiverIO":

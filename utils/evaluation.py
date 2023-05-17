@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+import wandb
 
 
 def acc(y_true, y_pred):
@@ -27,5 +28,10 @@ def acc(y_true, y_pred):
 def evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
     train_acc = acc(y_true, y_pred)
     test_acc = acc(y_true_test, y_pred_test)
+
+    #Log with WandB
+    wandb.log({
+            "Train ACC": train_acc,
+            "Test ACC": test_acc})
 
     return train_acc, test_acc

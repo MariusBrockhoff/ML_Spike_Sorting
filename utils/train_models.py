@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
 import pandas as pd
+import wandb
 
 
 def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_warmup_value=0):
@@ -18,10 +19,11 @@ def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_war
     return schedule
 
 class EarlyStopper:
-    def __init__(self, patience=5, min_delta=0):
+    def __init__(self, patience=5, min_delta=0, baseline=0):
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
+        self.baseline = baseline
         self.min_validation_loss = np.inf
 
     def early_stop(self, validation_loss):
@@ -32,6 +34,8 @@ class EarlyStopper:
             self.counter += 1
             if self.counter >= self.patience:
                 return True
+        if validation_loss < self.baseline:
+            return True
         return False
 
 
@@ -181,7 +185,7 @@ class DINOSpikeAugmentation(tf.keras.Model):
 def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
 
     if config.EARLY_STOPPING:
-        early_stopper = EarlyStopper(patience=15, min_delta=0.0)
+        early_stopper = EarlyStopper(patience=config.PATIENCE, min_delta=config.MIN_DELTA, baseline=config.BASELINE)
 
     if config.WITH_WARMUP:
         lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
@@ -231,6 +235,11 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
             break
         test_loss = mse(batch_t, output)
         test_loss_lst.append(test_loss)
+
+        wandb.log({
+            "Epoch": epoch,
+            "Train Loss": loss.numpy(),
+            "Valid Loss": test_loss.numpy()})
 
         if config.EARLY_STOPPING:
             if early_stopper.early_stop(test_loss):
