@@ -15,7 +15,7 @@ class Config_PerceiverIO(object):
 
         self.DATA_NORMALIZATION = "MinMax"
 
-        self.TRAIN_TEST_SPLIT = 0.1
+        self.TRAIN_TEST_SPLIT = 0.2
 
         self.BENCHMARK_START_IDX = 0
 
