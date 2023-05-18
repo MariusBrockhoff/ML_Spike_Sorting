@@ -200,7 +200,7 @@ class DINOLoss(tf.keras.layers.Layer):
         """
         Update center used for teacher output.
         """
-        batch_center = tf.reduce_mean(teacher_logits, axis=0, keepdims=True)
+        batch_center = tf.reduce_mean(teacher_output, axis=0, keepdims=True)
         # ema update
         self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
@@ -280,9 +280,8 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
         for step, batch in enumerate(dataset_test):
             batch_t = batch[0]
             [_, _, output] = model(batch_t)
-            break
-        test_loss = mse(batch_t, output)
-        test_loss_lst.append(test_loss)
+            test_loss = mse(batch_t, output)
+            test_loss_lst.append(test_loss)
 
         wandb.log({
             "Epoch": epoch,
