@@ -291,7 +291,7 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
         print("Epoch: ", epoch + 1, ", Train loss: ", loss, ", Test loss: ", test_loss)
 
         if config.EARLY_STOPPING:
-            if early_stopper.early_stop(test_loss):
+            if early_stopper.early_stop(np.mean(test_loss_lst[-10:])): #test_loss
                 break
 
 

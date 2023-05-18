@@ -334,7 +334,7 @@ class AttentionBlock(tf.keras.layers.Layer):
 
             state_stack = state_stack.write(i, state)
 
-            return i+1, state_stack
+            return (i+1, state_stack)
 
         [i, state_stack] = tf.while_loop(cond,  body, [i, state_stack])
 
