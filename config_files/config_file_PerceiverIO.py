@@ -24,7 +24,7 @@ class Config_PerceiverIO(object):
 
         #Data Augmentation
 
-        self.DATA_AUG = True
+        self.DATA_AUG = False
 
         self.APPLY_NOISE = False
 
@@ -43,7 +43,7 @@ class Config_PerceiverIO(object):
 
         self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
 
-        self.WITH_WARMUP = False
+        self.WITH_WARMUP = True
 
         self.LR_WARMUP = 10 #2 #10
 
@@ -57,7 +57,7 @@ class Config_PerceiverIO(object):
 
         self.NUM_EPOCHS = 100
 
-        self.BATCH_SIZE = 256
+        self.BATCH_SIZE = 128
 
         self.EARLY_STOPPING = True
 
@@ -76,7 +76,7 @@ class Config_PerceiverIO(object):
 
         self.SEQ_LEN = 63
 
-        self.LATENT_LEN = 512
+        self.LATENT_LEN = 16
 
 
         # Encoder
