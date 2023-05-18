@@ -288,11 +288,13 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
             "Train Loss": loss.numpy(),
             "Valid Loss": test_loss.numpy()})
 
+        print("Epoch: ", epoch + 1, ", Train loss: ", loss, ", Test loss: ", test_loss)
+
         if config.EARLY_STOPPING:
             if early_stopper.early_stop(test_loss):
                 break
 
-        print("Epoch: ", epoch+1, ", Train loss: ", loss, ", Test loss: ", test_loss)
+
 
 
     if save_weights:

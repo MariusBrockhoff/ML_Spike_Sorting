@@ -99,7 +99,7 @@ class Config_PerceiverIO(object):
 
         self.ENC_SELF_ATTN_DIM = 64 #int(self.ENC_STATE_CHANNELS / self.ENC_NUM_ATTN_HEADS)
 
-        self.ENC_DROPOUT_RATE = 0
+        self.ENC_DROPOUT_RATE = 0.1
 
 
         #Decoder
