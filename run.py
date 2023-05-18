@@ -408,7 +408,6 @@ class Run:
                             "DEPTH": self.config.DEPTH,
                             "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
                             "SELF_ATTN_DIM": self.config.SELF_ATTN_DIM,
-                            "ENC_DROPOUT_RATE": self.config.ENC_DROPOUT_RATE,
                             "DROPOUT_RATE": self.config.DROPOUT_RATE,
                             "N_CLUSTERS": self.config.N_CLUSTERS})
 
