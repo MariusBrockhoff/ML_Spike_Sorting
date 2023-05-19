@@ -22,24 +22,7 @@ class Config_PerceiverIO(object):
         self.BENCHMARK_END_IDX = 5 #int(1/self.TRAIN_TEST_SPLIT)
 
 
-        #Data Augmentation
-
-        self.DATA_AUG = False
-
-        self.APPLY_NOISE = False
-
-        self.MAX_NOISE_LVL = 0.1
-
-        self.APPLY_FLIP = False
-
-        self.FLIP_PROBABILITY = 0.5
-
-        self.APPLY_HSHIFT = False
-
-        self.MAX_HSHIFT = None
-
-
-        # TRAINING HYPERPARAMETERS
+       # TRAINING HYPERPARAMETERS
 
         self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
 
@@ -123,6 +106,22 @@ class Config_PerceiverIO(object):
         self.DEC_SELF_ATTN_DIM = 64 #int(self.DEC_STATE_CHANNELS / self.DEC_NUM_ATTN_HEADS)
 
         self.DEC_DROPOUT_RATE = 0
+
+        # Data Augmentation
+
+        self.DATA_AUG = False
+
+        self.APPLY_NOISE = False
+
+        self.MAX_NOISE_LVL = 0.1
+
+        self.APPLY_FLIP = False
+
+        self.FLIP_PROBABILITY = 0.5
+
+        self.APPLY_HSHIFT = False
+
+        self.MAX_HSHIFT = None
 
 
         #Clustering
