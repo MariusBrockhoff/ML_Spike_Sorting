@@ -341,6 +341,8 @@ def train_DINO(model, config, dataset, dataset_test, save_weights, save_dir):
 
         optimizer.learning_rate = lr_schedule[epoch]
         optimizer.weight_decay = wd_schedule[epoch]
+        l = config.LEARNING_MOMENTUM_RATE + .002 * np.cos(epoch * np.pi / config.NUM_EPOCHS)
+
 
         for step, batch in enumerate(dataset):
 
