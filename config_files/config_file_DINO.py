@@ -28,15 +28,15 @@ class Config_DINO(object):
 
         self.MAX_NOISE_LVL = 0.1
 
-        self.APPLY_FLIP = False
+        self.APPLY_FLIP = True
 
         self.FLIP_PROBABILITY = 0.5
 
-        self.APPLY_HSHIFT = False
+        self.APPLY_HSHIFT = True
 
-        self.MAX_HSHIFT = None
+        self.MAX_HSHIFT = 63
 
-        self.CROP_PCTS = [0.8, 0.5]
+        self.CROP_PCTS = [0.9, 0.5]
 
         self.NUMBER_LOCAL_CROPS = 3
 
@@ -63,7 +63,7 @@ class Config_DINO(object):
 
         self.CENTERING_RATE = 0.9  # 0.9
 
-        self.LEARNING_MOMENTUM_RATE = 0.997  # 0.997
+        self.LEARNING_MOMENTUM_RATE = 0.997 # 0.997
 
         self.STUDENT_TEMPERATURE = 0.1
 

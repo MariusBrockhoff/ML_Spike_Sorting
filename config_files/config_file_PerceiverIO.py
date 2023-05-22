@@ -24,7 +24,7 @@ class Config_PerceiverIO(object):
 
        # TRAINING HYPERPARAMETERS
 
-        self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
+        self.LEARNING_RATE = 2e-5 #1e-4 #1e-6
 
         self.WITH_WARMUP = True
 
@@ -40,15 +40,15 @@ class Config_PerceiverIO(object):
 
         self.NUM_EPOCHS = 100
 
-        self.BATCH_SIZE = 128
+        self.BATCH_SIZE = 512
 
         self.EARLY_STOPPING = True
 
-        self.PATIENCE = 20
+        self.PATIENCE = 50
 
         self.MIN_DELTA = 0
 
-        self.BASELINE = 0.0005
+        self.BASELINE = 0.0007
 
 
         #Architecture
@@ -59,7 +59,7 @@ class Config_PerceiverIO(object):
 
         self.SEQ_LEN = 63
 
-        self.LATENT_LEN = 16
+        self.LATENT_LEN = 128
 
 
         # Encoder
