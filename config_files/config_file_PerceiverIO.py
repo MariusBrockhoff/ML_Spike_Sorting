@@ -59,7 +59,7 @@ class Config_PerceiverIO(object):
 
         self.SEQ_LEN = 63
 
-        self.LATENT_LEN = 128
+        self.LATENT_LEN = 256
 
 
         # Encoder
