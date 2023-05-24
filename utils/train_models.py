@@ -378,7 +378,7 @@ def train_DINO(model, config, dataset, dataset_test, save_weights, save_dir):
             for weight_s, weight_t in zip(weights_s, weights_t):
                 weights_update.append(
                     l * weight_t + (1 - l) * weight_s)
-0
+
             layer_t.set_weights(weights_update)
 
 
