@@ -126,7 +126,7 @@ class Config_PerceiverIO(object):
 
         #Clustering
 
-        self.CLUSTERING_METHOD = "Kmeans"
+        self.CLUSTERING_METHOD = "Kmeans_FHC_LPD"
 
         self.N_CLUSTERS = 5
 
