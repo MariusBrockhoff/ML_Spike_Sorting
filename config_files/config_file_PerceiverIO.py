@@ -22,28 +22,11 @@ class Config_PerceiverIO(object):
         self.BENCHMARK_END_IDX = 5 #int(1/self.TRAIN_TEST_SPLIT)
 
 
-        #Data Augmentation
+       # TRAINING HYPERPARAMETERS
 
-        self.DATA_AUG = True
+        self.LEARNING_RATE = 2e-5 #1e-4 #1e-6
 
-        self.APPLY_NOISE = False
-
-        self.MAX_NOISE_LVL = 0.1
-
-        self.APPLY_FLIP = False
-
-        self.FLIP_PROBABILITY = 0.5
-
-        self.APPLY_HSHIFT = False
-
-        self.MAX_HSHIFT = None
-
-
-        # TRAINING HYPERPARAMETERS
-
-        self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
-
-        self.WITH_WARMUP = False
+        self.WITH_WARMUP = True
 
         self.LR_WARMUP = 10 #2 #10
 
@@ -57,15 +40,15 @@ class Config_PerceiverIO(object):
 
         self.NUM_EPOCHS = 100
 
-        self.BATCH_SIZE = 256
+        self.BATCH_SIZE = 512
 
         self.EARLY_STOPPING = True
 
-        self.PATIENCE = 20
+        self.PATIENCE = 50
 
         self.MIN_DELTA = 0
 
-        self.BASELINE = 0.0005
+        self.BASELINE = 0.0007
 
 
         #Architecture
@@ -76,7 +59,7 @@ class Config_PerceiverIO(object):
 
         self.SEQ_LEN = 63
 
-        self.LATENT_LEN = 512
+        self.LATENT_LEN = 256
 
 
         # Encoder
@@ -99,7 +82,7 @@ class Config_PerceiverIO(object):
 
         self.ENC_SELF_ATTN_DIM = 64 #int(self.ENC_STATE_CHANNELS / self.ENC_NUM_ATTN_HEADS)
 
-        self.ENC_DROPOUT_RATE = 0
+        self.ENC_DROPOUT_RATE = 0.1
 
 
         #Decoder
@@ -124,10 +107,26 @@ class Config_PerceiverIO(object):
 
         self.DEC_DROPOUT_RATE = 0
 
+        # Data Augmentation
+
+        self.DATA_AUG = False
+
+        self.APPLY_NOISE = False
+
+        self.MAX_NOISE_LVL = 0.1
+
+        self.APPLY_FLIP = False
+
+        self.FLIP_PROBABILITY = 0.5
+
+        self.APPLY_HSHIFT = False
+
+        self.MAX_HSHIFT = None
+
 
         #Clustering
 
-        self.CLUSTERING_METHOD = "Kmeans"
+        self.CLUSTERING_METHOD = "Kmeans_FHC_LPD"
 
         self.N_CLUSTERS = 5
 

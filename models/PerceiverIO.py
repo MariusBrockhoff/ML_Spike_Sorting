@@ -119,13 +119,6 @@ def positional_encoding(position, d_model):
 
     return x
 
-class RegL1(tf.keras.regularizers.Regularizer):
-
-    def __init__(self, reg_value):
-        self.reg_value = reg_value
-
-    def __call__(self, x):
-        return self.reg_value * tf.reduce_sum(tf.abs(x))
 
 class SelfAttention(tf.keras.Model):
 
@@ -341,7 +334,7 @@ class AttentionBlock(tf.keras.layers.Layer):
 
             state_stack = state_stack.write(i, state)
 
-            return i+1, state_stack
+            return (i+1, state_stack)
 
         [i, state_stack] = tf.while_loop(cond,  body, [i, state_stack])
 

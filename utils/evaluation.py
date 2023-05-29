@@ -26,12 +26,46 @@ def acc(y_true, y_pred):
 
 
 def evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
-    train_acc = acc(y_true, y_pred)
-    test_acc = acc(y_true_test, y_pred_test)
+    # Split data in kmeans and FHC
+    y_pred_s = y_pred[:int(len(y_pred) / 2)].astype(int)
+    y_pred_t = y_pred[int(len(y_pred) / 2):].astype(int)
+    y_pred_test_s = y_pred_test[:int(len(y_pred_test) / 2)].astype(int)
+    y_pred_test_t = y_pred_test[int(len(y_pred_test) / 2):].astype(int)
+
+    train_acc_k = acc(y_true.astype(int), y_pred_s)
+    train_acc_f = acc(y_true.astype(int), y_pred_t)
+    test_acc_k = acc(y_true_test.astype(int), y_pred_test_s)
+    test_acc_f = acc(y_true_test.astype(int), y_pred_test_t)
+
+    # Log with WandB
+    wandb.log({
+        "Train ACC Kmeans": train_acc_k,
+        "Test ACC Kmeans": test_acc_k,
+        "Train ACC FHC-LPD": train_acc_f,
+        "Test ACC FHC-LPD": test_acc_f})
+    train_acc = [train_acc_k, train_acc_f]
+    test_acc = [test_acc_k, test_acc_f]
+    return train_acc, test_acc
+
+
+def DINO_evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
+    # Split data in student and teacher
+    y_pred_s = y_pred[:int(len(y_pred) / 2)].astype(int)
+    y_pred_t = y_pred[int(len(y_pred) / 2):].astype(int)
+    y_pred_test_s = y_pred_test[:int(len(y_pred_test) / 2)].astype(int)
+    y_pred_test_t = y_pred_test[int(len(y_pred_test) / 2):].astype(int)
+
+    train_acc_s = acc(y_true.astype(int), y_pred_s)
+    train_acc_t = acc(y_true.astype(int), y_pred_t)
+    test_acc_s = acc(y_true_test.astype(int), y_pred_test_s)
+    test_acc_t = acc(y_true_test.astype(int), y_pred_test_t)
 
     #Log with WandB
     wandb.log({
-            "Train ACC": train_acc,
-            "Test ACC": test_acc})
-
+            "Train ACC Student": train_acc_s,
+            "Test ACC Student": test_acc_s,
+            "Train ACC Student": train_acc_t,
+            "Test ACC Student": test_acc_t})
+    train_acc = [train_acc_s, train_acc_t]
+    test_acc = [train_acc_t, test_acc_t]
     return train_acc, test_acc

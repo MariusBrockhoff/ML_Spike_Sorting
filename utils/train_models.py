@@ -182,6 +182,54 @@ class DINOSpikeAugmentation(tf.keras.Model):
 
         return augs[:2], augs
 
+class DINOLoss(tf.keras.layers.Layer):
+    def __init__(self, warmup_teacher_temp, teacher_temp, warmup_teacher_temp_epochs, nepochs, student_temp, ncrops,
+                 center, center_momentum):
+        super().__init__()
+        self.student_temp = student_temp
+        self.ncrops = ncrops
+        self.center = center
+        self.center_momentum = center_momentum
+        self.teacher_temp_schedule = np.concatenate((
+            np.linspace(warmup_teacher_temp,
+                        teacher_temp, warmup_teacher_temp_epochs),
+            np.ones(nepochs - warmup_teacher_temp_epochs) * teacher_temp
+        ))
+
+    def update_center(self, teacher_output):
+        """
+        Update center used for teacher output.
+        """
+        batch_center = tf.reduce_mean(teacher_output, axis=0, keepdims=True)
+        # ema update
+        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
+
+    def call(self, student_output, teacher_output, epoch):
+        """
+        Cross-entropy between softmax outputs of the teacher and student networks.
+        """
+        student_out = student_output / self.student_temp
+        student_out = tf.split(student_out, num_or_size_splits=self.ncrops, axis=0)
+
+        # teacher centering and sharpening
+        teacher_temp = self.teacher_temp_schedule[epoch]
+        teacher_out = tf.nn.softmax((teacher_output - self.center) / teacher_temp, axis=-1)
+        teacher_out = tf.split(teacher_out, num_or_size_splits=2, axis=0)
+
+        total_loss = 0
+        n_loss_terms = 0
+        for iq, q in enumerate(teacher_out):
+            for v in range(len(student_out)):
+                if v == iq:
+                    # we skip cases where student and teacher operate on the same view
+                    continue
+                loss = tf.reduce_sum(-q * tf.nn.log_softmax(student_out[v], axis=-1), axis=-1)
+                total_loss += tf.reduce_mean(loss)
+                n_loss_terms += 1
+        total_loss /= n_loss_terms
+        self.update_center(teacher_output)
+        return total_loss
+
 def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
 
     if config.EARLY_STOPPING:
@@ -232,23 +280,117 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
         for step, batch in enumerate(dataset_test):
             batch_t = batch[0]
             [_, _, output] = model(batch_t)
-            break
-        test_loss = mse(batch_t, output)
-        test_loss_lst.append(test_loss)
+            test_loss = mse(batch_t, output)
+            test_loss_lst.append(test_loss)
 
         wandb.log({
             "Epoch": epoch,
             "Train Loss": loss.numpy(),
             "Valid Loss": test_loss.numpy()})
 
+        print("Epoch: ", epoch + 1, ", Train loss: ", loss, ", Test loss: ", test_loss)
+
         if config.EARLY_STOPPING:
-            if early_stopper.early_stop(test_loss):
+            if early_stopper.early_stop(np.mean(test_loss_lst[-10:])): #test_loss
                 break
 
-        print("Epoch: ", epoch+1, ", Train loss: ", loss, ", Test loss: ", test_loss)
+
 
 
     if save_weights:
         model.save_weights(save_dir)
 
     return loss_lst, test_loss_lst, epoch+1
+
+
+def train_DINO(model, config, dataset, dataset_test, save_weights, save_dir):
+    if config.EARLY_STOPPING:
+        early_stopper = EarlyStopper(patience=config.PATIENCE, min_delta=config.MIN_DELTA, baseline=config.BASELINE)
+
+    if config.WITH_WARMUP:
+        lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
+                                       warmup_epochs=config.LR_WARMUP, start_warmup_value=0)
+    else:
+        lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
+                                       warmup_epochs=0, start_warmup_value=0)
+    wd_schedule = cosine_scheduler(config.WEIGHT_DECAY, config.WD_FINAL, config.NUM_EPOCHS,
+                                   warmup_epochs=0, start_warmup_value=0)
+    if config.WITH_WD:
+        optimizer = tfa.optimizers.AdamW(weight_decay=wd_schedule[0], learning_rate=lr_schedule[0])
+    else:
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule[0])
+
+    loss_lst = []
+    m_student = model[0]
+    m_teacher = model[1]
+    c = tf.zeros((1, config.LATENT_LEN))
+    m = config.CENTERING_RATE
+    l = config.LEARNING_MOMENTUM_RATE
+    tau_student = config.STUDENT_TEMPERATURE
+    tau_teacher = config.TEACHER_TEMPERATURE
+    tau_teacher_final = config.TEACHER_TEMPERATURE_FINAL
+    warmup = config.TEACHER_WARMUP
+
+    dino_loss = DINOLoss(tau_teacher, tau_teacher_final, warmup, config.NUM_EPOCHS, tau_student,
+                         config.NUMBER_LOCAL_CROPS + 2, c, m)
+
+    augmenter = DINOSpikeAugmentation(max_noise_lvl=config.MAX_NOISE_LVL,
+                                         crop_pcts=config.CROP_PCTS,
+                                         number_local_crops=config.NUMBER_LOCAL_CROPS)
+    for epoch in range(config.NUM_EPOCHS):
+
+        optimizer.learning_rate = lr_schedule[epoch]
+        optimizer.weight_decay = wd_schedule[epoch]
+        l = config.LEARNING_MOMENTUM_RATE + .002 * np.cos(epoch * np.pi / config.NUM_EPOCHS)
+
+
+        for step, batch in enumerate(dataset):
+
+            if config.DATA_AUG:
+                batch_t, batch_s = augmenter(batch[0])
+
+            with tf.GradientTape() as tape:
+                student_logs = []
+                for single_batch in batch_s:
+                    _, single_student_logits = m_student(single_batch)
+                    student_logs.append(single_student_logits)
+                student_logits = tf.concat(student_logs, axis=0)
+
+                with tape.stop_recording():
+                    teacher_logs = []
+                    for single_batch in batch_t:
+                        _, single_teacher_logits = m_teacher(single_batch)
+                        teacher_logs.append(single_teacher_logits)
+                    teacher_logits = tf.concat(teacher_logs, axis=0)
+
+
+                loss = dino_loss(student_logits, teacher_logits, epoch)
+
+            grads = tape.gradient(loss, m_student.trainable_weights)
+            optimizer.apply_gradients(zip(grads, m_student.trainable_weights))
+            loss_lst.append(loss)
+
+        for layer_s, layer_t in zip(m_student.layers, m_teacher.layers):
+            weights_s = layer_s.get_weights()
+            weights_t = layer_t.get_weights()
+            weights_update = []
+            # Weights of the teacher are updated according to DINO idea
+            for weight_s, weight_t in zip(weights_s, weights_t):
+                weights_update.append(
+                    l * weight_t + (1 - l) * weight_s)
+
+            layer_t.set_weights(weights_update)
+
+
+        wandb.log({
+            "Epoch": epoch,
+            "DINO Loss": loss.numpy()})
+
+        #if config.EARLY_STOPPING:
+            #if early_stopper.early_stop(test_loss):
+                #break
+
+    if save_weights:
+        model.save_weights(save_dir)
+
+    return loss_lst, loss_lst, epoch + 1
