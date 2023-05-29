@@ -27,15 +27,15 @@ def acc(y_true, y_pred):
 
 def evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
     # Split data in kmeans and FHC
-    y_pred_s = y_pred[:int(len(y_pred) / 2)]
-    y_pred_t = y_pred[int(len(y_pred) / 2):]
-    y_pred_test_s = y_pred_test[:int(len(y_pred_test) / 2)]
-    y_pred_test_t = y_pred_test[int(len(y_pred_test) / 2):]
+    y_pred_s = y_pred[:int(len(y_pred) / 2)].astype(int)
+    y_pred_t = y_pred[int(len(y_pred) / 2):].astype(int)
+    y_pred_test_s = y_pred_test[:int(len(y_pred_test) / 2)].astype(int)
+    y_pred_test_t = y_pred_test[int(len(y_pred_test) / 2):].astype(int)
 
-    train_acc_k = acc(y_true, y_pred_s)
-    train_acc_f = acc(y_true, y_pred_t)
-    test_acc_k = acc(y_true_test, y_pred_test_s)
-    test_acc_f = acc(y_true_test, y_pred_test_t)
+    train_acc_k = acc(y_true.astype(int), y_pred_s)
+    train_acc_f = acc(y_true.astype(int), y_pred_t)
+    test_acc_k = acc(y_true_test.astype(int), y_pred_test_s)
+    test_acc_f = acc(y_true_test.astype(int), y_pred_test_t)
 
     # Log with WandB
     wandb.log({
@@ -50,15 +50,15 @@ def evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
 
 def DINO_evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
     # Split data in student and teacher
-    y_pred_s = y_pred[:int(len(y_pred) / 2)]
-    y_pred_t = y_pred[int(len(y_pred) / 2):]
-    y_pred_test_s = y_pred_test[:int(len(y_pred_test) / 2)]
-    y_pred_test_t = y_pred_test[int(len(y_pred_test) / 2):]
+    y_pred_s = y_pred[:int(len(y_pred) / 2)].astype(int)
+    y_pred_t = y_pred[int(len(y_pred) / 2):].astype(int)
+    y_pred_test_s = y_pred_test[:int(len(y_pred_test) / 2)].astype(int)
+    y_pred_test_t = y_pred_test[int(len(y_pred_test) / 2):].astype(int)
 
-    train_acc_s = acc(y_true, y_pred_s)
-    train_acc_t = acc(y_true, y_pred_t)
-    test_acc_s = acc(y_true_test, y_pred_test_s)
-    test_acc_t = acc(y_true_test, y_pred_test_t)
+    train_acc_s = acc(y_true.astype(int), y_pred_s)
+    train_acc_t = acc(y_true.astype(int), y_pred_t)
+    test_acc_s = acc(y_true_test.astype(int), y_pred_test_s)
+    test_acc_t = acc(y_true_test.astype(int), y_pred_test_t)
 
     #Log with WandB
     wandb.log({
