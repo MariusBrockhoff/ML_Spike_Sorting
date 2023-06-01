@@ -8,7 +8,7 @@ class Config_AttnAE(object):
         self.MODEL_TYPE = "AttnAE"
         self.LOAD = False
         self.LOAD_DIR = None
-        self.EARLY_STOPPING = True
+        self.EARLY_STOPPING = False
         self.PATIENCE = 15
         self.MIN_DELTA = 0
         self.BASELINE = 0
@@ -25,10 +25,10 @@ class Config_AttnAE(object):
         self.NUM_EPOCHS = 100 #75
         self.PLOT = False
         self.BATCH_SIZE = 128
-        self.LEARNING_RATE = 1e-5 #1e-5
-        self.WITH_WARMUP = True #False
+        self.LEARNING_RATE = 1e-5 #1e-9 #1e-12 #1e-5
+        self.WITH_WARMUP = False #False
         self.LR_WARMUP = 10
-        self.LR_FINAL = 1e-9
+        self.LR_FINAL = 1e-12 #1e-12 #1e-15 #1e-9
         self.WITH_WD = False #False
         self.WD_FINAL = 1e-4 #1e-4
         self.WEIGHT_DECAY = 1e-2 #1e-2
@@ -37,19 +37,19 @@ class Config_AttnAE(object):
         self.DATA_PREP = 'embedding'
 
         #encoder depth = number of attention modules
-        self.ENC_DEPTH = 8 #12
+        self.ENC_DEPTH = 20 #12
 
         # dff = shape of dense layer in attention module
-        self.DFF = 512 #128
+        self.DFF = 128 #128
 
         # num_heads = (assert d_model//num_heads)
-        self.NUM_ATTN_HEADS = 8
+        self.NUM_ATTN_HEADS = 16
 
         # DEC_LAYERS: list of dimensions of dense decoder
-        self.DEC_LAYERS = [128, 32, 8, 3] #[2000, 500, 500, 64]
+        self.DEC_LAYERS = [2000, 2000, 500, 500] #[2000, 500, 500, 64] OR [128, 32, 8, 3]
 
         # d_model: embedding
-        self.D_MODEL = 32 #128
+        self.D_MODEL = 256 #128
 
         #latent_len: length of latent space
         self.LATENT_LEN = 30
