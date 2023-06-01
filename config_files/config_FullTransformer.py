@@ -8,7 +8,7 @@ class Config_FullTransformer(object):
         self.MODEL_TYPE = "FullTransformer"
         self.LOAD = False
         self.LOAD_DIR = None
-        self.EARLY_STOPPING = True
+        self.EARLY_STOPPING = False
         self.PATIENCE = 15
         self.MIN_DELTA = 0
         self.BASELINE = 0
@@ -24,11 +24,11 @@ class Config_FullTransformer(object):
         self.DROPOUT_RATE = 0.1
         self.NUM_EPOCHS = 100 #75
         self.PLOT = False
-        self.BATCH_SIZE = 128
-        self.LEARNING_RATE = 1e-5 #1e-5
+        self.BATCH_SIZE = 512
+        self.LEARNING_RATE = 0.00002 #1e-5
         self.WITH_WARMUP = True #False
         self.LR_WARMUP = 10
-        self.LR_FINAL = 1e-9
+        self.LR_FINAL = 0.000000001
         self.WITH_WD = False #False
         self.WD_FINAL = 1e-4 #1e-4
         self.WEIGHT_DECAY = 1e-2 #1e-2
@@ -37,7 +37,7 @@ class Config_FullTransformer(object):
         self.DATA_PREP = 'embedding'
 
         #encoder depth = number of attention modules
-        self.ENC_DEPTH = 8 #12
+        self.ENC_DEPTH = 4 #12
 
         # dff = shape of dense layer in attention module
         self.DFF = 512 #128
@@ -46,13 +46,13 @@ class Config_FullTransformer(object):
         self.NUM_ATTN_HEADS = 8
 
         # d_model: embedding
-        self.D_MODEL = 32 #128
+        self.D_MODEL = 256 #128
 
         #latent_len: length of latent space
-        self.LATENT_LEN = 30
+        self.LATENT_LEN = 256
 
         # Clustering
-        self.CLUSTERING_METHOD = "Kmeans"
+        self.CLUSTERING_METHOD = "Kmeans_FHC_LPD"
         self.N_CLUSTERS = 5
         self.EPS = None
         self.MIN_CLUSTER_SIZE = 1000

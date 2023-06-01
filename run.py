@@ -23,11 +23,13 @@ from utils.evaluation import *
 from config_files.config_file_PerceiverIO import *
 from config_files.config_file_DINO import *
 from config_files.config_AttnAE import *
+from config_files.config_FullTransformer import *
 
 from models.PerceiverIO import *
 from models.DINOPerceiver import *
 from models.AttnAE_1 import *
 from models.AttnAE_2 import *
+from models.FullTransformerAE import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Model', type=str, required=True)
@@ -112,6 +114,19 @@ class Run:
                                  ENC_dropout_rate=self.config.DROPOUT_RATE,
                                  DEC_layers=self.config.DEC_LAYERS,
                                  reg_value=self.config.REG_VALUE)
+                                 
+        elif self.config.MODEL_TYPE == "FullTransformer":
+            model = FullTransformer(d_model=self.config.D_MODEL,
+                                 dff=self.config.DFF,
+                                 seq_len=self.config.SEQ_LEN,
+                                 latent_len=self.config.LATENT_LEN,
+                                 ENC_depth=self.config.ENC_DEPTH,
+                                 ENC_attn_dim=int(self.config.D_MODEL / self.config.NUM_ATTN_HEADS),
+                                 ENC_attn_heads=self.config.NUM_ATTN_HEADS,
+                                 ENC_dropout_rate=self.config.DROPOUT_RATE,
+                                 reg_value=self.config.REG_VALUE)
+
+
 
         elif self.config.MODEL_TYPE == "AE":
             model = autoencoder(dims=self.config.DEC_LAYERS,
@@ -375,6 +390,30 @@ class Run:
                             "D_MODEL": self.config.D_MODEL,
                             "LATENT_LEN": self.config.LATENT_LEN,
                             "DATA_AUG": self.config.DATA_AUG})
+            elif self.config.MODEL_TYPE == "FullTransformer":
+                wandb.init(
+                    # set the wandb project where this run will be logged
+                    project=self.config.MODEL_TYPE,
+                    # track hyperparameters and run metadata with wandb.config
+                    config={"Model": self.config.MODEL_TYPE,
+                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                            "LEARNING_RATE": self.config.LEARNING_RATE,
+                            "WITH_WARMUP": self.config.WITH_WARMUP,
+                            "LR_WARMUP": self.config.LR_WARMUP,
+                            "LR_FINAL": self.config.LR_FINAL,
+                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                            "BATCH_SIZE": self.config.BATCH_SIZE,
+                            "REG_VALUE": self.config.REG_VALUE,
+                            "DROPOUT_RATE": self.config.DROPOUT_RATE,
+                            "DATA_PREP": self.config.DATA_PREP,
+                            "ENC_DEPTH": self.config.ENC_DEPTH,
+                            "DFF": self.config.DFF,
+                            "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
+                            "D_MODEL": self.config.D_MODEL,
+                            "LATENT_LEN": self.config.LATENT_LEN,
+                            "DATA_AUG": self.config.DATA_AUG})
+
             if self.config.MODEL_TYPE == "DINO":
                 wandb.init(
                     # set the wandb project where this run will be logged
@@ -446,6 +485,10 @@ elif args.Model == "AttnAE_2":
 
 elif args.Model == "AE":
     config = Config_AttnAE(data_path=args.PathData)
+    config.MODEL_TYPE = "AE"
+
+elif args.Model == "FullTransformer":
+    config = Config_FullTransformer(data_path=args.PathData)
     config.MODEL_TYPE = "AE"
     
 else:
