@@ -5,8 +5,8 @@ import numpy as np
 import argparse
 import statistics
 import tensorflow as tf
-import pandas as pd
 import time
+import wandb
 
 #print start time of code execution
 print("Start Time Code Exec: ", time.asctime(time.localtime(time.time())))
@@ -21,9 +21,11 @@ from utils.clustering import *
 from utils.evaluation import *
 
 from config_files.config_file_PerceiverIO import *
+from config_files.config_file_DINO import *
 from config_files.config_AttnAE import *
 
 from models.PerceiverIO import *
+from models.DINOPerceiver import *
 from models.AttnAE_1 import *
 from models.AttnAE_2 import *
 
@@ -65,6 +67,7 @@ class Run:
         if self.config.MODEL_TYPE == "PerceiverIO":
             model = AutoPerceiver(embedding_dim=self.config.EMBEDDING_DIM,
                                   seq_len=self.config.SEQ_LEN,
+                                  latent_len=self.config.LATENT_LEN,
                                   ENC_number_of_layers=self.config.ENC_NUMBER_OF_LAYERS,
                                   ENC_state_index=self.config.ENC_STATE_INDEX,
                                   ENC_state_channels=self.config.ENC_STATE_CHANNELS,
@@ -116,47 +119,103 @@ class Run:
                                 d_model=self.config.D_MODEL,
                                 signal_length=self.config.SEQ_LEN)
 
+        elif self.config.MODEL_TYPE == "DINO":
+            m_student = Perceiver(Embedding_dim=self.config.EMBEDDING_DIM,
+                                  seq_len=self.config.CROP_PCTS[1],
+                                  number_of_layers=self.config.NUMBER_OF_LAYERS,
+                                  latent_len=self.config.LATENT_LEN,
+                                  state_index=self.config.STATE_INDEX,
+                                  state_channels=self.config.STATE_CHANNELS,
+                                  dff=self.config.DFF,
+                                  x_attn_dim=self.config.X_ATTN_DIM,
+                                  x_attn_heads=self.config.X_ATTN_HEADS,
+                                  depth=self.config.DEPTH,
+                                  attn_dim=self.config.SELF_ATTN_DIM,
+                                  attn_heads=self.config.NUM_ATTN_HEADS,
+                                  dropout_rate=self.config.DROPOUT_RATE)
+
+            m_teacher = Perceiver(Embedding_dim=self.config.EMBEDDING_DIM,
+                                  seq_len=self.config.CROP_PCTS[0],
+                                  number_of_layers=self.config.NUMBER_OF_LAYERS,
+                                  latent_len=self.config.LATENT_LEN,
+                                  state_index=self.config.STATE_INDEX,
+                                  state_channels=self.config.STATE_CHANNELS,
+                                  dff=self.config.DFF,
+                                  x_attn_dim=self.config.X_ATTN_DIM,
+                                  x_attn_heads=self.config.X_ATTN_HEADS,
+                                  depth=self.config.DEPTH,
+                                  attn_dim=self.config.SELF_ATTN_DIM,
+                                  attn_heads=self.config.NUM_ATTN_HEADS,
+                                  dropout_rate=self.config.DROPOUT_RATE)
+
+
+            model = [m_student, m_teacher]
+
         return model
 
     def train(self, model, dataset, dataset_test):
         print('---' * 30)
         print('TRAINING MODEL...')
-        loss_lst, test_loss_lst, final_epoch = train_model(model=model, config=self.config, dataset=dataset,
+
+        if self.config.MODEL_TYPE == "DINO":
+            loss_lst, test_loss_lst, final_epoch = train_DINO(model=model, config=self.config, dataset=dataset,
                                               dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS,
                                               save_dir=self.config.SAVE_DIR)
-        # get number of trainable parameters of model
-        trainableParams = np.sum([np.prod(v.get_shape()) for v in model.trainable_weights])
-        nonTrainableParams = np.sum([np.prod(v.get_shape()) for v in model.non_trainable_weights])
-        totalParams = trainableParams + nonTrainableParams
 
-        print('-' * 20)
-        print('trainable parameters:', trainableParams)
-        print('non-trainable parameters', nonTrainableParams)
-        print('total parameters', totalParams)
-        print('-' * 20)
+        else:
+            loss_lst, test_loss_lst, final_epoch = train_model(model=model, config=self.config, dataset=dataset,
+                                              dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS,
+                                              save_dir=self.config.SAVE_DIR)
+            # get number of trainable parameters of model
+            trainableParams = np.sum([np.prod(v.get_shape()) for v in model.trainable_weights])
+            nonTrainableParams = np.sum([np.prod(v.get_shape()) for v in model.non_trainable_weights])
+            totalParams = trainableParams + nonTrainableParams
+
+            print('-' * 20)
+            print('trainable parameters:', trainableParams)
+            print('non-trainable parameters', nonTrainableParams)
+            print('total parameters', totalParams)
+            print('-' * 20)
 
         return loss_lst, test_loss_lst, final_epoch
 
     def predict(self, model, dataset, dataset_test):
-        encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(model=model, dataset=dataset,
+        if self.config.MODEL_TYPE == "DINO":
+            encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents_DINO(model=model, dataset=dataset,
+                                                                                         dataset_test=dataset_test)
+        else:
+            encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(model=model, dataset=dataset,
                                                                                      dataset_test=dataset_test)
         return encoded_data, encoded_data_test, y_true, y_true_test
 
     def cluster_data(self, encoded_data, encoded_data_test):
         print('---' * 30)
         print('CLUSTERING...')
-        y_pred, n_clusters = clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
-                                        n_clusters=self.config.N_CLUSTERS,
-                                        eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE)
-        y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
-                                                  n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
-                                                  min_cluster_size=self.config.MIN_CLUSTER_SIZE)
+        if self.config.MODEL_TYPE == "DINO":
+            y_pred, n_clusters = DINO_clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
+                                            n_clusters=self.config.N_CLUSTERS,
+                                            eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE,
+                                            knn=self.config.KNN)
+            y_pred_test, n_clusters_test = DINO_clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
+                                                      n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
+                                                      min_cluster_size=self.config.MIN_CLUSTER_SIZE,
+                                                      knn=self.config.KNN)
+        else:
+            y_pred, n_clusters = clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
+                                            n_clusters=self.config.N_CLUSTERS,
+                                            eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
+            y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
+                                                      n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
+                                                      min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
         return y_pred, n_clusters, y_pred_test, n_clusters_test
 
     def evaluate_spike_sorting(self, y_pred, y_pred_test, y_true, y_true_test):
         print('---' * 30)
         print('EVALUATE RESULTS...')
-        train_acc, test_acc = evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test)
+        if self.config.MODEL_TYPE == "DINO":
+            train_acc, test_acc = DINO_evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test)
+        else:
+            train_acc, test_acc = evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test)
         return train_acc, test_acc
 
     def execute_run(self):
@@ -165,6 +224,70 @@ class Run:
             train_acc_lst = []
             test_acc_lst = []
             for i in range(len(dataset)):
+                if self.config.MODEL_TYPE == "PerceiverIO":
+                    wandb.init(
+                        # set the wandb project where this run will be logged
+                        project=self.config.MODEL_TYPE,
+                        # track hyperparameters and run metadata with wandb.config
+                        config={"Model": self.config.MODEL_TYPE,
+                                "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                                "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                                "TRAIN_TEST_SPLIT": self.config.TRAIN_TEST_SPLIT,
+                                "LEARNING_RATE": self.config.LEARNING_RATE,
+                                "WITH_WARMUP": self.config.WITH_WARMUP,
+                                "LR_WARMUP": self.config.LR_WARMUP,
+                                "LR_FINAL": self.config.LR_FINAL,
+                                "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                                "BATCH_SIZE": self.config.BATCH_SIZE,
+                                "EMBEDDING_DIM": self.config.EMBEDDING_DIM,
+                                "SEQ_LEN": self.config.SEQ_LEN,
+                                "LATENT_LEN": self.config.LATENT_LEN,
+                                "ENC_NUMBER_OF_LAYERS": self.config.ENC_NUMBER_OF_LAYERS,
+                                "ENC_STATE_INDEX": self.config.ENC_STATE_INDEX,
+                                "ENC_STATE_CHANNELS": self.config.ENC_STATE_CHANNELS,
+                                "ENC_DFF": self.config.ENC_DFF,
+                                "ENC_X_ATTN_HEADS": self.config.ENC_X_ATTN_HEADS,
+                                "ENC_X_ATTN_DIM": self.config.ENC_X_ATTN_DIM,
+                                "ENC_DEPTH": self.config.ENC_DEPTH,
+                                "ENC_NUM_ATTN_HEADS": self.config.ENC_NUM_ATTN_HEADS,
+                                "ENC_SELF_ATTN_DIM": self.config.ENC_SELF_ATTN_DIM,
+                                "ENC_DROPOUT_RATE": self.config.ENC_DROPOUT_RATE,
+                                "DEC_NUMBER_OF_LAYERS": self.config.DEC_NUMBER_OF_LAYERS,
+                                "DEC_STATE_INDEX": self.config.DEC_STATE_INDEX,
+                                "DEC_STATE_CHANNELS": self.config.DEC_STATE_CHANNELS,
+                                "DEC_DFF": self.config.DEC_DFF,
+                                "DEC_X_ATTN_HEADS": self.config.DEC_X_ATTN_HEADS,
+                                "DEC_X_ATTN_DIM": self.config.DEC_X_ATTN_DIM,
+                                "DEC_DEPTH": self.config.DEC_DEPTH,
+                                "DEC_NUM_ATTN_HEADS": self.config.DEC_NUM_ATTN_HEADS,
+                                "DEC_SELF_ATTN_DIM": self.config.DEC_SELF_ATTN_DIM,
+                                "DEC_DROPOUT_RATE": self.config.DEC_DROPOUT_RATE,
+                                "CLUSTERING_METHOD": self.config.CLUSTERING_METHOD,
+                                "N_CLUSTERS": self.config.N_CLUSTERS})
+                elif self.config.MODEL_TYPE == "AttnAE_1":
+                    wandb.init(
+                        # set the wandb project where this run will be logged
+                        project=self.config.MODEL_TYPE,
+                        # track hyperparameters and run metadata with wandb.config
+                        config={"Model": self.config.MODEL_TYPE,
+                                "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                                "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                                "LEARNING_RATE": self.config.LEARNING_RATE,
+                                "WITH_WARMUP": self.config.WITH_WARMUP,
+                                "LR_WARMUP": self.config.LR_WARMUP,
+                                "LR_FINAL": self.config.LR_FINAL,
+                                "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                                "BATCH_SIZE": self.config.BATCH_SIZE,
+                                "REG_VALUE": self.config.REG_VALUE,
+                                "DROPOUT_RATE": self.config.DROPOUT_RATE,
+                                "DATA_PREP": self.config.DATA_PREP,
+                                "ENC_DEPTH": self.config.ENC_DEPTH,
+                                "DFF": self.config.DFF,
+                                "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
+                                "DEC_LAYERS": self.config.DEC_LAYERS,
+                                "D_MODEL": self.config.D_MODEL,
+                                "LATENT_LEN": self.config.LATENT_LEN,
+                                "DATA_AUG": self.config.DATA_AUG})
                 start_time = time.time()
                 model = run.initialize_model()
                 loss_lst, test_loss_lst, final_epoch = run.train(model=model, dataset=dataset[i], dataset_test=dataset_test[i])
@@ -188,6 +311,106 @@ class Run:
 
 
         else:
+            if self.config.MODEL_TYPE == "PerceiverIO":
+                wandb.init(
+                    # set the wandb project where this run will be logged
+                    project=self.config.MODEL_TYPE,
+                    # track hyperparameters and run metadata with wandb.config
+                    config={"Model": self.config.MODEL_TYPE,
+                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                            "TRAIN_TEST_SPLIT": self.config.TRAIN_TEST_SPLIT,
+                            "LEARNING_RATE": self.config.LEARNING_RATE,
+                            "WITH_WARMUP": self.config.WITH_WARMUP,
+                            "LR_WARMUP": self.config.LR_WARMUP,
+                            "LR_FINAL": self.config.LR_FINAL,
+                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                            "BATCH_SIZE": self.config.BATCH_SIZE,
+                            "EMBEDDING_DIM": self.config.EMBEDDING_DIM,
+                            "SEQ_LEN": self.config.SEQ_LEN,
+                            "LATENT_LEN": self.config.LATENT_LEN,
+                            "ENC_NUMBER_OF_LAYERS": self.config.ENC_NUMBER_OF_LAYERS,
+                            "ENC_STATE_INDEX": self.config.ENC_STATE_INDEX,
+                            "ENC_STATE_CHANNELS": self.config.ENC_STATE_CHANNELS,
+                            "ENC_DFF": self.config.ENC_DFF,
+                            "ENC_X_ATTN_HEADS": self.config.ENC_X_ATTN_HEADS,
+                            "ENC_X_ATTN_DIM": self.config.ENC_X_ATTN_DIM,
+                            "ENC_DEPTH": self.config.ENC_DEPTH,
+                            "ENC_NUM_ATTN_HEADS": self.config.ENC_NUM_ATTN_HEADS,
+                            "ENC_SELF_ATTN_DIM": self.config.ENC_SELF_ATTN_DIM,
+                            "ENC_DROPOUT_RATE": self.config.ENC_DROPOUT_RATE,
+                            "DEC_NUMBER_OF_LAYERS": self.config.DEC_NUMBER_OF_LAYERS,
+                            "DEC_STATE_INDEX": self.config.DEC_STATE_INDEX,
+                            "DEC_STATE_CHANNELS": self.config.DEC_STATE_CHANNELS,
+                            "DEC_DFF": self.config.DEC_DFF,
+                            "DEC_X_ATTN_HEADS": self.config.DEC_X_ATTN_HEADS,
+                            "DEC_X_ATTN_DIM": self.config.DEC_X_ATTN_DIM,
+                            "DEC_DEPTH": self.config.DEC_DEPTH,
+                            "DEC_NUM_ATTN_HEADS": self.config.DEC_NUM_ATTN_HEADS,
+                            "DEC_SELF_ATTN_DIM": self.config.DEC_SELF_ATTN_DIM,
+                            "DEC_DROPOUT_RATE": self.config.DEC_DROPOUT_RATE,
+                            "CLUSTERING_METHOD": self.config.CLUSTERING_METHOD,
+                            "N_CLUSTERS": self.config.N_CLUSTERS})
+            elif self.config.MODEL_TYPE == "AttnAE_1":
+                wandb.init(
+                    # set the wandb project where this run will be logged
+                    project=self.config.MODEL_TYPE,
+                    # track hyperparameters and run metadata with wandb.config
+                    config={"Model": self.config.MODEL_TYPE,
+                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                            "LEARNING_RATE": self.config.LEARNING_RATE,
+                            "WITH_WARMUP": self.config.WITH_WARMUP,
+                            "LR_WARMUP": self.config.LR_WARMUP,
+                            "LR_FINAL": self.config.LR_FINAL,
+                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                            "BATCH_SIZE": self.config.BATCH_SIZE,
+                            "REG_VALUE": self.config.REG_VALUE,
+                            "DROPOUT_RATE": self.config.DROPOUT_RATE,
+                            "DATA_PREP": self.config.DATA_PREP,
+                            "ENC_DEPTH": self.config.ENC_DEPTH,
+                            "DFF": self.config.DFF,
+                            "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
+                            "DEC_LAYERS": self.config.DEC_LAYERS,
+                            "D_MODEL": self.config.D_MODEL,
+                            "LATENT_LEN": self.config.LATENT_LEN,
+                            "DATA_AUG": self.config.DATA_AUG})
+            if self.config.MODEL_TYPE == "DINO":
+                wandb.init(
+                    # set the wandb project where this run will be logged
+                    project=self.config.MODEL_TYPE,
+                    # track hyperparameters and run metadata with wandb.config
+                    config={"Model": self.config.MODEL_TYPE,
+                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
+                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
+                            "TRAIN_TEST_SPLIT": self.config.TRAIN_TEST_SPLIT,
+                            "LEARNING_RATE": self.config.LEARNING_RATE,
+                            "WITH_WARMUP": self.config.WITH_WARMUP,
+                            "LR_WARMUP": self.config.LR_WARMUP,
+                            "LR_FINAL": self.config.LR_FINAL,
+                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
+                            "BATCH_SIZE": self.config.BATCH_SIZE,
+                            "CENTERING_RATE": self.config.CENTERING_RATE,
+                            "LEARNING_MOMENTUM_RATE": self.config.LEARNING_MOMENTUM_RATE,
+                            "STUDENT_TEMPERATURE": self.config.STUDENT_TEMPERATURE,
+                            "TEACHER_TEMPERATURE": self.config.TEACHER_TEMPERATURE,
+                            "TEACHER_TEMPERATURE_FINAL": self.config.TEACHER_TEMPERATURE_FINAL,
+                            "TEACHER_WARMUP": self.config.TEACHER_WARMUP,
+                            "EMBEDDING_DIM": self.config.EMBEDDING_DIM,
+                            "SEQ_LEN": self.config.SEQ_LEN,
+                            "LATENT_LEN": self.config.LATENT_LEN,
+                            "NUMBER_OF_LAYERS": self.config.NUMBER_OF_LAYERS,
+                            "STATE_INDEX": self.config.STATE_INDEX,
+                            "STATE_CHANNELS": self.config.STATE_CHANNELS,
+                            "DFF": self.config.DFF,
+                            "X_ATTN_HEADS": self.config.X_ATTN_HEADS,
+                            "X_ATTN_DIM": self.config.X_ATTN_DIM,
+                            "DEPTH": self.config.DEPTH,
+                            "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
+                            "SELF_ATTN_DIM": self.config.SELF_ATTN_DIM,
+                            "DROPOUT_RATE": self.config.DROPOUT_RATE,
+                            "N_CLUSTERS": self.config.N_CLUSTERS})
+
             start_time = time.time()
             dataset, dataset_test = run.prepare_data()
             model = run.initialize_model()
@@ -203,67 +426,14 @@ class Run:
             end_time = time.time()
             print("Time Run Execution: ", end_time - start_time)
 
-            if self.config.MODEL_TYPE[:-2] == 'AttnAE':
-                AttnAE_log = pd.read_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
-                AttnAE_log = AttnAE_log.drop(AttnAE_log.columns[1], axis=1)
-                last_slash = config.data_path.rfind('/')
-                AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
-                                                   config.data_path[last_slash + 1:],
-                                                   config.MODEL_TYPE,
-                                                   final_epoch,
-                                                   train_acc,
-                                                   test_acc,
-                                                   loss_lst[-1],
-                                                   test_loss_lst[-1],
-                                                   config.DATA_PREP_METHOD,
-                                                   config.DATA_NORMALIZATION,
-                                                   config.REG_VALUE,
-                                                   config.DROPOUT_RATE,
-                                                   config.DATA_PREP,
-                                                   config.ENC_DEPTH,
-                                                   config.DFF,
-                                                   config.DEC_LAYERS,
-                                                   config.D_MODEL,
-                                                   config.LATENT_LEN,
-                                                   config.DATA_AUG]
-
-                AttnAE_log.to_csv('/home/jnt27/ML_Spike_Sorting/trained_models/AttnAE_log.csv')
-
-            elif config.MODEL_TYPE == 'PerceiverIO':
-                AttnAE_log = pd.read_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
-                last_slash = config.data_path.rfind('/')
-                AttnAE_log.loc[len(AttnAE_log)] = [len(AttnAE_log),
-                                                   config.data_path[last_slash + 1:],
-                                                   config.MODEL_TYPE,
-                                                   final_epoch,
-                                                   train_acc,
-                                                   test_acc,
-                                                   loss_lst[-1],
-                                                   test_loss_lst[-1],
-                                                   config.DATA_PREP_METHOD,
-                                                   config.DATA_NORMALIZATION,
-                                                   config.DATA_AUG,
-                                                   config.LEARNING_RATE,
-                                                   config.LR_FINAL,
-                                                   config.BATCH_SIZE,
-                                                   config.EMBEDDING_DIM,
-                                                   config.ENC_NUMBER_OF_LAYERS,
-                                                   config.ENC_STATE_INDEX,
-                                                   config.ENC_STATE_CHANNELS,
-                                                   config.ENC_DEPTH,
-                                                   config.ENC_DROPOUT_RATE,
-                                                   config.DEC_NUMBER_OF_LAYERS,
-                                                   config.DEC_STATE_INDEX,
-                                                   config.DEC_STATE_CHANNELS,
-                                                   config.DEC_DEPTH,
-                                                   config.DEC_DROPOUT_RATE]
-
-                AttnAE_log.to_csv('/home/mb2315/ML_Spike_Sorting/trained_models/PerceiverIO_log.csv')
 
 
 if args.Model == "PerceiverIO":
     config = Config_PerceiverIO(data_path=args.PathData)
-    
+
+elif args.Model == "DINO":
+    config = Config_DINO(data_path=args.PathData)
+
 elif args.Model == "AttnAE_1":
     config = Config_AttnAE(data_path=args.PathData)
     config.MODEL_TYPE = "AttnAE_1"

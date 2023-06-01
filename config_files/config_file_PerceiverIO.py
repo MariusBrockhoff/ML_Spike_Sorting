@@ -4,7 +4,7 @@ class Config_PerceiverIO(object):
     def __init__(self, data_path):
         super(Config_PerceiverIO, self).__init__()
         self.data_path = data_path
-        self.EARLY_STOPPING = True
+
 
 
         # Data
@@ -15,33 +15,16 @@ class Config_PerceiverIO(object):
 
         self.DATA_NORMALIZATION = "MinMax"
 
-        self.TRAIN_TEST_SPLIT = 0.1
+        self.TRAIN_TEST_SPLIT = 0.2
 
         self.BENCHMARK_START_IDX = 0
 
         self.BENCHMARK_END_IDX = 5 #int(1/self.TRAIN_TEST_SPLIT)
 
 
-        #Data Augmentation
+       # TRAINING HYPERPARAMETERS
 
-        self.DATA_AUG = True
-
-        self.APPLY_NOISE = False
-
-        self.MAX_NOISE_LVL = 0.1
-
-        self.APPLY_FLIP = False
-
-        self.FLIP_PROBABILITY = 0.5
-
-        self.APPLY_HSHIFT = False
-
-        self.MAX_HSHIFT = None
-
-
-        # TRAINING HYPERPARAMETERS
-
-        self.LEARNING_RATE = 1e-5 #1e-4 #1e-6
+        self.LEARNING_RATE = 2e-5 #1e-4 #1e-6
 
         self.WITH_WARMUP = True
 
@@ -59,6 +42,14 @@ class Config_PerceiverIO(object):
 
         self.BATCH_SIZE = 512
 
+        self.EARLY_STOPPING = True
+
+        self.PATIENCE = 50
+
+        self.MIN_DELTA = 0
+
+        self.BASELINE = 0.0007
+
 
         #Architecture
 
@@ -67,6 +58,8 @@ class Config_PerceiverIO(object):
         self.EMBEDDING_DIM = 256
 
         self.SEQ_LEN = 63
+
+        self.LATENT_LEN = 256
 
 
         # Encoder
@@ -89,7 +82,7 @@ class Config_PerceiverIO(object):
 
         self.ENC_SELF_ATTN_DIM = 64 #int(self.ENC_STATE_CHANNELS / self.ENC_NUM_ATTN_HEADS)
 
-        self.ENC_DROPOUT_RATE = 0
+        self.ENC_DROPOUT_RATE = 0.1
 
 
         #Decoder
@@ -114,10 +107,26 @@ class Config_PerceiverIO(object):
 
         self.DEC_DROPOUT_RATE = 0
 
+        # Data Augmentation
+
+        self.DATA_AUG = False
+
+        self.APPLY_NOISE = False
+
+        self.MAX_NOISE_LVL = 0.1
+
+        self.APPLY_FLIP = False
+
+        self.FLIP_PROBABILITY = 0.5
+
+        self.APPLY_HSHIFT = False
+
+        self.MAX_HSHIFT = None
+
 
         #Clustering
 
-        self.CLUSTERING_METHOD = "Kmeans"
+        self.CLUSTERING_METHOD = "Kmeans_FHC_LPD"
 
         self.N_CLUSTERS = 5
 
@@ -125,16 +134,18 @@ class Config_PerceiverIO(object):
 
         self.MIN_CLUSTER_SIZE = 1000
 
+        self.KNN = 1000
+
         # SAVE MODEL
 
         self.LOAD = False
 
         self.LOAD_DIR = "C:\\Users\\marib\\Documents\\Github\\ML_Spike_Sorting\\Data\\Model_test.tf"
 
-        self.SAVE_WEIGHTS = True
+        self.SAVE_WEIGHTS = False
 
         self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
-                        '_{DATA_AUG}_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{EMBEDDING_DIM}_{ENC_NUMBER_OF_LAYERS}' \
+                        '_{DATA_AUG}_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{EMBEDDING_DIM}_{LATENT_LEN}_{ENC_NUMBER_OF_LAYERS}' \
                         '_{ENC_STATE_INDEX}_{ENC_STATE_CHANNELS}_{ENC_DEPTH}_{ENC_DROPOUT_RATE}_{DEC_NUMBER_OF_LAYERS}' \
                         '_{DEC_STATE_INDEX}_{DEC_STATE_CHANNELS}_{DEC_DEPTH}_{DEC_DROPOUT_RATE}.pth'.format(
             MODEL_TYPE=self.MODEL_TYPE,
@@ -145,6 +156,7 @@ class Config_PerceiverIO(object):
             LR_FINAL=self.LR_FINAL,
             BATCH_SIZE=self.BATCH_SIZE,
             EMBEDDING_DIM=self.EMBEDDING_DIM,
+            LATENT_LEN=self.LATENT_LEN,
             ENC_NUMBER_OF_LAYERS=self.ENC_NUMBER_OF_LAYERS,
             ENC_STATE_INDEX=self.ENC_STATE_INDEX,
             ENC_STATE_CHANNELS=self.ENC_STATE_CHANNELS,

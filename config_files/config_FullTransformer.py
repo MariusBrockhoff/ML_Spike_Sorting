@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-class Config_AttnAE(object):
+class Config_FullTransformer(object):
 
     def __init__(self, data_path):
-        super(Config_AttnAE, self).__init__()
+        super(Config_FullTransformer, self).__init__()
         self.data_path = data_path
 
-        self.MODEL_TYPE = "AttnAE"
+        self.MODEL_TYPE = "FullTransformer"
         self.LOAD = False
         self.LOAD_DIR = None
-        self.EARLY_STOPPING = False
+        self.EARLY_STOPPING = True
         self.PATIENCE = 15
         self.MIN_DELTA = 0
         self.BASELINE = 0
@@ -25,10 +25,10 @@ class Config_AttnAE(object):
         self.NUM_EPOCHS = 100 #75
         self.PLOT = False
         self.BATCH_SIZE = 128
-        self.LEARNING_RATE = 1e-5 #1e-9 #1e-12 #1e-5
-        self.WITH_WARMUP = False #False
+        self.LEARNING_RATE = 1e-5 #1e-5
+        self.WITH_WARMUP = True #False
         self.LR_WARMUP = 10
-        self.LR_FINAL = 1e-12 #1e-12 #1e-15 #1e-9
+        self.LR_FINAL = 1e-9
         self.WITH_WD = False #False
         self.WD_FINAL = 1e-4 #1e-4
         self.WEIGHT_DECAY = 1e-2 #1e-2
@@ -37,19 +37,16 @@ class Config_AttnAE(object):
         self.DATA_PREP = 'embedding'
 
         #encoder depth = number of attention modules
-        self.ENC_DEPTH = 20 #12
+        self.ENC_DEPTH = 8 #12
 
         # dff = shape of dense layer in attention module
-        self.DFF = 128 #128
+        self.DFF = 512 #128
 
         # num_heads = (assert d_model//num_heads)
-        self.NUM_ATTN_HEADS = 16
-
-        # DEC_LAYERS: list of dimensions of dense decoder
-        self.DEC_LAYERS = [2000, 2000, 500, 500] #[2000, 500, 500, 64] OR [128, 32, 8, 3]
+        self.NUM_ATTN_HEADS = 8
 
         # d_model: embedding
-        self.D_MODEL = 256 #128
+        self.D_MODEL = 32 #128
 
         #latent_len: length of latent space
         self.LATENT_LEN = 30
@@ -71,7 +68,7 @@ class Config_AttnAE(object):
 
         #SAVE MODEL
         self.SAVE_WEIGHTS = True
-        self.SAVE_DIR = '/home/jnt27/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}_{REG_VALUE}_{DROPOUT_RATE}_{DATA_PREP}_{ENC_DEPTH}_{DFF}_{DEC_LAYERS}_{D_MODEL}_{LATENT_LEN}_{DATA_AUG}.pth'.format(
+        self.SAVE_DIR = '/home/jnt27/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}_{REG_VALUE}_{DROPOUT_RATE}_{DATA_PREP}_{ENC_DEPTH}_{DFF}_{D_MODEL}_{LATENT_LEN}_{DATA_AUG}.pth'.format(
             MODEL_TYPE=self.MODEL_TYPE,
             DATA_PREP_METHOD=self.DATA_PREP_METHOD,
             DATA_NORMALIZATION=self.DATA_NORMALIZATION,
@@ -80,7 +77,6 @@ class Config_AttnAE(object):
             DATA_PREP=self.DATA_PREP,
             ENC_DEPTH=self.ENC_DEPTH,
             DFF=self.DFF,
-            DEC_LAYERS=self.DEC_LAYERS,
             D_MODEL=self.D_MODEL,
             LATENT_LEN=self.LATENT_LEN,
             DATA_AUG=self.DATA_AUG)
