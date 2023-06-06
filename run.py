@@ -489,7 +489,6 @@ elif args.Model == "AE":
 
 elif args.Model == "FullTransformer":
     config = Config_FullTransformer(data_path=args.PathData)
-    config.MODEL_TYPE = "AE"
     
 else:
     raise ValueError("please choose a valid Model Type. See Documentation!")
