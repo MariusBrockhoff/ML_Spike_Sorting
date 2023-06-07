@@ -22,7 +22,7 @@ class Config_FullTransformer(object):
         ###GENERAL
         self.REG_VALUE = 10e-3
         self.DROPOUT_RATE = 0.1
-        self.NUM_EPOCHS = 1 #100
+        self.NUM_EPOCHS = 100 #100
         self.PLOT = False
         self.BATCH_SIZE = 512
         self.LEARNING_RATE = 0.00002 #1e-5
