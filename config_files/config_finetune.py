@@ -1,0 +1,1 @@
+#TODO: split original DEC config file (and IDEC, etc accordingly) into pretrain/model config files and finetune config files

@@ -134,7 +134,7 @@ class Run:
                                 d_model=self.config.D_MODEL,
                                 signal_length=self.config.SEQ_LEN)
 
-        elif self.config.MODEL_TYPE == "DINO":
+        elif self.config.MODEL_TYPE == "DINO": #TODO: define DINO as a pre-train class and make it compatible to any pre-defined model
             m_student = Perceiver(Embedding_dim=self.config.EMBEDDING_DIM,
                                   seq_len=self.config.CROP_PCTS[1],
                                   number_of_layers=self.config.NUMBER_OF_LAYERS,
@@ -234,7 +234,8 @@ class Run:
             train_acc, test_acc = evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test)
         return train_acc, test_acc
 
-    def execute_run(self):
+    #TODO: pretrain workflow: prepare data --> initialize model --> choose training --> train --> evaluate --> save
+    def execute_pretrain(self): #TODO: add train_method as argument (such as DINO, NNCLR, etc.) in addition to pure reconstruction/unsupervised
         if self.benchmark:
             dataset, dataset_test = run.prepare_data()
             train_acc_lst = []
@@ -466,6 +467,37 @@ class Run:
             end_time = time.time()
             print("Time Run Execution: ", end_time - start_time)
 
+        def execute_finetune(self): #TODO: add finetuning workflow: prepare data --> load model --> choose + initialize finetuning --> fine-tune --> evaluate --> save
+
+            dataset, dataset_test = run.prepare_data()
+
+            #TODO: choose + load model (load either globally or within finetuning classes as currently)
+            if finetuning_methd == 'DEC':
+                finetune_class = DEC(dims=,
+                                     n_clusters=,
+                                     batch_size=)
+
+            #TODO: other elif statements for other finetuning methods
+
+            finetune_class.initialize_model(
+                model_weights=,
+                gamma=,
+                optimizer=,
+                model=,)
+                #TODO: add model parameter
+
+            #TODO: rename all variables
+            kmeans = KMeans(n_clusters=config.N_CLUSTERS, n_init=20)
+            AE_features_train = finetune_class.extract_feature(x_train_spikes)
+            y_train_pred_AE_kmeans = kmeans.fit_predict(AE_features_train)
+            print('acc before DEC:', acc(y_train_spikes, y_train_pred_AE_kmeans))
+
+            y_train_pred_DEC = finetune_class.clustering(x_train_spikes,
+                                                          y=y_train_spikes,
+                                                          tol=config.DEC_TOL,
+                                                          maxiter=config.DEC_MAXITER,
+                                                          update_interval=config.DEC_UPDATE_INTERVAL,
+                                                          save_DEC_dir=config.DEC_SAVE_DIR)
 
 
 if args.Model == "PerceiverIO":

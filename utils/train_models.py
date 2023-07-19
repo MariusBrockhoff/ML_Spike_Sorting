@@ -5,6 +5,7 @@ import tensorflow_addons as tfa
 import pandas as pd
 import wandb
 
+#TODO: add self-supervised backbone training
 
 def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_warmup_value=0):
     warmup_schedule = np.array([])
