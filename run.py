@@ -11,9 +11,8 @@ import wandb
 #print start time of code execution
 print("Start Time Code Exec: ", time.asctime(time.localtime(time.time())))
 
-#from utils.filter_signal import *
-# from utils.file_opener_raw_recording_data import *
-#from utils.spike_detection import *
+
+from utils.model_initializer import *
 from utils.data_preparation import *
 from utils.train_models import *
 from utils.model_predict import *
@@ -21,7 +20,7 @@ from utils.clustering import *
 from utils.evaluation import *
 
 from config_files.config_file_PerceiverIO import *
-from config_files.config_file_DINO import *
+from config_files.config_file_DenseAutoencoder import *
 from config_files.config_AttnAE import *
 from config_files.config_FullTransformer import *
 
@@ -32,6 +31,8 @@ from models.AttnAE_2 import *
 from models.FullTransformerAE import *
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--Pretrain_Method', type=str, required=True)
+parser.add_argument('--Finetune_Method', type=str, required=True)
 parser.add_argument('--Model', type=str, required=True)
 parser.add_argument('--PathData', type=str, required=True)
 parser.add_argument('--Benchmark', action='store_true')
@@ -45,9 +46,11 @@ print("devices:", tf.config.list_physical_devices(device_type=None))
 class Run:
     """Class for running full Spike sorting pipeline"""
 
-    def __init__(self, config, benchmark):
+    def __init__(self, config, benchmark, pretrain_method, fine_tune_method):
         self.config = config
         self.benchmark = benchmark
+        self.pretrain_method = pretrain_method
+        self.fine_tune_method = fine_tune_method
 
     """def extract_spikes(self, self.raw_file_name, self.data_path, self.is_big_file, self.filter_frequencies, self.filtering_method, self.order, self.save_path, self.min_TH, self.dat_points_pre_min, self.dat_points_post_min, self.max_TH, self.chunck_len, self.refrec_period, self.reject_channels, self.file_name, self.save):
         recording_data, electrode_stream, fsample = file_opener_raw_recording_data(self.raw_file_name, self.data_path, self.is_big_file=False)
@@ -64,164 +67,58 @@ class Run:
         return dataset, dataset_test
 
     def initialize_model(self):
-        print('---' * 30)
-        print('INITIALIZING MODEL...')
-        if self.config.MODEL_TYPE == "PerceiverIO":
-            model = AutoPerceiver(embedding_dim=self.config.EMBEDDING_DIM,
-                                  seq_len=self.config.SEQ_LEN,
-                                  latent_len=self.config.LATENT_LEN,
-                                  ENC_number_of_layers=self.config.ENC_NUMBER_OF_LAYERS,
-                                  ENC_state_index=self.config.ENC_STATE_INDEX,
-                                  ENC_state_channels=self.config.ENC_STATE_CHANNELS,
-                                  ENC_dff=self.config.ENC_DFF,
-                                  ENC_x_attn_dim=self.config.ENC_X_ATTN_DIM,
-                                  ENC_x_attn_heads=self.config.ENC_X_ATTN_HEADS,
-                                  ENC_depth=self.config.ENC_DEPTH,
-                                  ENC_attn_dim=self.config.ENC_SELF_ATTN_DIM,
-                                  ENC_attn_heads=self.config.ENC_NUM_ATTN_HEADS,
-                                  ENC_dropout_rate=self.config.ENC_DROPOUT_RATE,
-                                  DEC_number_of_layers=self.config.DEC_NUMBER_OF_LAYERS,
-                                  DEC_state_index=self.config.DEC_STATE_INDEX,
-                                  DEC_state_channels=self.config.DEC_STATE_CHANNELS,
-                                  DEC_dff=self.config.DEC_DFF,
-                                  DEC_x_attn_dim=self.config.DEC_X_ATTN_DIM,
-                                  DEC_x_attn_heads=self.config.DEC_X_ATTN_HEADS,
-                                  DEC_depth=self.config.DEC_DEPTH,
-                                  DEC_attn_dim=self.config.DEC_SELF_ATTN_DIM,
-                                  DEC_attn_heads=self.config.DEC_NUM_ATTN_HEADS,
-                                  DEC_dropout_rate=self.config.DEC_DROPOUT_RATE)
-
-        elif self.config.MODEL_TYPE == "AttnAE_1":
-            model = TransformerEncoder_AEDecoder(num_layers=self.config.ENC_DEPTH,
-                                                 d_model=self.config.D_MODEL,
-                                                 num_heads=self.config.NUM_ATTN_HEADS,
-                                                 dff=self.config.DFF,
-                                                 pe_input=self.config.SEQ_LEN,
-                                                 latent_len=self.config.LATENT_LEN,
-                                                 dropout=self.config.DROPOUT_RATE,
-                                                 dec_dims=self.config.DEC_LAYERS,
-                                                 reg_value=self.config.REG_VALUE)
-
-
-        elif self.config.MODEL_TYPE == "AttnAE_2":
-            model = Attention_AE(d_model=self.config.D_MODEL,
-                                 dff=self.config.DFF,
-                                 seq_len=self.config.SEQ_LEN,
-                                 latent_len=self.config.LATENT_LEN,
-                                 ENC_depth=self.config.ENC_DEPTH,
-                                 ENC_attn_dim=int(self.config.D_MODEL / self.config.NUM_ATTN_HEADS),
-                                 ENC_attn_heads=self.config.NUM_ATTN_HEADS,
-                                 ENC_dropout_rate=self.config.DROPOUT_RATE,
-                                 DEC_layers=self.config.DEC_LAYERS,
-                                 reg_value=self.config.REG_VALUE)
-                                 
-        elif self.config.MODEL_TYPE == "FullTransformer":
-            model = FullTransformer(d_model=self.config.D_MODEL,
-                                 dff=self.config.DFF,
-                                 seq_len=self.config.SEQ_LEN,
-                                 latent_len=self.config.LATENT_LEN,
-                                 ENC_depth=self.config.ENC_DEPTH,
-                                 ENC_attn_dim=int(self.config.D_MODEL / self.config.NUM_ATTN_HEADS),
-                                 ENC_attn_heads=self.config.NUM_ATTN_HEADS,
-                                 ENC_dropout_rate=self.config.DROPOUT_RATE,
-                                 reg_value=self.config.REG_VALUE)
-
-
-
-        elif self.config.MODEL_TYPE == "AE":
-            model = autoencoder(dims=self.config.DEC_LAYERS,
-                                dropout=self.config.DROPOUT_RATE,
-                                d_model=self.config.D_MODEL,
-                                signal_length=self.config.SEQ_LEN)
-
-        elif self.config.MODEL_TYPE == "DINO": #TODO: define DINO as a pre-train class and make it compatible to any pre-defined model
-            m_student = Perceiver(Embedding_dim=self.config.EMBEDDING_DIM,
-                                  seq_len=self.config.CROP_PCTS[1],
-                                  number_of_layers=self.config.NUMBER_OF_LAYERS,
-                                  latent_len=self.config.LATENT_LEN,
-                                  state_index=self.config.STATE_INDEX,
-                                  state_channels=self.config.STATE_CHANNELS,
-                                  dff=self.config.DFF,
-                                  x_attn_dim=self.config.X_ATTN_DIM,
-                                  x_attn_heads=self.config.X_ATTN_HEADS,
-                                  depth=self.config.DEPTH,
-                                  attn_dim=self.config.SELF_ATTN_DIM,
-                                  attn_heads=self.config.NUM_ATTN_HEADS,
-                                  dropout_rate=self.config.DROPOUT_RATE)
-
-            m_teacher = Perceiver(Embedding_dim=self.config.EMBEDDING_DIM,
-                                  seq_len=self.config.CROP_PCTS[0],
-                                  number_of_layers=self.config.NUMBER_OF_LAYERS,
-                                  latent_len=self.config.LATENT_LEN,
-                                  state_index=self.config.STATE_INDEX,
-                                  state_channels=self.config.STATE_CHANNELS,
-                                  dff=self.config.DFF,
-                                  x_attn_dim=self.config.X_ATTN_DIM,
-                                  x_attn_heads=self.config.X_ATTN_HEADS,
-                                  depth=self.config.DEPTH,
-                                  attn_dim=self.config.SELF_ATTN_DIM,
-                                  attn_heads=self.config.NUM_ATTN_HEADS,
-                                  dropout_rate=self.config.DROPOUT_RATE)
-
-
-            model = [m_student, m_teacher]
-
+        model = model_initializer(self.config)
         return model
 
-    def train(self, model, dataset, dataset_test):
+    def initialize_wandb(self):
+        wandb_initializer(self.config)
+
+
+    def pretrain(self, model, dataset, dataset_test):
         print('---' * 30)
         print('TRAINING MODEL...')
 
-        if self.config.MODEL_TYPE == "DINO":
-            loss_lst, test_loss_lst, final_epoch = train_DINO(model=model, config=self.config, dataset=dataset,
-                                              dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS,
-                                              save_dir=self.config.SAVE_DIR)
+        loss_lst, test_loss_lst, final_epoch = pretrain_model(model=model, config=self.config, pretrain_method=self.pretrain_method,
+                                                                  dataset=dataset, dataset_test=dataset_test,
+                                                                  save_weights=self.config.SAVE_WEIGHTS, save_dir=self.config.SAVE_DIR)
 
-        else:
-            loss_lst, test_loss_lst, final_epoch = train_model(model=model, config=self.config, dataset=dataset,
-                                              dataset_test=dataset_test, save_weights=self.config.SAVE_WEIGHTS,
-                                              save_dir=self.config.SAVE_DIR)
-            # get number of trainable parameters of model
-            trainableParams = np.sum([np.prod(v.get_shape()) for v in model.trainable_weights])
-            nonTrainableParams = np.sum([np.prod(v.get_shape()) for v in model.non_trainable_weights])
-            totalParams = trainableParams + nonTrainableParams
+        # get number of trainable parameters of model
+        trainableParams = np.sum([np.prod(v.get_shape()) for v in model.trainable_weights])
+        nonTrainableParams = np.sum([np.prod(v.get_shape()) for v in model.non_trainable_weights])
+        totalParams = trainableParams + nonTrainableParams
 
-            print('-' * 20)
-            print('trainable parameters:', trainableParams)
-            print('non-trainable parameters', nonTrainableParams)
-            print('total parameters', totalParams)
-            print('-' * 20)
+        print('-' * 20)
+        print('trainable parameters:', trainableParams)
+        print('non-trainable parameters', nonTrainableParams)
+        print('total parameters', totalParams)
+        print('-' * 20)
 
         return loss_lst, test_loss_lst, final_epoch
 
     def predict(self, model, dataset, dataset_test):
-        if self.config.MODEL_TYPE == "DINO":
-            encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents_DINO(model=model, dataset=dataset,
-                                                                                         dataset_test=dataset_test)
-        else:
-            encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(model=model, dataset=dataset,
+
+        encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(config=self.config, model=model, dataset=dataset,
                                                                                      dataset_test=dataset_test)
         return encoded_data, encoded_data_test, y_true, y_true_test
 
     def cluster_data(self, encoded_data, encoded_data_test):
         print('---' * 30)
         print('CLUSTERING...')
-        if self.config.MODEL_TYPE == "DINO":
-            y_pred, n_clusters = DINO_clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
-                                            n_clusters=self.config.N_CLUSTERS,
-                                            eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE,
-                                            knn=self.config.KNN)
-            y_pred_test, n_clusters_test = DINO_clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
-                                                      n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
-                                                      min_cluster_size=self.config.MIN_CLUSTER_SIZE,
-                                                      knn=self.config.KNN)
-        else:
-            y_pred, n_clusters = clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
-                                            n_clusters=self.config.N_CLUSTERS,
-                                            eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
-            y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
-                                                      n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
-                                                      min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
+        #if self.config.MODEL_TYPE == "DINO":
+            #y_pred, n_clusters = DINO_clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
+                                            #n_clusters=self.config.N_CLUSTERS,
+                                            #eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE,
+                                            #knn=self.config.KNN)
+            #y_pred_test, n_clusters_test = DINO_clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
+                                                      #n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
+                                                      #min_cluster_size=self.config.MIN_CLUSTER_SIZE,
+                                                      #knn=self.config.KNN)
+        y_pred, n_clusters = clustering(data=encoded_data, method=self.config.CLUSTERING_METHOD,
+                                        n_clusters=self.config.N_CLUSTERS,
+                                        eps=self.config.EPS, min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
+        y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.config.CLUSTERING_METHOD,
+                                                  n_clusters=self.config.N_CLUSTERS, eps=self.config.EPS,
+                                                  min_cluster_size=self.config.MIN_CLUSTER_SIZE, knn=self.config.KNN)
                                                       
         return y_pred, n_clusters, y_pred_test, n_clusters_test
 
@@ -241,73 +138,10 @@ class Run:
             train_acc_lst = []
             test_acc_lst = []
             for i in range(len(dataset)):
-                if self.config.MODEL_TYPE == "PerceiverIO":
-                    wandb.init(
-                        # set the wandb project where this run will be logged
-                        project=self.config.MODEL_TYPE,
-                        # track hyperparameters and run metadata with wandb.config
-                        config={"Model": self.config.MODEL_TYPE,
-                                "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
-                                "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
-                                "TRAIN_TEST_SPLIT": self.config.TRAIN_TEST_SPLIT,
-                                "LEARNING_RATE": self.config.LEARNING_RATE,
-                                "WITH_WARMUP": self.config.WITH_WARMUP,
-                                "LR_WARMUP": self.config.LR_WARMUP,
-                                "LR_FINAL": self.config.LR_FINAL,
-                                "NUM_EPOCHS": self.config.NUM_EPOCHS,
-                                "BATCH_SIZE": self.config.BATCH_SIZE,
-                                "EMBEDDING_DIM": self.config.EMBEDDING_DIM,
-                                "SEQ_LEN": self.config.SEQ_LEN,
-                                "LATENT_LEN": self.config.LATENT_LEN,
-                                "ENC_NUMBER_OF_LAYERS": self.config.ENC_NUMBER_OF_LAYERS,
-                                "ENC_STATE_INDEX": self.config.ENC_STATE_INDEX,
-                                "ENC_STATE_CHANNELS": self.config.ENC_STATE_CHANNELS,
-                                "ENC_DFF": self.config.ENC_DFF,
-                                "ENC_X_ATTN_HEADS": self.config.ENC_X_ATTN_HEADS,
-                                "ENC_X_ATTN_DIM": self.config.ENC_X_ATTN_DIM,
-                                "ENC_DEPTH": self.config.ENC_DEPTH,
-                                "ENC_NUM_ATTN_HEADS": self.config.ENC_NUM_ATTN_HEADS,
-                                "ENC_SELF_ATTN_DIM": self.config.ENC_SELF_ATTN_DIM,
-                                "ENC_DROPOUT_RATE": self.config.ENC_DROPOUT_RATE,
-                                "DEC_NUMBER_OF_LAYERS": self.config.DEC_NUMBER_OF_LAYERS,
-                                "DEC_STATE_INDEX": self.config.DEC_STATE_INDEX,
-                                "DEC_STATE_CHANNELS": self.config.DEC_STATE_CHANNELS,
-                                "DEC_DFF": self.config.DEC_DFF,
-                                "DEC_X_ATTN_HEADS": self.config.DEC_X_ATTN_HEADS,
-                                "DEC_X_ATTN_DIM": self.config.DEC_X_ATTN_DIM,
-                                "DEC_DEPTH": self.config.DEC_DEPTH,
-                                "DEC_NUM_ATTN_HEADS": self.config.DEC_NUM_ATTN_HEADS,
-                                "DEC_SELF_ATTN_DIM": self.config.DEC_SELF_ATTN_DIM,
-                                "DEC_DROPOUT_RATE": self.config.DEC_DROPOUT_RATE,
-                                "CLUSTERING_METHOD": self.config.CLUSTERING_METHOD,
-                                "N_CLUSTERS": self.config.N_CLUSTERS})
-                elif self.config.MODEL_TYPE == "AttnAE_1":
-                    wandb.init(
-                        # set the wandb project where this run will be logged
-                        project=self.config.MODEL_TYPE,
-                        # track hyperparameters and run metadata with wandb.config
-                        config={"Model": self.config.MODEL_TYPE,
-                                "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
-                                "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
-                                "LEARNING_RATE": self.config.LEARNING_RATE,
-                                "WITH_WARMUP": self.config.WITH_WARMUP,
-                                "LR_WARMUP": self.config.LR_WARMUP,
-                                "LR_FINAL": self.config.LR_FINAL,
-                                "NUM_EPOCHS": self.config.NUM_EPOCHS,
-                                "BATCH_SIZE": self.config.BATCH_SIZE,
-                                "REG_VALUE": self.config.REG_VALUE,
-                                "DROPOUT_RATE": self.config.DROPOUT_RATE,
-                                "DATA_PREP": self.config.DATA_PREP,
-                                "ENC_DEPTH": self.config.ENC_DEPTH,
-                                "DFF": self.config.DFF,
-                                "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
-                                "DEC_LAYERS": self.config.DEC_LAYERS,
-                                "D_MODEL": self.config.D_MODEL,
-                                "LATENT_LEN": self.config.LATENT_LEN,
-                                "DATA_AUG": self.config.DATA_AUG})
+                run.initialize_wandb()
                 start_time = time.time()
                 model = run.initialize_model()
-                loss_lst, test_loss_lst, final_epoch = run.train(model=model, dataset=dataset[i], dataset_test=dataset_test[i])
+                loss_lst, test_loss_lst, final_epoch = run.pretrain(model=model, dataset=dataset[i], dataset_test=dataset_test[i])
                 encoded_data, encoded_data_test, y_true, y_true_test = run.predict(model=model, dataset=dataset[i],
                                                                                    dataset_test=dataset_test[i])
                 y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data(encoded_data=encoded_data,
@@ -326,136 +160,12 @@ class Run:
             print("Mean Test Accuracy: ", statistics.mean(test_acc_lst), ", Standarddeviation: ",
                   statistics.stdev(test_acc_lst))
 
-
         else:
-            if self.config.MODEL_TYPE == "PerceiverIO":
-                wandb.init(
-                    # set the wandb project where this run will be logged
-                    project=self.config.MODEL_TYPE,
-                    # track hyperparameters and run metadata with wandb.config
-                    config={"Model": self.config.MODEL_TYPE,
-                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
-                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
-                            "TRAIN_TEST_SPLIT": self.config.TRAIN_TEST_SPLIT,
-                            "LEARNING_RATE": self.config.LEARNING_RATE,
-                            "WITH_WARMUP": self.config.WITH_WARMUP,
-                            "LR_WARMUP": self.config.LR_WARMUP,
-                            "LR_FINAL": self.config.LR_FINAL,
-                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
-                            "BATCH_SIZE": self.config.BATCH_SIZE,
-                            "EMBEDDING_DIM": self.config.EMBEDDING_DIM,
-                            "SEQ_LEN": self.config.SEQ_LEN,
-                            "LATENT_LEN": self.config.LATENT_LEN,
-                            "ENC_NUMBER_OF_LAYERS": self.config.ENC_NUMBER_OF_LAYERS,
-                            "ENC_STATE_INDEX": self.config.ENC_STATE_INDEX,
-                            "ENC_STATE_CHANNELS": self.config.ENC_STATE_CHANNELS,
-                            "ENC_DFF": self.config.ENC_DFF,
-                            "ENC_X_ATTN_HEADS": self.config.ENC_X_ATTN_HEADS,
-                            "ENC_X_ATTN_DIM": self.config.ENC_X_ATTN_DIM,
-                            "ENC_DEPTH": self.config.ENC_DEPTH,
-                            "ENC_NUM_ATTN_HEADS": self.config.ENC_NUM_ATTN_HEADS,
-                            "ENC_SELF_ATTN_DIM": self.config.ENC_SELF_ATTN_DIM,
-                            "ENC_DROPOUT_RATE": self.config.ENC_DROPOUT_RATE,
-                            "DEC_NUMBER_OF_LAYERS": self.config.DEC_NUMBER_OF_LAYERS,
-                            "DEC_STATE_INDEX": self.config.DEC_STATE_INDEX,
-                            "DEC_STATE_CHANNELS": self.config.DEC_STATE_CHANNELS,
-                            "DEC_DFF": self.config.DEC_DFF,
-                            "DEC_X_ATTN_HEADS": self.config.DEC_X_ATTN_HEADS,
-                            "DEC_X_ATTN_DIM": self.config.DEC_X_ATTN_DIM,
-                            "DEC_DEPTH": self.config.DEC_DEPTH,
-                            "DEC_NUM_ATTN_HEADS": self.config.DEC_NUM_ATTN_HEADS,
-                            "DEC_SELF_ATTN_DIM": self.config.DEC_SELF_ATTN_DIM,
-                            "DEC_DROPOUT_RATE": self.config.DEC_DROPOUT_RATE,
-                            "CLUSTERING_METHOD": self.config.CLUSTERING_METHOD,
-                            "N_CLUSTERS": self.config.N_CLUSTERS})
-            elif self.config.MODEL_TYPE == "AttnAE_1":
-                wandb.init(
-                    # set the wandb project where this run will be logged
-                    project=self.config.MODEL_TYPE,
-                    # track hyperparameters and run metadata with wandb.config
-                    config={"Model": self.config.MODEL_TYPE,
-                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
-                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
-                            "LEARNING_RATE": self.config.LEARNING_RATE,
-                            "WITH_WARMUP": self.config.WITH_WARMUP,
-                            "LR_WARMUP": self.config.LR_WARMUP,
-                            "LR_FINAL": self.config.LR_FINAL,
-                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
-                            "BATCH_SIZE": self.config.BATCH_SIZE,
-                            "REG_VALUE": self.config.REG_VALUE,
-                            "DROPOUT_RATE": self.config.DROPOUT_RATE,
-                            "DATA_PREP": self.config.DATA_PREP,
-                            "ENC_DEPTH": self.config.ENC_DEPTH,
-                            "DFF": self.config.DFF,
-                            "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
-                            "DEC_LAYERS": self.config.DEC_LAYERS,
-                            "D_MODEL": self.config.D_MODEL,
-                            "LATENT_LEN": self.config.LATENT_LEN,
-                            "DATA_AUG": self.config.DATA_AUG})
-            elif self.config.MODEL_TYPE == "FullTransformer":
-                wandb.init(
-                    # set the wandb project where this run will be logged
-                    project=self.config.MODEL_TYPE,
-                    # track hyperparameters and run metadata with wandb.config
-                    config={"Model": self.config.MODEL_TYPE,
-                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
-                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
-                            "LEARNING_RATE": self.config.LEARNING_RATE,
-                            "WITH_WARMUP": self.config.WITH_WARMUP,
-                            "LR_WARMUP": self.config.LR_WARMUP,
-                            "LR_FINAL": self.config.LR_FINAL,
-                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
-                            "BATCH_SIZE": self.config.BATCH_SIZE,
-                            "REG_VALUE": self.config.REG_VALUE,
-                            "DROPOUT_RATE": self.config.DROPOUT_RATE,
-                            "DATA_PREP": self.config.DATA_PREP,
-                            "ENC_DEPTH": self.config.ENC_DEPTH,
-                            "DFF": self.config.DFF,
-                            "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
-                            "D_MODEL": self.config.D_MODEL,
-                            "LATENT_LEN": self.config.LATENT_LEN,
-                            "DATA_AUG": self.config.DATA_AUG})
-
-            if self.config.MODEL_TYPE == "DINO":
-                wandb.init(
-                    # set the wandb project where this run will be logged
-                    project=self.config.MODEL_TYPE,
-                    # track hyperparameters and run metadata with wandb.config
-                    config={"Model": self.config.MODEL_TYPE,
-                            "DATA_PREP_METHOD": self.config.DATA_PREP_METHOD,
-                            "DATA_NORMALIZATION": self.config.DATA_NORMALIZATION,
-                            "TRAIN_TEST_SPLIT": self.config.TRAIN_TEST_SPLIT,
-                            "LEARNING_RATE": self.config.LEARNING_RATE,
-                            "WITH_WARMUP": self.config.WITH_WARMUP,
-                            "LR_WARMUP": self.config.LR_WARMUP,
-                            "LR_FINAL": self.config.LR_FINAL,
-                            "NUM_EPOCHS": self.config.NUM_EPOCHS,
-                            "BATCH_SIZE": self.config.BATCH_SIZE,
-                            "CENTERING_RATE": self.config.CENTERING_RATE,
-                            "LEARNING_MOMENTUM_RATE": self.config.LEARNING_MOMENTUM_RATE,
-                            "STUDENT_TEMPERATURE": self.config.STUDENT_TEMPERATURE,
-                            "TEACHER_TEMPERATURE": self.config.TEACHER_TEMPERATURE,
-                            "TEACHER_TEMPERATURE_FINAL": self.config.TEACHER_TEMPERATURE_FINAL,
-                            "TEACHER_WARMUP": self.config.TEACHER_WARMUP,
-                            "EMBEDDING_DIM": self.config.EMBEDDING_DIM,
-                            "SEQ_LEN": self.config.SEQ_LEN,
-                            "LATENT_LEN": self.config.LATENT_LEN,
-                            "NUMBER_OF_LAYERS": self.config.NUMBER_OF_LAYERS,
-                            "STATE_INDEX": self.config.STATE_INDEX,
-                            "STATE_CHANNELS": self.config.STATE_CHANNELS,
-                            "DFF": self.config.DFF,
-                            "X_ATTN_HEADS": self.config.X_ATTN_HEADS,
-                            "X_ATTN_DIM": self.config.X_ATTN_DIM,
-                            "DEPTH": self.config.DEPTH,
-                            "NUM_ATTN_HEADS": self.config.NUM_ATTN_HEADS,
-                            "SELF_ATTN_DIM": self.config.SELF_ATTN_DIM,
-                            "DROPOUT_RATE": self.config.DROPOUT_RATE,
-                            "N_CLUSTERS": self.config.N_CLUSTERS})
-
+            run.initialize_wandb()
             start_time = time.time()
             dataset, dataset_test = run.prepare_data()
             model = run.initialize_model()
-            loss_lst, test_loss_lst, final_epoch = run.train(model=model, dataset=dataset, dataset_test=dataset_test)
+            loss_lst, test_loss_lst, final_epoch = run.pretrain(model=model, dataset=dataset, dataset_test=dataset_test)
             encoded_data, encoded_data_test, y_true, y_true_test = run.predict(model=model, dataset=dataset,
                                                                                dataset_test=dataset_test)
             y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data(encoded_data=encoded_data,
@@ -503,8 +213,8 @@ class Run:
 if args.Model == "PerceiverIO":
     config = Config_PerceiverIO(data_path=args.PathData)
 
-elif args.Model == "DINO":
-    config = Config_DINO(data_path=args.PathData)
+elif args.Model == "DenseAutoencoder":
+    config = Config_DenseAutoencoder(data_path=args.PathData)
 
 elif args.Model == "AttnAE_1":
     config = Config_AttnAE(data_path=args.PathData)
@@ -527,9 +237,9 @@ else:
     raise ValueError("please choose a valid Model Type. See Documentation!")
 
 if args.Benchmark:
-    run = Run(config=config, benchmark=True)
+    run = Run(config=config, benchmark=True, pretrain_method=args.Pretrain_Method, fine_tune_method=args.Finetune_Method)
     
 else:
-    run = Run(config=config, benchmark=False)
+    run = Run(config=config, benchmark=False, pretrain_method=args.Pretrain_Method, fine_tune_method=args.Finetune_Method)
 
 run.execute_run()
