@@ -106,38 +106,39 @@ def target_distribution(q):
 
 class IDEC(object):
     def __init__(self,
-                 dims,
+                 model,
+                 input_dim,
                  n_clusters=10,
                  alpha=1.0,
                  batch_size=256):
 
         super(IDEC, self).__init__()
 
-        self.dims = dims
-        self.input_dim = dims[0]
-        self.n_stacks = len(self.dims) - 1
-
+        self.autoencoder = model
+        self.input_dim = input_dim
         self.n_clusters = n_clusters
         self.alpha = alpha
         self.batch_size = batch_size
-        self.autoencoder = DenseAutoencoder(self.dims)    #TODO: Make model agnostic
+        self.model = None
+        self.encoder = None
 
     def initialize_model(self, ae_weights=None, gamma=0.1, optimizer='adam'):
         if ae_weights is not None:  # load pretrained weights of autoencoder
-            self.autoencoder = tf.keras.models.load_model(ae_weights)
+            self.autoencoder(tf.keras.Input(shape=self.input_dim))
+            self.autoencoder.load_weights(ae_weights)
         else:
-            print('ae_weights must be given. E.g. python DEC.py mnist --ae_weights weights.h5')
+            print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
         self.encoder = self.autoencoder.Encoder
-        inputs = tf.keras.Input(shape=(self.dims[0],))
+        inputs = tf.keras.Input(shape=self.input_dim)
         outputs = self.autoencoder(inputs)
 
         # prepare IDEC model
         clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(inputs))
         self.model = tf.keras.models.Model(inputs=inputs,
                            outputs=[clustering_layer, outputs])
-        self.model.compile(loss={'clustering': 'kld', 'dense_autoencoder': 'mse'},
+        self.model.compile(loss={'clustering': 'kld', 'dense_autoencoder': 'mse'}, #Todo: Watch out, this might lead to a naming problem depending on how the autoencoder layer is called
                            loss_weights=[gamma, 1],
                            optimizer=optimizer)
 
@@ -145,9 +146,7 @@ class IDEC(object):
         self.model.load_weights(weights_path)
 
     def extract_feature(self, x):  # extract features from before clustering layer
-        inputs = tf.keras.Input(shape=(self.dims[0],))
-        encoder = tf.keras.models.Model(inputs, self.model.get_layer("encoder")(inputs))
-        print(encoder.summary())
+        encoder = tf.keras.models.Model(tf.keras.Input(shape=self.input_dim), self.model.get_layer("encoder")(tf.keras.Input(shape=self.input_dim)))
         return encoder.predict(x)
 
 
@@ -213,58 +212,51 @@ class IDEC(object):
                                                     x[index * self.batch_size:(index + 1) * self.batch_size]])
                 index += 1
 
-            # save intermediate model
-            if acc_var>best_acc:
-                best_acc = acc_var
-                #print('saving model to:', save_IDEC_dir + '.h5')
-                self.model.save_weights(save_IDEC_dir + '.h5')
-
             ite += 1
 
+        self.model.save_weights(save_IDEC_dir + 'IDEC_Weights.h5')
         return y_pred
 
 
 class DEC(object):
     def __init__(self,
-                 dims,
+                 model,
+                 input_dim,
                  n_clusters=10,
                  alpha=1.0,
                  batch_size=256):
 
         super(DEC, self).__init__()
 
-        self.dims = dims
-        self.input_dim = dims[0]
-        self.n_stacks = len(self.dims) - 1
-
+        self.autoencoder = model
+        self.input_dim = input_dim
         self.n_clusters = n_clusters
         self.alpha = alpha
         self.batch_size = batch_size
-        self.autoencoder = DenseAutoencoder(self.dims) #TODO: Make model agnostic
+        self.model = None
+        self.encoder = None
 
     def initialize_model(self, optimizer, ae_weights=None):
 
         if ae_weights is not None:  # load pretrained weights of autoencoder
-            self.autoencoder = tf.keras.models.load_model(ae_weights)
+            self.autoencoder(tf.keras.Input(shape=self.input_dim))
+            self.autoencoder.load_weights(ae_weights)
         else:
-            print('ae_weights must be given. E.g. python DEC.py mnist --ae_weights weights.h5')
+            print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
         self.encoder = self.autoencoder.Encoder
-        inputs = tf.keras.Input(shape=(self.dims[0],))
-        outputs = self.autoencoder(inputs)
 
         # prepare DEC model
-        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(inputs))
-        self.model = tf.keras.models.Model(inputs=inputs, outputs=clustering_layer)
+        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(tf.keras.Input(shape=self.input_dim)))
+        self.model = tf.keras.models.Model(inputs=tf.keras.Input(shape=self.input_dim), outputs=clustering_layer)
         self.model.compile(loss='kld', optimizer=optimizer)
 
     def load_weights(self, weights_path):  # load weights of DEC model
         self.model.load_weights(weights_path)
 
     def extract_feature(self, x):  # extract features from before clustering layer
-        inputs = tf.keras.Input(shape=(self.dims[0],))
-        encoder = tf.keras.models.Model(inputs, self.model.get_layer("encoder")(inputs))
+        encoder = tf.keras.models.Model(tf.keras.Input(shape=self.input_dim), self.model.get_layer("encoder")(tf.keras.Input(shape=self.input_dim)))
         return encoder.predict(x)
 
     def predict_clusters(self, x):  # predict cluster labels using the output of clustering layer
@@ -327,12 +319,50 @@ class DEC(object):
                                                  y=p[index * self.batch_size:(index + 1) * self.batch_size])
                 index += 1
 
-            # save intermediate model
-            if acc_var>best_acc:
-                best_acc = acc_var
-                #print('saving model to:', save_DEC_dir + '.h5')
-                self.model.save_weights(save_DEC_dir + '.h5')
-
             ite += 1
 
+        self.model.save_weights(save_DEC_dir + 'DEC_Weights.h5') #TODO Smart naming for saved and load data
         return y_pred
+
+def finetune_model(model, config, finetune_config, finetune_method, dataset, dataset_test, load_dir):
+
+    #data prep --> combined train and test
+    for step, batch in enumerate(dataset):
+        if step == 0:
+            x = batch[0]
+            y = batch[1]
+        else:
+            x = np.concatenate((x, batch[0]), axis=0)
+            y = np.concatenate((y, batch[1]), axis=0)
+
+    for step, batch in enumerate(dataset_test):
+        x = np.concatenate((x, batch[0]), axis=0)
+        y = np.concatenate((y, batch[1]), axis=0)
+
+
+    if finetune_method == "DEC":
+
+        dec = DEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.DEC_N_CLUSTERS, batch_size=finetune_config.DEC_BATCH_SIZE) #TODO: All models
+        dec.initialize_model(
+            optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.DEC_LEARNING_RATE, momentum=finetune_config.DEC_MOMENTUM),
+            ae_weights=load_dir)
+
+        y_pred_finetuned = dec.clustering(x, y=y, tol=finetune_config.DEC_TOL,
+                                          maxiter=finetune_config.DEC_MAXITER, update_interval=finetune_config.DEC_UPDATE_INTERVAL,
+                                          save_DEC_dir=finetune_config.DEC_SAVE_DIR)
+        #Todo: Best way to do all paths for saving and loading of files?
+
+
+    elif finetune_method == "IDEC":
+
+        idec = IDEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.N_CLUSTERS, batch_size=finetune_config.IDEC_BATCH_SIZE) # TODO: All models
+        idec.initialize_model(
+            optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE, momentum=finetune_config.IDEC_MOMENTUM),
+            ae_weights=load_dir, gamma=finetune_config.IDEC_GAMMA)
+
+        y_pred_finetuned = idec.clustering(x, y=y, tol=finetune_config.IDEC_TOL,
+                                            maxiter=finetune_config.IDEC_MAXITER, update_interval=finetune_config.IDEC_UPDATE_INTERVAL,
+                                            save_IDEC_dir=finetune_config.IDEC_SAVE_DIR)
+
+
+    return y_pred_finetuned, y

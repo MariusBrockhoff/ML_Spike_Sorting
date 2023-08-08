@@ -420,7 +420,7 @@ class AttentionPipe(tf.keras.layers.Layer):
         return x
 
 
-class Encoder(tf.keras.layers.Layer):
+class Encoder(tf.keras.Model):
 
     def __init__(self,
 
@@ -536,7 +536,7 @@ class Encoder(tf.keras.layers.Layer):
         return ENC_state, logits
 
 
-class Decoder(tf.keras.layers.Layer):
+class Decoder(tf.keras.Model):
 
     def __init__(self,
 

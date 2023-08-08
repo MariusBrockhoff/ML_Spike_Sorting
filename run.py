@@ -19,11 +19,14 @@ from utils.model_predict import *
 from utils.clustering import *
 from utils.evaluation import *
 from utils.wandb_initializer import *
+from utils.finetune_models import *
 
 from config_files.config_file_PerceiverIO import *
 from config_files.config_file_DenseAutoencoder import *
 from config_files.config_AttnAE import *
 from config_files.config_FullTransformer import *
+from config_files.config_file_DenseAutoencoder import *
+from config_files.config_finetune import *
 
 from models.PerceiverIO import *
 from models.DINOPerceiver import *
@@ -96,6 +99,18 @@ class Run:
 
         return loss_lst, test_loss_lst, final_epoch
 
+
+    def finetune(self, model, dataset, dataset_test):
+        print('---' * 30)
+        print('FINETUNING MODEL...')
+        #load finetune config file
+        fintune_config = Config_Finetuning()
+        y_finetuned = finetune_model(model=model, config=self.config, finetune_config=fintune_config, finetune_method=self.fine_tune_method,
+                                                                  dataset=dataset, dataset_test=dataset_test,
+                                                                  load_dir=self.config.SAVE_DIR)
+
+        return y_finetuned
+
     def predict(self, model, dataset, dataset_test):
 
         encoded_data, encoded_data_test, y_true, y_true_test = model_predict_latents(config=self.config, model=model, dataset=dataset,
@@ -123,13 +138,13 @@ class Run:
                                                       
         return y_pred, n_clusters, y_pred_test, n_clusters_test
 
-    def evaluate_spike_sorting(self, y_pred, y_pred_test, y_true, y_true_test):
+    def evaluate_spike_sorting(self, y_pred, y_true, y_pred_test=None, y_true_test=None):
         print('---' * 30)
         print('EVALUATE RESULTS...')
         if self.config.MODEL_TYPE == "DINO":
-            train_acc, test_acc = DINO_evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test)
+            train_acc, test_acc = DINO_evaluate_clustering(y_pred, y_true, y_pred_test, y_true_test)
         else:
-            train_acc, test_acc = evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test)
+            train_acc, test_acc = evaluate_clustering(y_pred, y_true, y_pred_test, y_true_test)
         return train_acc, test_acc
 
     #TODO: pretrain workflow: prepare data --> initialize model --> choose training --> train --> evaluate --> save
@@ -147,7 +162,7 @@ class Run:
                                                                                    dataset_test=dataset_test[i])
                 y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data(encoded_data=encoded_data,
                                                                                     encoded_data_test=encoded_data_test)
-                train_acc, test_acc = run.evaluate_spike_sorting(y_pred, y_pred_test, y_true, y_true_test)
+                train_acc, test_acc = run.evaluate_spike_sorting(y_pred, y_true, y_pred_test, y_true_test)
                 train_acc_lst.append(train_acc)
                 test_acc_lst.append(test_acc)
                 end_time = time.time()
@@ -172,44 +187,21 @@ class Run:
             y_pred, n_clusters, y_pred_test, n_clusters_test = run.cluster_data(encoded_data=encoded_data,
                                                                                 encoded_data_test=encoded_data_test)
 
-            train_acc, test_acc = run.evaluate_spike_sorting(y_pred, y_pred_test, y_true, y_true_test)
+            train_acc, test_acc = run.evaluate_spike_sorting(y_pred, y_true, y_pred_test, y_true_test)
             print("Train Accuracy: ", train_acc)
             print("Test Accuracy: ", test_acc)
             end_time = time.time()
             print("Time Run Execution: ", end_time - start_time)
 
-        def execute_finetune(self): #TODO: add finetuning workflow: prepare data --> load model --> choose + initialize finetuning --> fine-tune --> evaluate --> save
-            start_time = time.time()
-            dataset, dataset_test = run.prepare_data()
-            model = run.initialize_model()
-
-            #TODO: choose + load model (load either globally or within finetuning classes as currently)
-            if finetuning_methd == 'DEC':
-                finetune_class = DEC(dims=,
-                                     n_clusters=,
-                                     batch_size=)
-
-            #TODO: other elif statements for other finetuning methods
-
-            finetune_class.initialize_model(
-                model_weights=,
-                gamma=,
-                optimizer=,
-                model=,)
-                #TODO: add model parameter
-
-            #TODO: rename all variables
-            kmeans = KMeans(n_clusters=config.N_CLUSTERS, n_init=20)
-            AE_features_train = finetune_class.extract_feature(x_train_spikes)
-            y_train_pred_AE_kmeans = kmeans.fit_predict(AE_features_train)
-            print('acc before DEC:', acc(y_train_spikes, y_train_pred_AE_kmeans))
-
-            y_train_pred_DEC = finetune_class.clustering(x_train_spikes,
-                                                          y=y_train_spikes,
-                                                          tol=config.DEC_TOL,
-                                                          maxiter=config.DEC_MAXITER,
-                                                          update_interval=config.DEC_UPDATE_INTERVAL,
-                                                          save_DEC_dir=config.DEC_SAVE_DIR)
+    def execute_finetune(self): #TODO: add finetuning workflow: prepare data --> load model --> choose + initialize finetuning --> fine-tune --> evaluate --> save
+        start_time = time.time()
+        dataset, dataset_test = run.prepare_data()
+        model = run.initialize_model()
+        y_pred_finetuned, y_true = run.finetune(model=model, dataset=dataset, dataset_test=dataset_test)
+        train_acc, _ = run.evaluate_spike_sorting(y_pred_finetuned, y_true)
+        print("Accuracy after Finetuning: ", train_acc)
+        end_time = time.time()
+        print("Time Finetuning Execution: ", end_time - start_time)
 
 
 if args.Model == "PerceiverIO":

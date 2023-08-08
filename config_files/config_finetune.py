@@ -12,6 +12,8 @@ class Config_Finetuning(object):
 
         # DEC
 
+        self.DEC_N_CLUSTERS= 5
+
         self.DEC_BATCH_SIZE = 256
 
         self.DEC_LEARNING_RATE = 0.01
