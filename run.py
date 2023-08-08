@@ -18,6 +18,7 @@ from utils.train_models import *
 from utils.model_predict import *
 from utils.clustering import *
 from utils.evaluation import *
+from utils.wandb_initializer import *
 
 from config_files.config_file_PerceiverIO import *
 from config_files.config_file_DenseAutoencoder import *
@@ -178,8 +179,9 @@ class Run:
             print("Time Run Execution: ", end_time - start_time)
 
         def execute_finetune(self): #TODO: add finetuning workflow: prepare data --> load model --> choose + initialize finetuning --> fine-tune --> evaluate --> save
-
+            start_time = time.time()
             dataset, dataset_test = run.prepare_data()
+            model = run.initialize_model()
 
             #TODO: choose + load model (load either globally or within finetuning classes as currently)
             if finetuning_methd == 'DEC':
@@ -242,4 +244,7 @@ if args.Benchmark:
 else:
     run = Run(config=config, benchmark=False, pretrain_method=args.Pretrain_Method, fine_tune_method=args.Finetune_Method)
 
-run.execute_run()
+if args.Pretrain_Method != "None":
+    run.execute_pretrain()
+if args.Finetune_Method != "None":
+    run.execute_finetune()

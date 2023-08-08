@@ -1,10 +1,6 @@
-
 import tensorflow as tf
-
 import keras.backend as K
-
 import numpy as np
-
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
 
@@ -124,33 +120,36 @@ class IDEC(object):
         self.n_clusters = n_clusters
         self.alpha = alpha
         self.batch_size = batch_size
-        self.autoencoder = autoencoder(self.dims) #TODO: make all finetuning methods (DEC, IDEC, etc.) model agnostic --> input model
+        self.autoencoder = DenseAutoencoder(self.dims)    #TODO: Make model agnostic
 
-
-    def initialize_model(self, ae_weights=None, gamma=0.1, optimizer='adam'): #TODO: re-write to initialize any pre-defined model
-        if ae_weights is not None:
-            self.autoencoder.load_weights(ae_weights) #TODO: autoencoder --> model
+    def initialize_model(self, ae_weights=None, gamma=0.1, optimizer='adam'):
+        if ae_weights is not None:  # load pretrained weights of autoencoder
+            self.autoencoder = tf.keras.models.load_model(ae_weights)
         else:
             print('ae_weights must be given. E.g. python DEC.py mnist --ae_weights weights.h5')
             exit()
 
-        hidden = self.autoencoder.get_layer(name='encoder_%d' % (self.n_stacks - 1)).output #TODO: in all models: name last encoder layer same
-        self.encoder = tf.keras.models.Model(inputs=self.autoencoder.input, outputs=hidden) #TODO: I think that's keras API --> rewrite to do the same with model classes (or rewrite all model classed to keras API)
+        self.encoder = self.autoencoder.Encoder
+        inputs = tf.keras.Input(shape=(self.dims[0],))
+        outputs = self.autoencoder(inputs)
 
         # prepare IDEC model
-        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(hidden)
-        self.model = tf.keras.models.Model(inputs=self.autoencoder.input,
-                           outputs=[clustering_layer, self.autoencoder.output]) #TODO: I think that's keras API --> rewrite to do the same with model classes (or rewrite all model classed to keras API)
-        self.model.compile(loss={'clustering': 'kld', 'decoder_0': 'mse'},
+        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(inputs))
+        self.model = tf.keras.models.Model(inputs=inputs,
+                           outputs=[clustering_layer, outputs])
+        self.model.compile(loss={'clustering': 'kld', 'dense_autoencoder': 'mse'},
                            loss_weights=[gamma, 1],
                            optimizer=optimizer)
 
     def load_weights(self, weights_path):  # load weights of IDEC model
         self.model.load_weights(weights_path)
 
-    def extract_feature(self, x):  # extract features from before clustering layer #TODO: re-write to any pre-defined model
-        encoder = tf.keras.models.Model(self.model.input, self.model.get_layer('encoder_%d' % (self.n_stacks - 1)).output) #TODO: I think that's keras API --> rewrite to do the same with model classes (or rewrite all model classed to keras API)
+    def extract_feature(self, x):  # extract features from before clustering layer
+        inputs = tf.keras.Input(shape=(self.dims[0],))
+        encoder = tf.keras.models.Model(inputs, self.model.get_layer("encoder")(inputs))
+        print(encoder.summary())
         return encoder.predict(x)
+
 
     def predict_clusters(self, x):  # predict cluster labels using the output of clustering layer
         q, _ = self.model.predict(x, verbose=0)
@@ -225,7 +224,7 @@ class IDEC(object):
         return y_pred
 
 
-class DEC(object): #TODO: all TODO comments from IDEC applicable to DEC class as well
+class DEC(object):
     def __init__(self,
                  dims,
                  n_clusters=10,
@@ -241,28 +240,31 @@ class DEC(object): #TODO: all TODO comments from IDEC applicable to DEC class as
         self.n_clusters = n_clusters
         self.alpha = alpha
         self.batch_size = batch_size
-        self.autoencoder = autoencoder(self.dims) #TODO: make all finetuning methods (DEC, IDEC, etc.) model agnostic --> input model
+        self.autoencoder = DenseAutoencoder(self.dims) #TODO: Make model agnostic
 
-    def initialize_model(self, optimizer, ae_weights=None): #TODO: re-write to initialize any pre-defined model
+    def initialize_model(self, optimizer, ae_weights=None):
+
         if ae_weights is not None:  # load pretrained weights of autoencoder
-            self.autoencoder.load_weights(ae_weights)
+            self.autoencoder = tf.keras.models.load_model(ae_weights)
         else:
             print('ae_weights must be given. E.g. python DEC.py mnist --ae_weights weights.h5')
             exit()
 
-        hidden = self.autoencoder.get_layer(name='encoder_%d' % (self.n_stacks - 1)).output
-        self.encoder = tf.keras.models.Model(inputs=self.autoencoder.input, outputs=hidden)
+        self.encoder = self.autoencoder.Encoder
+        inputs = tf.keras.Input(shape=(self.dims[0],))
+        outputs = self.autoencoder(inputs)
 
         # prepare DEC model
-        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(hidden)
-        self.model = tf.keras.models.Model(inputs=self.autoencoder.input, outputs=clustering_layer)
+        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(inputs))
+        self.model = tf.keras.models.Model(inputs=inputs, outputs=clustering_layer)
         self.model.compile(loss='kld', optimizer=optimizer)
 
     def load_weights(self, weights_path):  # load weights of DEC model
         self.model.load_weights(weights_path)
 
-    def extract_feature(self, x):  # extract features from before clustering layer #TODO: re-write to any pre-defined model
-        encoder = tf.keras.models.Model(self.model.input, self.model.get_layer('encoder_%d' % (self.n_stacks - 1)).output)
+    def extract_feature(self, x):  # extract features from before clustering layer
+        inputs = tf.keras.Input(shape=(self.dims[0],))
+        encoder = tf.keras.models.Model(inputs, self.model.get_layer("encoder")(inputs))
         return encoder.predict(x)
 
     def predict_clusters(self, x):  # predict cluster labels using the output of clustering layer
@@ -289,6 +291,7 @@ class DEC(object): #TODO: all TODO comments from IDEC applicable to DEC class as
         y_pred_last = y_pred
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
 
+        #np.random.shuffle(x)
         loss = 0
         index = 0
         best_acc = 0

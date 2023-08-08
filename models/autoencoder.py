@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import layers as KL
 
 #TODO: make code consistent to other models
-class Encoder(tf.keras.layers.Layer):
+class Encoder(tf.keras.Model):
 
     def __init__(self,
 
@@ -16,22 +16,24 @@ class Encoder(tf.keras.layers.Layer):
 
         self.act = act
 
+        self.encoding = [KL.Dense(self.dims[i + 1], activation=self.act, name='encoder_%d' % i) for i in range(len(self.dims) - 2)]
+
+        self.hidden = KL.Dense(self.dims[-1], name='encoder_%d' % (len(self.dims) - 1))
+
+
     def call(self, inputs):
 
-        n_stacks = len(self.dims) - 1
+        h = tf.keras.layers.InputLayer(input_shape=(self.dims[0],))(inputs)
 
-        h = inputs
+        for i in range(len(self.dims) - 2):
 
-        # internal layers in encoder
-        for i in range(n_stacks - 1):
-            h = KL.Dense(self.dims[i + 1], activation=self.act, name='encoder_%d' % i)(h)
+          h = self.encoding[i](h)
 
-        # hidden layer
-        h = KL.Dense(self.dims[-1], name='encoder_%d' % (n_stacks - 1))(h)  # hidden layer, features are extracted from here
+        h = self.hidden(h)  # hidden layer, features are extracted from here
 
         return h
 
-class Decoder(tf.keras.layers.Layer):
+class Decoder(tf.keras.Model):
     def __init__(self,
 
                  dims=[63, 500, 500, 2000, 10],
@@ -43,17 +45,19 @@ class Decoder(tf.keras.layers.Layer):
 
         self.act = act
 
+        self.decoding = [KL.Dense(self.dims[i], activation=self.act, name='encoder_%d' % i) for i in range(len(self.dims) - 2, 0, -1)]
+
+        self.out = KL.Dense(self.dims[0], name='decoder_0')
+
     def call(self, inputs):
 
-        n_stacks = len(self.dims) - 1
+        h = h = tf.keras.layers.InputLayer(input_shape=(self.dims[-1],))(inputs)
 
-        h = inputs
+        for j in range(len(self.dims) - 2):
 
-        for i in range(n_stacks - 1, 0, -1):
-            h = KL.Dense(self.dims[i], activation=self.act, name='decoder_%d' % i)(h)
+          h = self.decoding[j](h)
 
-        # output
-        h = KL.Dense(self.dims[0], name='decoder_0')(h)
+        h = self.out(h)
 
         return h
 
@@ -82,39 +86,7 @@ class DenseAutoencoder(tf.keras.Model):
 
         output = self.Decoder(logits)
 
-        return logits, output
-
-
-def autoencoder(dims, act='relu'):
-    """
-    Fully connected auto-encoder model, symmetric.
-    Arguments:
-        dims: list of number of units in each layer of encoder. dims[0] is input dim, dims[-1] is units in hidden layer.
-            The decoder is symmetric with encoder. So number of layers of the auto-encoder is 2*len(dims)-1
-        act: activation, not applied to Input, Hidden and Output layers
-    return:
-        Model of autoencoder
-    """
-    n_stacks = len(dims) - 1
-    # input
-    x = tf.keras.layers.Input(shape=(dims[0],), name='input')
-    h = x
-
-    # internal layers in encoder
-    for i in range(n_stacks-1):
-        h = KL.Dense(dims[i + 1], activation=act, name='encoder_%d' % i)(h)
-
-    # hidden layer
-    h = KL.Dense(dims[-1], name='encoder_%d' % (n_stacks - 1))(h)  # hidden layer, features are extracted from here
-
-    # internal layers in decoder
-    for i in range(n_stacks-1, 0, -1):
-        h = KL.Dense(dims[i], activation=act, name='decoder_%d' % i)(h)
-
-    # output
-    h = KL.Dense(dims[0], name='decoder_0')(h)
-
-    return tf.keras.models.Model(inputs=x, outputs=h)
+        return output
 
 
 def encoder_constructor(dims, act='relu'):
