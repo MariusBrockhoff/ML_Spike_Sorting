@@ -5,10 +5,13 @@ class Config_Finetuning(object):
     def __init__(self, data_path):
         super(Config_Finetuning, self).__init__()
 
+        self.data_path = data_path
+        self.FILE_NAME = self.data_path.rpartition('\\')[-1]
 
-        # Pretrained Model
 
-        self.PRETRAINED_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/PRETRAINED_AE_" + FILE_NAME + ".h5"
+        # Load Pretrained Model
+
+        self.PRETRAINED_SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrained_Perceiver_"+ self.FILE_NAME + ".h5"
 
         # DEC
 
@@ -22,13 +25,15 @@ class Config_Finetuning(object):
 
         self.DEC_TOL = 0.001
 
-        self.DEC_MAXITER = 10000
+        self.DEC_MAXITER = 1000
 
         self.DEC_UPDATE_INTERVAL = 140
 
-        self.DEC_SAVE_DIR = '/rds/user/mb2315/hpc-work/Data/Saved_Models/DEC_' + FILE_NAME
+        self.DEC_SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "DEC_"+ self.FILE_NAME + ".h5"
 
         # IDEC
+
+        self.IDEC_N_CLUSTERS = 5
 
         self.IDEC_BATCH_SIZE = 256
 
@@ -40,11 +45,11 @@ class Config_Finetuning(object):
 
         self.IDEC_TOL = 0.001
 
-        self.IDEC_MAXITER = 20000
+        self.IDEC_MAXITER = 1000
 
         self.IDEC_UPDATE_INTERVAL = 140
 
-        self.IDEC_SAVE_DIR = '/rds/user/mb2315/hpc-work/Data/Saved_Models/IDEC_' + FILE_NAME
+        self.IDEC_SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "IDEC_"+ self.FILE_NAME + ".h5"
 
 
 

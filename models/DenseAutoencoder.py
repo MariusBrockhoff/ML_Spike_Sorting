@@ -23,7 +23,7 @@ class Encoder(tf.keras.Model):
 
     def call(self, inputs):
 
-        h = tf.keras.layers.InputLayer(input_shape=(self.dims[0],))(inputs)
+        h = inputs #tf.keras.layers.InputLayer(input_shape=(self.dims[0],))(inputs)
 
         for i in range(len(self.dims) - 2):
 
@@ -32,6 +32,11 @@ class Encoder(tf.keras.Model):
         h = self.hidden(h)  # hidden layer, features are extracted from here
 
         return h
+
+    def summary(self, input_shape):
+        x = tf.keras.Input(shape=input_shape)
+        model = tf.keras.Model(inputs=[x], outputs=self.call(x))
+        return model.summary()
 
 class Decoder(tf.keras.Model):
     def __init__(self,
@@ -45,13 +50,13 @@ class Decoder(tf.keras.Model):
 
         self.act = act
 
-        self.decoding = [KL.Dense(self.dims[i], activation=self.act, name='encoder_%d' % i) for i in range(len(self.dims) - 2, 0, -1)]
+        self.decoding = [KL.Dense(self.dims[i], activation=self.act, name='decoder_%d' % i) for i in range(len(self.dims) - 2, 0, -1)]
 
         self.out = KL.Dense(self.dims[0], name='decoder_0')
 
     def call(self, inputs):
 
-        h = h = tf.keras.layers.InputLayer(input_shape=(self.dims[-1],))(inputs)
+        h = inputs #tf.keras.layers.InputLayer(input_shape=(self.dims[-1],))(inputs)
 
         for j in range(len(self.dims) - 2):
 
@@ -61,7 +66,10 @@ class Decoder(tf.keras.Model):
 
         return h
 
-
+    def summary(self, input_shape):
+        x = tf.keras.Input(shape=input_shape)
+        model = tf.keras.Model(inputs=[x], outputs=self.call(x))
+        return model.summary()
 
 class DenseAutoencoder(tf.keras.Model):
 
@@ -86,7 +94,7 @@ class DenseAutoencoder(tf.keras.Model):
 
         output = self.Decoder(logits)
 
-        return output
+        return logits, logits, output
 
 
 def encoder_constructor(dims, act='relu'):

@@ -326,6 +326,8 @@ class AttentionBlock(tf.keras.layers.Layer):
 
         state_stack = state_stack.write(0, state_0)
 
+        print(state_stack)
+
         cond = lambda i, ss: tf.less(i, self.depth)
 
         def body(i, state_stack):
@@ -336,11 +338,19 @@ class AttentionBlock(tf.keras.layers.Layer):
 
             return (i+1, state_stack)
 
-        [i, state_stack] = tf.while_loop(cond,  body, [i, state_stack])
+        #[i, state_stack] = tf.while_loop(cond,  body, [i, state_stack])
 
-        state_out = state_stack.read(i-1)
+        while i < self.depth:
 
-        return state_out
+            state_0 = self.SelfAttention(state_0)
+
+            i += 1
+
+        #state_out = state_stack.read(i-1)
+
+        print(state_0)
+
+        return state_0
 
 
 class AttentionPipe(tf.keras.layers.Layer):
@@ -411,7 +421,12 @@ class AttentionPipe(tf.keras.layers.Layer):
 
         b, *_ = inputs.shape
 
-        x = repeat(latents, 'i c -> b i c', b=b)
+        if b is not None:
+
+            x = repeat(latents, 'i c -> b i c', b=b)
+
+        else:
+            x = tf.keras.Input(shape=latents.shape) #tf.TensorSpec(shape=[None, latents.shape[0], latents.shape[1]])
 
         for i in range(self.number_of_layers):
 
@@ -535,6 +550,15 @@ class Encoder(tf.keras.Model):
 
         return ENC_state, logits
 
+    #def summary(self, input_shape):
+     #   x = tf.keras.Input(shape=input_shape)
+      #  model = tf.keras.Model(inputs=x, outputs=self.call(x))
+       # return model.summary()
+
+    def build_graph(self, raw_shape):
+        x = tf.keras.layers.Input(shape=raw_shape)
+        return tf.keras.Model(inputs=[x], outputs=self.call(x))
+
 
 class Decoder(tf.keras.Model):
 
@@ -646,6 +670,11 @@ class Decoder(tf.keras.Model):
         output = self.outputadapter(state)
 
         return output
+
+    #def summary(self, input_shape):
+     #   x = tf.keras.Input(shape=input_shape)
+      #  model = tf.keras.Model(inputs=x, outputs=self.call(x))
+       # return model.summary()
 
 
 class AutoPerceiver(tf.keras.Model):

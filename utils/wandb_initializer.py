@@ -45,6 +45,25 @@ def wandb_initializer(config):
                     "DEC_DROPOUT_RATE": config.DEC_DROPOUT_RATE,
                     "CLUSTERING_METHOD": config.CLUSTERING_METHOD,
                     "N_CLUSTERS": config.N_CLUSTERS})
+
+    elif config.MODEL_TYPE == "DenseAutoencoder":
+        wandb.init(
+                # set the wandb project where this run will be logged
+                project=config.MODEL_TYPE,
+                # track hyperparameters and run metadata with wandb.config
+                config={"Model": config.MODEL_TYPE,
+                        "DATA_PREP_METHOD": config.DATA_PREP_METHOD,
+                        "DATA_NORMALIZATION": config.DATA_NORMALIZATION,
+                        "LEARNING_RATE": config.LEARNING_RATE,
+                        "WITH_WARMUP": config.WITH_WARMUP,
+                        "LR_WARMUP": config.LR_WARMUP,
+                        "LR_FINAL": config.LR_FINAL,
+                        "NUM_EPOCHS": config.NUM_EPOCHS,
+                        "BATCH_SIZE": config.BATCH_SIZE,
+                        "DIMS": config.DIMS,
+                        "ACT": config.ACT,
+                        "DATA_AUG": config.DATA_AUG})
+
     elif config.MODEL_TYPE == "AttnAE_1":
         wandb.init(
             # set the wandb project where this run will be logged

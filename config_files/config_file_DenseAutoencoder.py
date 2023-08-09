@@ -3,8 +3,9 @@ class Config_DenseAutoencoder(object):
 
     def __init__(self, data_path):
         super(Config_DenseAutoencoder, self).__init__()
-        self.data_path = data_path
 
+        self.data_path = data_path
+        self.FILE_NAME = self.data_path.rpartition('\\')[-1]
 
 
         # Data
@@ -24,13 +25,13 @@ class Config_DenseAutoencoder(object):
 
        # TRAINING HYPERPARAMETERS
 
-        self.LEARNING_RATE = 2e-5 #1e-4 #1e-6
+        self.LEARNING_RATE = 1e-4 #1e-4 #1e-6
 
-        self.WITH_WARMUP = True
+        self.WITH_WARMUP = False
 
         self.LR_WARMUP = 10 #2 #10
 
-        self.LR_FINAL = 1e-9  #1e-6 1e-8
+        self.LR_FINAL = 1e-4  #1e-6 1e-8
 
         self.WITH_WD = False
 
@@ -38,17 +39,19 @@ class Config_DenseAutoencoder(object):
 
         self.WD_FINAL = 1e-4    #1e-41e-6
 
-        self.NUM_EPOCHS = 100
+        self.NUM_EPOCHS = 10
 
-        self.BATCH_SIZE = 512
+        self.BATCH_SIZE = 4096
 
         self.EARLY_STOPPING = True
 
-        self.PATIENCE = 50
+        self.PATIENCE = 10
 
-        self.MIN_DELTA = 0
+        self.MIN_DELTA = 0.0001
 
         self.BASELINE = 0.0007
+
+        self.DATA_AUG = False
 
 
         #Architecture
@@ -82,17 +85,19 @@ class Config_DenseAutoencoder(object):
 
         self.LOAD_DIR = "C:\\Users\\marib\\Documents\\Github\\ML_Spike_Sorting\\Data\\Model_test.tf"
 
-        self.SAVE_WEIGHTS = False
+        self.SAVE_WEIGHTS = True
 
-        self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
-                        '_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{LATENT_LEN}_{DIMS}.pth'.format(
-            MODEL_TYPE=self.MODEL_TYPE,
-            DATA_PREP_METHOD=self.DATA_PREP_METHOD,
-            DATA_NORMALIZATION=self.DATA_NORMALIZATION,
-            LEARNING_RATE=self.LEARNING_RATE,
-            LR_FINAL=self.LR_FINAL,
-            BATCH_SIZE=self.BATCH_SIZE,
-            LATENT_LEN=self.LATENT_LEN,
-            DIMS=self.DIMS)
+        self.SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrained_dense_"+ self.FILE_NAME + ".h5"
+
+        #self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
+        #                '_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{LATENT_LEN}_{DIMS}.pth'.format(
+        #    MODEL_TYPE=self.MODEL_TYPE,
+        #    DATA_PREP_METHOD=self.DATA_PREP_METHOD,
+        #    DATA_NORMALIZATION=self.DATA_NORMALIZATION,
+        #    LEARNING_RATE=self.LEARNING_RATE,
+        #    LR_FINAL=self.LR_FINAL,
+        #    BATCH_SIZE=self.BATCH_SIZE,
+        #    LATENT_LEN=self.LATENT_LEN,
+        #    DIMS=self.DIMS)
 
 

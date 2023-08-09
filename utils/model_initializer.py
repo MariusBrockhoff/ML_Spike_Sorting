@@ -14,6 +14,7 @@ from models.PerceiverIO import *
 from models.DINOPerceiver import *
 from models.AttnAE_1 import *
 from models.AttnAE_2 import *
+from models.DenseAutoencoder import *
 from models.FullTransformerAE import *
 
 def model_initializer(config):
@@ -81,11 +82,10 @@ def model_initializer(config):
 
 
 
-    elif config.MODEL_TYPE == "AE":
-        model = autoencoder(dims=config.DEC_LAYERS,
-                            dropout=config.DROPOUT_RATE,
-                            d_model=config.D_MODEL,
-                            signal_length=config.SEQ_LEN)
+    elif config.MODEL_TYPE == "DenseAutoencoder":
+        model = DenseAutoencoder(dims=config.DIMS,
+                            act=config.ACT)
+
 
     elif config.MODEL_TYPE == "DINO":  # TODO: define DINO as a pre-train class and make it compatible to any pre-defined model
         m_student = Perceiver(Embedding_dim=config.EMBEDDING_DIM,

@@ -132,13 +132,14 @@ class IDEC(object):
 
         self.encoder = self.autoencoder.Encoder
         inputs = tf.keras.Input(shape=self.input_dim)
-        outputs = self.autoencoder(inputs)
+        _,_,outputs = self.autoencoder(inputs)
 
         # prepare IDEC model
         clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(inputs))
         self.model = tf.keras.models.Model(inputs=inputs,
                            outputs=[clustering_layer, outputs])
-        self.model.compile(loss={'clustering': 'kld', 'dense_autoencoder': 'mse'}, #Todo: Watch out, this might lead to a naming problem depending on how the autoencoder layer is called
+        print(self.model.summary())
+        self.model.compile(loss={'clustering': 'kld', 'dense_autoencoder_1': 'mse'}, #Todo: Watch out, this might lead to a naming problem depending on how the autoencoder layer is called
                            loss_weights=[gamma, 1],
                            optimizer=optimizer)
 
@@ -214,7 +215,7 @@ class IDEC(object):
 
             ite += 1
 
-        self.model.save_weights(save_IDEC_dir + 'IDEC_Weights.h5')
+        self.model.save_weights(save_IDEC_dir)
         return y_pred
 
 
@@ -246,10 +247,12 @@ class DEC(object):
             exit()
 
         self.encoder = self.autoencoder.Encoder
+        inputs = tf.keras.Input(shape=self.input_dim)
+        outputs = self.autoencoder(inputs)
 
         # prepare DEC model
-        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(tf.keras.Input(shape=self.input_dim)))
-        self.model = tf.keras.models.Model(inputs=tf.keras.Input(shape=self.input_dim), outputs=clustering_layer)
+        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(inputs))
+        self.model = tf.keras.models.Model(inputs=inputs, outputs=clustering_layer)
         self.model.compile(loss='kld', optimizer=optimizer)
 
     def load_weights(self, weights_path):  # load weights of DEC model
@@ -321,7 +324,7 @@ class DEC(object):
 
             ite += 1
 
-        self.model.save_weights(save_DEC_dir + 'DEC_Weights.h5') #TODO Smart naming for saved and load data
+        self.model.save_weights(save_DEC_dir) #TODO Smart naming for saved and load data
         return y_pred
 
 def finetune_model(model, config, finetune_config, finetune_method, dataset, dataset_test, load_dir):
@@ -355,7 +358,7 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
 
     elif finetune_method == "IDEC":
 
-        idec = IDEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.N_CLUSTERS, batch_size=finetune_config.IDEC_BATCH_SIZE) # TODO: All models
+        idec = IDEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS, batch_size=finetune_config.IDEC_BATCH_SIZE) # TODO: All models
         idec.initialize_model(
             optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE, momentum=finetune_config.IDEC_MOMENTUM),
             ae_weights=load_dir, gamma=finetune_config.IDEC_GAMMA)

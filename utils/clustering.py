@@ -109,7 +109,7 @@ def fhc_lpd(data, k, C):
 
 def clustering(data, method, n_clusters=5, eps=0.01, min_cluster_size=100, knn=1000):
     if method == "Kmeans":
-        kmeans = KMeans(n_clusters=n_clusters)
+        kmeans = KMeans(n_clusters=n_clusters, n_init=20)
         y_pred = kmeans.fit_predict(data)
 
     elif method == "DBSCAN":
@@ -121,7 +121,7 @@ def clustering(data, method, n_clusters=5, eps=0.01, min_cluster_size=100, knn=1
         y_pred = fhc_lpd(data,k=knn,C=n_clusters)
 
     elif method == "Kmeans_FHC_LPD":
-        kmeans = KMeans(n_clusters=n_clusters)
+        kmeans = KMeans(n_clusters=n_clusters, n_init=20)
         y_pred_k = kmeans.fit_predict(data)
         y_pred = fhc_lpd(data,k=knn,C=n_clusters)
         y_pred = np.concatenate((y_pred_k, y_pred), axis=0)

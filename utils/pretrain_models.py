@@ -2,7 +2,6 @@
 import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
-import pandas as pd
 import wandb
 
 #TODO: add self-supervised backbone training
@@ -253,9 +252,10 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
     test_loss_lst = []
     mse = tf.keras.losses.MeanSquaredError()
 
-    augmenter = SpikeAugmentation(apply_noise=config.APPLY_NOISE, max_noise_lvl=config.MAX_NOISE_LVL,
-                                  apply_flip=config.APPLY_FLIP, flip_probability=config.FLIP_PROBABILITY,
-                                  apply_hshift=config.APPLY_HSHIFT, max_hshift=config.MAX_HSHIFT)
+    if config.DATA_AUG:
+        augmenter = SpikeAugmentation(apply_noise=config.APPLY_NOISE, max_noise_lvl=config.MAX_NOISE_LVL,
+                                      apply_flip=config.APPLY_FLIP, flip_probability=config.FLIP_PROBABILITY,
+                                      apply_hshift=config.APPLY_HSHIFT, max_hshift=config.MAX_HSHIFT)
 
 
     if pretrain_method == "reconstruction":
@@ -271,6 +271,16 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
                     batch_s = augmenter(batch[0])
                 else:
                     batch_s = batch[0]
+
+
+                if step == 0:
+                    print("here")
+                    raw_input = (63, )
+                    # The first call to the `cm` will create the weights
+                    y = model(tf.ones(shape=(0, *raw_input)))
+                    print(model.Encoder.summary())
+                    #print(model.Encoder.build_graph(raw_input).summary())
+
 
                 with tf.GradientTape() as tape:
                     [_, _, output] = model(batch_s)
@@ -292,19 +302,28 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
                 "Train Loss": loss.numpy(),
                 "Valid Loss": test_loss.numpy()})
 
-            print("Epoch: ", epoch + 1, ", Train loss: ", loss, ", Test loss: ", test_loss)
+            print("Epoch: ", epoch + 1, ", Train loss: ", loss.numpy(), ", Test loss: ", test_loss.numpy())
 
             if config.EARLY_STOPPING:
                 if early_stopper.early_stop(np.mean(test_loss_lst[-10:])): #test_loss
                     break
+
+        #print("Pre-trained model (reconstruction):")
+        #print("Encoder:")
+        ##print((batch_s.shape[-1]))
+        #print(model.Encoder.summary(batch_s.shape[-1])) #batch_s[0].shape
+        #print("Decoder:")
+        #print(model.Decoder.summary()) #model.Encoder.predict(batch_s)[0].shape)
 
         if save_weights:
             model.save_weights(save_dir)
 
         return loss_lst, test_loss_lst, epoch+1
 
+
     elif pretrain_method == "NNCLR":
         #TODO: implement NNCLR pretraining
+        print("NNCLR still to be implemented")
 
     elif pretrain_method == "DINO":
 
@@ -379,3 +398,6 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
             model.save_weights(save_dir)
 
         return loss_lst, loss_lst, epoch + 1
+
+    else:
+        print("Choose valid pre train method pls")
