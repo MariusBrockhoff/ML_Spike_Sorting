@@ -259,7 +259,7 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
 
 
     if pretrain_method == "reconstruction":
-
+        initializer = True
         for epoch in range(config.NUM_EPOCHS):
 
             optimizer.learning_rate = lr_schedule[epoch]
@@ -273,8 +273,8 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
                     batch_s = batch[0]
 
 
-                if step == 0:
-                    model.Encoder.build((None, 63))
+                if initializer:
+                    model.Encoder.build((None, batch_s.shape[1]))
                     print(model.Encoder.summary())
                     out_layer = model.Encoder.layers[-1]
                     name = out_layer.name
@@ -284,12 +284,9 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
                     model.Decoder.build(output_shape)
                     print(model.Decoder.summary())
 
-                    model.build((None, 63))
+                    model.build((None, batch_s.shape[1]))
                     print(model.summary())
-
-
-                    #print(outputs.shape)
-                    #print(model.Encoder.build_graph(raw_input).summary())
+                    initializer = False
 
 
                 with tf.GradientTape() as tape:

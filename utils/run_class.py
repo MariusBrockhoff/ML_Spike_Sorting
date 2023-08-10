@@ -4,6 +4,7 @@ import os
 import sys
 
 cwd = os.getcwd()
+print(cwd)
 root_folder = os.sep+"ML_Spike_Sorting"
 sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep)
 

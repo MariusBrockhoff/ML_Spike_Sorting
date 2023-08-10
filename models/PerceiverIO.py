@@ -648,13 +648,13 @@ class Decoder(tf.keras.Model):
 
         self.reshaping = KL.Reshape((self.state_index*self.state_channels,), input_shape=(self.state_index, self.state_channels))
 
-        self.multiply = KL.Dense(self.state_index*self.state_channels, name="dulli")
+        self.multiply = KL.Dense(self.state_index*self.state_channels)
 
-        self.outputadapter = KL.Dense(self.seq_len, name="auchdulli")
+        self.outputadapter = KL.Dense(self.seq_len)
 
-        #self.outputadapter = Sequential([KL.Dense(self.state_index*self.state_channels),
-
-         #                               KL.Dense(self.seq_len)])
+        #self.outputadapter = Sequential([KL.Reshape((self.state_index*self.state_channels,), input_shape=(self.state_index, self.state_channels)),
+        #                                 KL.Dense(self.state_index*self.state_channels),
+          #                               KL.Dense(self.seq_len)])
     def call(self, inputs):
 
         inputs = rearrange(inputs, "a b -> a b 1")

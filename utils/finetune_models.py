@@ -240,7 +240,11 @@ class DEC(object):
     def initialize_model(self, optimizer, ae_weights=None):
 
         if ae_weights is not None:  # load pretrained weights of autoencoder
-            self.autoencoder(tf.keras.Input(shape=self.input_dim))
+            #self.autoencoder(tf.keras.Input(shape=self.input_dim))
+            self.autoencoder.Encoder.build((None, self.input_dim[0]))
+            self.autoencoder.Decoder.build(self.autoencoder.Encoder.layers[-1].output_shape)
+            dummy = tf.zeros(shape=[1,self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+            self.autoencoder(dummy)
             self.autoencoder.load_weights(ae_weights)
         else:
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
@@ -248,7 +252,7 @@ class DEC(object):
 
         self.encoder = self.autoencoder.Encoder
         inputs = tf.keras.Input(shape=self.input_dim)
-        outputs = self.autoencoder(inputs)
+        #outputs = self.autoencoder.Decoder.layers[-1].output_shape
 
         # prepare DEC model
         clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(inputs))
