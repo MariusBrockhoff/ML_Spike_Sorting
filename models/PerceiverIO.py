@@ -4,10 +4,10 @@ Definition of the PerceiverIO Class for Spike Sorting
 """
 import numpy as np
 import math
+import tensorflow as tf
 
 
 from einops import rearrange, repeat
-import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers as KL
 
@@ -324,11 +324,9 @@ class AttentionBlock(tf.keras.layers.Layer):
 
         state_0 = self.SelfAttention(latents)
 
-        state_stack = state_stack.write(0, state_0)
+        #state_stack = state_stack.write(0, state_0)
 
-        print(state_stack)
-
-        cond = lambda i, ss: tf.less(i, self.depth)
+        #cond = lambda i, ss: tf.less(i, self.depth)
 
         def body(i, state_stack):
 
@@ -347,8 +345,6 @@ class AttentionBlock(tf.keras.layers.Layer):
             i += 1
 
         #state_out = state_stack.read(i-1)
-
-        print(state_0)
 
         return state_0
 
@@ -530,7 +526,7 @@ class Encoder(tf.keras.Model):
 
                                 KL.LayerNormalization(axis=-1, trainable=False)])
 
-        self.logits_to_latent = Sequential([KL.Dense(self.latent_len)])
+        self.logits_to_latent = KL.Dense(self.latent_len) #Sequential([KL.Dense(self.latent_len)])
 
     def call(self, inputs):
 
@@ -555,9 +551,9 @@ class Encoder(tf.keras.Model):
       #  model = tf.keras.Model(inputs=x, outputs=self.call(x))
        # return model.summary()
 
-    def build_graph(self, raw_shape):
-        x = tf.keras.layers.Input(shape=raw_shape)
-        return tf.keras.Model(inputs=[x], outputs=self.call(x))
+    #def build_graph(self, raw_shape):
+     #   x = tf.keras.layers.Input(shape=raw_shape)
+      #  return tf.keras.Model(inputs=[x], outputs=self.call(x))
 
 
 class Decoder(tf.keras.Model):
@@ -650,11 +646,15 @@ class Decoder(tf.keras.Model):
 
                                            dropout_rate=self.dropout_rate)
 
-        self.outputadapter = Sequential([KL.Reshape((self.state_index*self.state_channels,), input_shape=(self.state_index, self.state_channels)),
+        self.reshaping = KL.Reshape((self.state_index*self.state_channels,), input_shape=(self.state_index, self.state_channels))
 
-                                        KL.Dense(self.state_index*self.state_channels),
+        self.multiply = KL.Dense(self.state_index*self.state_channels, name="dulli")
 
-                                        KL.Dense(self.seq_len)])
+        self.outputadapter = KL.Dense(self.seq_len, name="auchdulli")
+
+        #self.outputadapter = Sequential([KL.Dense(self.state_index*self.state_channels),
+
+         #                               KL.Dense(self.seq_len)])
     def call(self, inputs):
 
         inputs = rearrange(inputs, "a b -> a b 1")
@@ -667,9 +667,13 @@ class Decoder(tf.keras.Model):
 
         state = self.AttentionPipe(state, inputs)
 
-        output = self.outputadapter(state)
+        state = self.reshaping(state)
 
-        return output
+        state = self.multiply(state)
+
+        out = self.outputadapter(state)
+
+        return out
 
     #def summary(self, input_shape):
      #   x = tf.keras.Input(shape=input_shape)

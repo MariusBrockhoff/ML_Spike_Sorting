@@ -274,11 +274,21 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
 
 
                 if step == 0:
-                    print("here")
-                    raw_input = (63, )
-                    # The first call to the `cm` will create the weights
-                    y = model(tf.ones(shape=(0, *raw_input)))
+                    model.Encoder.build((None, 63))
                     print(model.Encoder.summary())
+                    out_layer = model.Encoder.layers[-1]
+                    name = out_layer.name
+                    input_shape = out_layer.input_shape
+                    output_shape = out_layer.output_shape
+                    print('%s   input shape: %s, output_shape: %s.\n' % (name, input_shape, output_shape))
+                    model.Decoder.build(output_shape)
+                    print(model.Decoder.summary())
+
+                    model.build((None, 63))
+                    print(model.summary())
+
+
+                    #print(outputs.shape)
                     #print(model.Encoder.build_graph(raw_input).summary())
 
 
