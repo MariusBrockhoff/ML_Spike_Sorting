@@ -6,9 +6,9 @@ import numpy as np
 import os
 import sys
 
-cwd = os.getcwd()
-root_folder = os.sep+"ML_Spike_Sorting"
-sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep)
+#cwd = os.getcwd()
+#root_folder = os.sep+"ML_Spike_Sorting"
+#sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep)
 
 from models.PerceiverIO import *
 from models.DINOPerceiver import *
