@@ -3,10 +3,12 @@ import time
 import os
 import sys
 
-cwd = os.getcwd()
-print(cwd)
-root_folder = os.sep+"ML_Spike_Sorting"
-sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep)
+#cwd = os.getcwd()
+#sys.path.insert(0, cwd + os.sep + "ML_Spike_Sorting" + os.sep)
+#cwd = os.getcwd()
+#print(cwd)
+#root_folder = os.sep+"ML_Spike_Sorting"
+#sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep)
 
 from utils.model_initializer import *
 from utils.data_preparation import *
