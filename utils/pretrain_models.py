@@ -283,14 +283,13 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
                     print('%s   input shape: %s, output_shape: %s.\n' % (name, input_shape, output_shape))
                     model.Decoder.build(output_shape)
                     print(model.Decoder.summary())
-
-                    model.build((None, batch_s.shape[1]))
+                    y = model(batch_s)
                     print(model.summary())
                     initializer = False
 
 
                 with tf.GradientTape() as tape:
-                    [_, _, output] = model(batch_s)
+                    [_, output] = model(batch_s)
 
                     loss = mse(batch_s, output)
                     grads = tape.gradient(loss, model.trainable_weights)
@@ -300,7 +299,7 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
             #test loss
             for step, batch in enumerate(dataset_test):
                 batch_t = batch[0]
-                [_, _, output] = model(batch_t)
+                [_, output] = model(batch_t)
                 test_loss = mse(batch_t, output)
                 test_loss_lst.append(test_loss)
 

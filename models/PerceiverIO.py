@@ -544,7 +544,7 @@ class Encoder(tf.keras.Model):
 
         logits = self.logits_to_latent(logits)
 
-        return ENC_state, logits
+        return logits
 
     #def summary(self, input_shape):
      #   x = tf.keras.Input(shape=input_shape)
@@ -834,8 +834,8 @@ class AutoPerceiver(tf.keras.Model):
 
     def call(self, inputs):
 
-        ENC_state, logits = self.Encoder(inputs)
+        logits = self.Encoder(inputs)
 
         output = self.Decoder(logits)
 
-        return ENC_state, logits, output
+        return logits, output

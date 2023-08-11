@@ -94,7 +94,7 @@ class DenseAutoencoder(tf.keras.Model):
 
         output = self.Decoder(logits)
 
-        return logits, logits, output
+        return logits, output
 
 
 def encoder_constructor(dims, act='relu'):

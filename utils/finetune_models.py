@@ -104,6 +104,57 @@ def target_distribution(q):
   weight = q ** 2 / q.sum(0)
   return (weight.T / weight.sum(1)).T
 
+
+class BaseModelDEC(tf.keras.Model):
+    def __init__(self,
+
+                 encoder,
+
+                 n_clusters):
+        super(BaseModelDEC, self).__init__()
+
+        self.Encoder = encoder
+
+        self.n_clusters = n_clusters
+
+        self.clustering = ClusteringLayer(self.n_clusters, name='clustering')
+
+    def call(self, inputs):
+
+        logits = self.Encoder(inputs)
+
+        out = self.clustering(logits)
+
+        return out
+
+class BaseModeIlDEC(tf.keras.Model):
+    def __init__(self,
+
+                 encoder,
+
+                 decoder,
+
+                 n_clusters):
+        super(BaseModeIlDEC, self).__init__()
+
+        self.Encoder = encoder
+
+        self.Decoder = decoder
+
+        self.n_clusters = n_clusters
+
+        self.clustering = ClusteringLayer(self.n_clusters, name='clustering')
+
+    def call(self, inputs):
+
+        logits = self.Encoder(inputs)
+
+        out = self.Decoder(logits)
+
+        clus = self.clustering(logits)
+
+        return clus, out
+
 class IDEC(object):
     def __init__(self,
                  model,
@@ -124,31 +175,34 @@ class IDEC(object):
 
     def initialize_model(self, ae_weights=None, gamma=0.1, optimizer='adam'):
         if ae_weights is not None:  # load pretrained weights of autoencoder
-            self.autoencoder(tf.keras.Input(shape=self.input_dim))
+            dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+            self.autoencoder(dummy)
             self.autoencoder.load_weights(ae_weights)
         else:
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
         self.encoder = self.autoencoder.Encoder
-        inputs = tf.keras.Input(shape=self.input_dim)
-        _,_,outputs = self.autoencoder(inputs)
 
         # prepare IDEC model
-        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(inputs))
-        self.model = tf.keras.models.Model(inputs=inputs,
-                           outputs=[clustering_layer, outputs])
+        self.model = BaseModeIlDEC(self.encoder, self.autoencoder.Decoder, self.n_clusters)
+        dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+        y = self.model(dummy)
         print(self.model.summary())
-        self.model.compile(loss={'clustering': 'kld', 'dense_autoencoder_1': 'mse'}, #Todo: Watch out, this might lead to a naming problem depending on how the autoencoder layer is called
+
+
+        # prepare IDEC model
+        self.model.compile(loss={'output_1': 'kld', 'output_2': 'mse'}, #Todo: Watch out, this might lead to a naming problem depending on how the autoencoder layer is called
                            loss_weights=[gamma, 1],
                            optimizer=optimizer)
+
+
 
     def load_weights(self, weights_path):  # load weights of IDEC model
         self.model.load_weights(weights_path)
 
     def extract_feature(self, x):  # extract features from before clustering layer
-        encoder = tf.keras.models.Model(tf.keras.Input(shape=self.input_dim), self.model.get_layer("encoder")(tf.keras.Input(shape=self.input_dim)))
-        return encoder.predict(x)
+        return self.model.Encoder(x)
 
 
     def predict_clusters(self, x):  # predict cluster labels using the output of clustering layer
@@ -179,7 +233,6 @@ class IDEC(object):
 
         loss = [0, 0, 0]
         index = 0
-        best_acc = 0
         for ite in range(int(maxiter)):
             if ite % update_interval == 0:
                 q, _ = self.model.predict(x, verbose=0)
@@ -203,10 +256,17 @@ class IDEC(object):
                     break
 
             # train on batch
-            if (index + 1) * self.batch_size > x.shape[0]:
+            if (index + 1) * self.batch_size > x.shape[0] and index * self.batch_size < x.shape[0]:
+
                 loss = self.model.train_on_batch(x=x[index * self.batch_size::],
                                                  y=[p[index * self.batch_size::], x[index * self.batch_size::]])
+
                 index = 0
+
+            elif (index + 1) * self.batch_size > x.shape[0] and index * self.batch_size == x.shape[0]:
+                index = 0
+                loss = 0
+
             else:
                 loss = self.model.train_on_batch(x=x[index * self.batch_size:(index + 1) * self.batch_size],
                                                  y=[p[index * self.batch_size:(index + 1) * self.batch_size],
@@ -238,11 +298,7 @@ class DEC(object):
         self.encoder = None
 
     def initialize_model(self, optimizer, ae_weights=None):
-
         if ae_weights is not None:  # load pretrained weights of autoencoder
-            #self.autoencoder(tf.keras.Input(shape=self.input_dim))
-            self.autoencoder.Encoder.build((None, self.input_dim[0]))
-            self.autoencoder.Decoder.build(self.autoencoder.Encoder.layers[-1].output_shape)
             dummy = tf.zeros(shape=[1,self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
             self.autoencoder(dummy)
             self.autoencoder.load_weights(ae_weights)
@@ -251,20 +307,20 @@ class DEC(object):
             exit()
 
         self.encoder = self.autoencoder.Encoder
-        inputs = tf.keras.Input(shape=self.input_dim)
-        #outputs = self.autoencoder.Decoder.layers[-1].output_shape
 
         # prepare DEC model
-        clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.autoencoder.Encoder(inputs))
-        self.model = tf.keras.models.Model(inputs=inputs, outputs=clustering_layer)
+        self.model = BaseModelDEC(self.encoder, self.n_clusters)
         self.model.compile(loss='kld', optimizer=optimizer)
+        self.model.build((None, self.input_dim[0]))
+        print(self.model.summary())
+        print(self.model.Encoder.summary())
+
 
     def load_weights(self, weights_path):  # load weights of DEC model
         self.model.load_weights(weights_path)
 
     def extract_feature(self, x):  # extract features from before clustering layer
-        encoder = tf.keras.models.Model(tf.keras.Input(shape=self.input_dim), self.model.get_layer("encoder")(tf.keras.Input(shape=self.input_dim)))
-        return encoder.predict(x)
+        return self.model.Encoder(x)
 
     def predict_clusters(self, x):  # predict cluster labels using the output of clustering layer
         q = self.model.predict(x, verbose=0)
@@ -290,10 +346,9 @@ class DEC(object):
         y_pred_last = y_pred
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
 
-        #np.random.shuffle(x)
+        np.random.shuffle(x)
         loss = 0
         index = 0
-        best_acc = 0
         for ite in range(int(maxiter)):
             if ite % update_interval == 0:
                 q = self.model.predict(x, verbose=0)
@@ -317,10 +372,16 @@ class DEC(object):
                     break
 
             # train on batch
-            if (index + 1) * self.batch_size > x.shape[0]:
+            if (index + 1) * self.batch_size > x.shape[0] and index * self.batch_size < x.shape[0]:
+
                 loss = self.model.train_on_batch(x=x[index * self.batch_size::],
                                                  y=p[index * self.batch_size::])
                 index = 0
+
+            elif (index + 1) * self.batch_size > x.shape[0] and index * self.batch_size == x.shape[0]:
+                index = 0
+                loss = 0
+
             else:
                 loss = self.model.train_on_batch(x=x[index * self.batch_size:(index + 1) * self.batch_size],
                                                  y=p[index * self.batch_size:(index + 1) * self.batch_size])
