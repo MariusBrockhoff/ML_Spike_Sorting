@@ -33,10 +33,6 @@ class Encoder(tf.keras.Model):
 
         return h
 
-    def summary(self, input_shape):
-        x = tf.keras.Input(shape=input_shape)
-        model = tf.keras.Model(inputs=[x], outputs=self.call(x))
-        return model.summary()
 
 class Decoder(tf.keras.Model):
     def __init__(self,
@@ -66,10 +62,6 @@ class Decoder(tf.keras.Model):
 
         return h
 
-    def summary(self, input_shape):
-        x = tf.keras.Input(shape=input_shape)
-        model = tf.keras.Model(inputs=[x], outputs=self.call(x))
-        return model.summary()
 
 class DenseAutoencoder(tf.keras.Model):
 

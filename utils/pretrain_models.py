@@ -274,16 +274,17 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
 
 
                 if initializer:
-                    model.Encoder.build((None, batch_s.shape[1]))
-                    print(model.Encoder.summary())
-                    out_layer = model.Encoder.layers[-1]
-                    name = out_layer.name
-                    input_shape = out_layer.input_shape
-                    output_shape = out_layer.output_shape
-                    print('%s   input shape: %s, output_shape: %s.\n' % (name, input_shape, output_shape))
-                    model.Decoder.build(output_shape)
-                    print(model.Decoder.summary())
                     y = model(batch_s)
+                    #model.Encoder.build((None, batch_s.shape[1]))
+                    print(model.Encoder.summary())
+                    #out_layer = model.Encoder.layers[-1]
+                    #name = out_layer.name
+                    #input_shape = out_layer.input_shape
+                    #output_shape = out_layer.output_shape
+                    #print('%s   input shape: %s, output_shape: %s.\n' % (name, input_shape, output_shape))
+                    #model.Decoder.build(output_shape)
+                    print(model.Decoder.summary())
+                    #y = model(batch_s)
                     print(model.summary())
                     initializer = False
 

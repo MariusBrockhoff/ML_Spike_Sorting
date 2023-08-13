@@ -192,7 +192,7 @@ class IDEC(object):
 
 
         # prepare IDEC model
-        self.model.compile(loss={'output_1': 'kld', 'output_2': 'mse'}, #Todo: Watch out, this might lead to a naming problem depending on how the autoencoder layer is called
+        self.model.compile(loss={'output_1': 'kld', 'output_2': 'mse'},
                            loss_weights=[gamma, 1],
                            optimizer=optimizer)
 
@@ -313,7 +313,6 @@ class DEC(object):
         self.model.compile(loss='kld', optimizer=optimizer)
         self.model.build((None, self.input_dim[0]))
         print(self.model.summary())
-        print(self.model.Encoder.summary())
 
 
     def load_weights(self, weights_path):  # load weights of DEC model
