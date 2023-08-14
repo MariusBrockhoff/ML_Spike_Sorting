@@ -399,51 +399,82 @@ class OneDtoTwoDLayer(tf.keras.layers.Layer):
 
         return output
 
-
-# TransformerEncoder + AEDecoder
-class TransformerEncoder_AEDecoder(tf.keras.Model):
-    def __init__(self, num_layers, d_model, num_heads, dff, pe_input, dropout, dec_dims, reg_value,
+class Encoder(tf.keras.Model):
+    def __init__(self,
+                 num_layers,
+                 d_model,
+                 num_heads,
+                 dff,
+                 pe_input,
+                 dropout,
                  latent_len):
-        super(TransformerEncoder_AEDecoder, self).__init__()
+        super(Encoder, self).__init__()
+
+        self.d_model = d_model
 
         self.encoder = AttnEncoder(num_layers, d_model, num_heads, dff, pe_input, dropout)
 
-        self.reduce_pos_enc = tf.keras.layers.Dense(1, activation='relu') #activity_regularizer=tf.keras.regularizers.l1(reg_value)
+        self.reduce_pos_enc = tf.keras.layers.Dense(1, activation='relu')  # activity_regularizer=tf.keras.regularizers.l1(reg_value)
+
         self.reshape_pos_enc = tf.keras.layers.Reshape((pe_input,), input_shape=(pe_input, 1))
 
-        self.latent_map = tf.keras.layers.Dense(latent_len, activation='relu') #activity_regularizer=tf.keras.regularizers.l1(reg_value)
+        self.latent_map = tf.keras.layers.Dense(latent_len,
+                                                activation='relu')  # activity_regularizer=tf.keras.regularizers.l1(reg_value)
+
+    def call(self, inp, training):
+
+        enc_output = self.encoder(inp, training, mask=None)  # (batch_size, inp_seq_len, d_model)
+
+        latent_vec = self.reduce_pos_enc(enc_output)
+
+        latent_vec = self.reshape_pos_enc(latent_vec)
+
+        latent_vec = self.latent_map(latent_vec)
+
+        return latent_vec
+
+
+class Decoder(tf.keras.Model):
+    def __init__(self,
+                 dec_dims,
+                 dropout,
+                 pe_input):
+        super(Decoder, self).__init__()
 
         self.decoder_layers = [
             tf.keras.layers.Dense(dec_dims[i], activation='relu', kernel_initializer='glorot_uniform',
                                   name='dense_decoder_%d' % i) for i in range(len(dec_dims))]
+
         self.dropout = tf.keras.layers.Dropout(dropout)
+
         self.final_dense = tf.keras.layers.Dense(pe_input)
 
-        self.d_model = d_model
-
-    def call(self, inp, training):
-        # Keras models prefer if you pass all your inputs in the first argument
-
-        #print('inp input', inp.shape)
-        enc_output = self.encoder(inp, training, mask=None)  # (batch_size, inp_seq_len, d_model)
-        #print('enc_output input', enc_output.shape)
-
-        latent_vec = self.reduce_pos_enc(enc_output)
-        latent_vec = self.reshape_pos_enc(latent_vec)
-        # latent_vec = tf.math.reduce_mean(enc_output, axis=-1)
-        #print('shape after reduce_pos_enc', latent_vec.shape)
-
-        latent_vec = self.latent_map(latent_vec)
-        #print('shape of latent_vec', latent_vec.shape)
+    def call(self, latent_vec, training):
 
         x = latent_vec
 
         for i in range(len(self.decoder_layers)):
             x = self.decoder_layers[i](x)
             x = self.dropout(x, training=training)
-            #print('shape after decoder layer:', x.shape)
 
         final_output = self.final_dense(x)
-        #print('final_output input',final_output.shape)
 
-        return inp, latent_vec, final_output
+        return final_output
+
+
+class TransformerEncoder_AEDecoder(tf.keras.Model):
+    def __init__(self, num_layers, d_model, num_heads, dff, pe_input, dropout, dec_dims, reg_value,
+                 latent_len):
+        super(TransformerEncoder_AEDecoder, self).__init__()
+
+        self.Encoder = Encoder(num_layers, d_model, num_heads, dff, pe_input, dropout, latent_len)
+
+        self.Decoder = Decoder(dec_dims, dropout, pe_input)
+
+    def call(self, inp, training):
+
+            latent_vec = self.Encoder(inp, training)
+
+            final_output = self.Decoder(latent_vec, training)
+
+            return latent_vec, final_output
