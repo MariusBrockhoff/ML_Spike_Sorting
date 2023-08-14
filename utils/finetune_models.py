@@ -127,7 +127,7 @@ class BaseModelDEC(tf.keras.Model):
 
         return out
 
-class BaseModeIlDEC(tf.keras.Model):
+class BaseModelIDEC(tf.keras.Model):
     def __init__(self,
 
                  encoder,
@@ -135,7 +135,7 @@ class BaseModeIlDEC(tf.keras.Model):
                  decoder,
 
                  n_clusters):
-        super(BaseModeIlDEC, self).__init__()
+        super(BaseModelIDEC, self).__init__()
 
         self.Encoder = encoder
 
@@ -185,7 +185,7 @@ class IDEC(object):
         self.encoder = self.autoencoder.Encoder
 
         # prepare IDEC model
-        self.model = BaseModeIlDEC(self.encoder, self.autoencoder.Decoder, self.n_clusters)
+        self.model = BaseModelIDEC(self.encoder, self.autoencoder.Decoder, self.n_clusters)
         dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
         y = self.model(dummy)
         print(self.model.summary())
