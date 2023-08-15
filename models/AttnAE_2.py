@@ -245,7 +245,7 @@ class AttnEncoder(tf.keras.layers.Layer):
         return x
 
 
-class Encoder(tf.keras.layers.Model):
+class Encoder(tf.keras.Model):
     def __init__(self,
                  d_model,
                  dff,
@@ -299,7 +299,7 @@ class Encoder(tf.keras.layers.Model):
         return latents
 
 
-class Decoder(tf.keras.layers.Model):
+class Decoder(tf.keras.Model):
     def __init__(self,
                  DEC_layers):
         super(Decoder, self).__init__()
