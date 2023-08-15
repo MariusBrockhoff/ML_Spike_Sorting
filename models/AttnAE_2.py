@@ -267,8 +267,8 @@ class Encoder(tf.keras.Model):
         self.ENC_attn_heads = ENC_attn_heads
         self.ENC_dropout_rate = ENC_dropout_rate
         self.reg_value = reg_value
-        self.embedding = Sequential([KL.Dense(self.d_model)])  # Add normalization (*sqrt(embedding_dim))
 
+        self.embedding = Sequential([KL.Dense(self.d_model)])  # Add normalization (*sqrt(embedding_dim))
         self.positional_enc = positional_encoding(self.seq_len, self.d_model)
         self.encoder = AttnEncoder(self.d_model, self.dff, self.ENC_depth, self.ENC_attn_dim, self.ENC_attn_heads,
                                self.ENC_dropout_rate)
@@ -354,7 +354,6 @@ class Attention_AE(tf.keras.Model):
         self.ENC_dropout_rate = ENC_dropout_rate
         self.DEC_layers = DEC_layers
         self.reg_value = reg_value
-        self.embedding = Sequential([KL.Dense(self.d_model)])
 
         self.Encoder = Encoder(d_model=self.d_model,
                                dff=self.dff,
