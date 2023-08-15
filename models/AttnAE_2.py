@@ -301,10 +301,12 @@ class Encoder(tf.keras.Model):
 
 class Decoder(tf.keras.Model):
     def __init__(self,
-                 DEC_layers):
+                 DEC_layers,
+                 seq_len):
         super(Decoder, self).__init__()
 
         self.DEC_layers = DEC_layers
+        self.seq_len = seq_len
 
         self.decoder_layers = [KL.Dense(self.DEC_layers[i], kernel_initializer='glorot_uniform') for i in
                                range(len(self.DEC_layers))]
@@ -364,7 +366,8 @@ class Attention_AE(tf.keras.Model):
                                ENC_dropout_rate=self.ENC_dropout_rate,
                                reg_value=self.reg_value)
 
-        self.Decoder = Decoder(DEC_layers=self.DEC_layers)
+        self.Decoder = Decoder(DEC_layers=self.DEC_layers,
+                               seq_len=self.seq_len)
 
     def call(self, inputs):
 
