@@ -88,6 +88,32 @@ def wandb_initializer(config):
                     "D_MODEL": config.D_MODEL,
                     "LATENT_LEN": config.LATENT_LEN,
                     "DATA_AUG": config.DATA_AUG})
+
+    elif config.MODEL_TYPE == "AttnAE_2":
+        wandb.init(
+            # set the wandb project where this run will be logged
+            project=config.MODEL_TYPE,
+            # track hyperparameters and run metadata with wandb.config
+            config={"Model": config.MODEL_TYPE,
+                    "DATA_PREP_METHOD": config.DATA_PREP_METHOD,
+                    "DATA_NORMALIZATION": config.DATA_NORMALIZATION,
+                    "LEARNING_RATE": config.LEARNING_RATE,
+                    "WITH_WARMUP": config.WITH_WARMUP,
+                    "LR_WARMUP": config.LR_WARMUP,
+                    "LR_FINAL": config.LR_FINAL,
+                    "NUM_EPOCHS": config.NUM_EPOCHS,
+                    "BATCH_SIZE": config.BATCH_SIZE,
+                    "REG_VALUE": config.REG_VALUE,
+                    "DROPOUT_RATE": config.DROPOUT_RATE,
+                    "DATA_PREP": config.DATA_PREP,
+                    "ENC_DEPTH": config.ENC_DEPTH,
+                    "DFF": config.DFF,
+                    "NUM_ATTN_HEADS": config.NUM_ATTN_HEADS,
+                    "DEC_LAYERS": config.DEC_LAYERS,
+                    "D_MODEL": config.D_MODEL,
+                    "LATENT_LEN": config.LATENT_LEN,
+                    "DATA_AUG": config.DATA_AUG})
+
     elif config.MODEL_TYPE == "FullTransformer":
         wandb.init(
             # set the wandb project where this run will be logged
