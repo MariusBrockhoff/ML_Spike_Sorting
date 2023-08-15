@@ -467,9 +467,27 @@ class TransformerEncoder_AEDecoder(tf.keras.Model):
                  latent_len):
         super(TransformerEncoder_AEDecoder, self).__init__()
 
-        self.Encoder = Encoder(num_layers, d_model, num_heads, dff, pe_input, dropout, latent_len)
+        self.num_layers = num_layers
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.dff = dff
+        self.pe_input = pe_input
+        self.dropout = dropout
+        self.dec_dims = dec_dims
+        self.reg_value = reg_value
+        self.latent_len = latent_len
 
-        self.Decoder = Decoder(dec_dims, dropout, pe_input)
+        self.Encoder = Encoder(num_layers=self.num_layers,
+                               d_model=self.d_model,
+                               num_heads=self.num_heads,
+                               dff=self.dff,
+                               pe_input=self.pe_input,
+                               dropout=self.dropout,
+                               latent_len=self.latent_len)
+
+        self.Decoder = Decoder(dec_dims=self.dec_dims,
+                               dropout=self.dropout,
+                               pe_input=self.pe_input)
 
     def call(self, inp, training):
 

@@ -198,7 +198,7 @@ class EBlock(tf.keras.Model):
         return state_mlp
 
 
-class Encoder(tf.keras.layers.Layer):
+class AttnEncoder(tf.keras.layers.Layer):
 
     def __init__(self,
 
@@ -213,7 +213,7 @@ class Encoder(tf.keras.layers.Layer):
                  attn_heads=8,
 
                  dropout_rate=0.2):
-        super(Encoder, self).__init__()
+        super(AttnEncoder, self).__init__()
 
         self.d_model = d_model
 
@@ -245,69 +245,66 @@ class Encoder(tf.keras.layers.Layer):
         return x
 
 
-class Attention_AE(tf.keras.Model):
-
+class Encoder(tf.keras.layers.Model):
     def __init__(self,
-
                  d_model,
-
                  dff,
-
                  seq_len,
-
                  latent_len,
-
                  ENC_depth,
-
                  ENC_attn_dim,
-
                  ENC_attn_heads,
-
                  ENC_dropout_rate,
-
-                 DEC_layers,
-
                  reg_value):
-        super(Attention_AE, self).__init__()
+        super(Encoder, self).__init__()
 
         self.d_model = d_model
-
         self.dff = dff
-
         self.seq_len = seq_len
-
         self.latent_len = latent_len
-
         self.ENC_depth = ENC_depth
-
         self.ENC_attn_dim = ENC_attn_dim
-
         self.ENC_attn_heads = ENC_attn_heads
-
         self.ENC_dropout_rate = ENC_dropout_rate
-
-        self.DEC_layers = DEC_layers
-
         self.reg_value = reg_value
-
         self.embedding = Sequential([KL.Dense(self.d_model)])  # Add normalization (*sqrt(embedding_dim))
 
-        # self.fourier_enc = fourier_encoding(max_freq=self.max_freq, num_bands=self.num_bands, base=self.base)
-
         self.positional_enc = positional_encoding(self.seq_len, self.d_model)
-
-        self.encoder = Encoder(self.d_model, self.dff, self.ENC_depth, self.ENC_attn_dim, self.ENC_attn_heads,
+        self.encoder = AttnEncoder(self.d_model, self.dff, self.ENC_depth, self.ENC_attn_dim, self.ENC_attn_heads,
                                self.ENC_dropout_rate)
 
         self.reduc_pos_enc = Sequential(
             [KL.Dense(1, activation='relu'),
 
-             KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))]) #PREVIOUS: self.reduc_pos_enc = Sequential(
-            #[KL.Dense(1, activation='relu', activity_regularizer=tf.keras.regularizers.l1(self.reg_value)),
-            # KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))])
+             KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))])  # PREVIOUS: self.reduc_pos_enc = Sequential(
+        # [KL.Dense(1, activation='relu', activity_regularizer=tf.keras.regularizers.l1(self.reg_value)),
+        # KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))])
 
-        self.ENC_to_logits = Sequential([KL.Dense(self.latent_len, activation='relu')]) #PREVIOUS: self.ENC_to_logits = Sequential([KL.Dense(self.latent_len, activation='relu',
-                                                  #activity_regularizer=tf.keras.regularizers.l1(self.reg_value))])
+        self.ENC_to_logits = Sequential([KL.Dense(self.latent_len,
+                                                  activation='relu')])  # PREVIOUS: self.ENC_to_logits = Sequential([KL.Dense(self.latent_len, activation='relu',
+        # activity_regularizer=tf.keras.regularizers.l1(self.reg_value))])
+
+    def call(self, inputs):
+
+        inputs = rearrange(inputs, "a b -> a b 1")
+        inputs = self.embedding(inputs)
+        # inputs = self.fourier_enc(inputs)
+        inputs += self.positional_enc
+
+        # Encoder
+        encoded = self.encoder(inputs)
+        encoded = self.reduc_pos_enc(encoded)
+        latents = self.ENC_to_logits(encoded)
+
+        return latents
+
+
+class Decoder(tf.keras.layers.Model):
+    def __init__(self,
+                 DEC_layers):
+        super(Decoder, self).__init__()
+
+        self.DEC_layers = DEC_layers
 
         self.decoder_layers = [KL.Dense(self.DEC_layers[i], kernel_initializer='glorot_uniform') for i in
                                range(len(self.DEC_layers))]
@@ -315,41 +312,64 @@ class Attention_AE(tf.keras.Model):
         self.outputadapter = Sequential([KL.Dense(self.seq_len)])
 
     def call(self, inputs):
-        # Input + Pos ENC
 
-        #print('shape input:', inputs.shape)
-
-        inputs = rearrange(inputs, "a b -> a b 1")
-        #print('shape after rearrange:', inputs.shape)
-
-        inputs = self.embedding(inputs)
-        #print('shape after embedding:', inputs.shape)
-
-        # inputs = self.fourier_enc(inputs)
-
-        inputs += self.positional_enc
-        #print('shape after positional_enc:', inputs.shape)
-
-        # Encoder
-
-        encoded = self.encoder(inputs)
-        #print('shape after encoder:', encoded.shape)
-
-        encoded = self.reduc_pos_enc(encoded)
-        #print('shape after reduc_pos_enc:', encoded.shape)
-
-        latents = self.ENC_to_logits(encoded)
-        #print('shape latents:', latents.shape)
-
-        x = latents
+        x = inputs
 
         # Decoder
-
         for i in range(len(self.decoder_layers)):
             x = self.decoder_layers[i](x)
-            #print('shape after decoder layer:', x.shape)
 
         output = self.outputadapter(x)
-        #print('shape of output:', output.shape)
 
-        return encoded, latents, output
+        return output
+
+
+
+
+
+class Attention_AE(tf.keras.Model):
+
+    def __init__(self,
+                 d_model,
+                 dff,
+                 seq_len,
+                 latent_len,
+                 ENC_depth,
+                 ENC_attn_dim,
+                 ENC_attn_heads,
+                 ENC_dropout_rate,
+                 DEC_layers,
+                 reg_value):
+        super(Attention_AE, self).__init__()
+
+        self.d_model = d_model
+        self.dff = dff
+        self.seq_len = seq_len
+        self.latent_len = latent_len
+        self.ENC_depth = ENC_depth
+        self.ENC_attn_dim = ENC_attn_dim
+        self.ENC_attn_heads = ENC_attn_heads
+        self.ENC_dropout_rate = ENC_dropout_rate
+        self.DEC_layers = DEC_layers
+        self.reg_value = reg_value
+        self.embedding = Sequential([KL.Dense(self.d_model)])
+
+        self.Encoder = Encoder(d_model=self.d_model,
+                               dff=self.dff,
+                               seq_len=self.seq_len,
+                               latent_len=self.latent_len,
+                               ENC_depth=self.ENC_depth,
+                               ENC_attn_dim=self.ENC_attn_dim,
+                               ENC_attn_heads=self.ENC_attn_heads,
+                               ENC_dropout_rate=self.ENC_dropout_rate,
+                               reg_value=self.reg_value)
+
+        self.Decoder = Decoder(DEC_layers=self.DEC_layers)
+
+    def call(self, inputs):
+
+        latent_vec = self.Encoder(inputs)
+
+        final_output = self.Decoder(latent_vec)
+
+        return latent_vec, final_output
