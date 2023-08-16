@@ -22,7 +22,7 @@ class Config_FullTransformer(object):
         ###GENERAL
         self.REG_VALUE = 10e-3
         self.DROPOUT_RATE = 0.1
-        self.NUM_EPOCHS = 100 #100
+        self.NUM_EPOCHS = 10 #100
         self.PLOT = False
         self.BATCH_SIZE = 512
         self.LEARNING_RATE = 0.00002 #1e-5
@@ -37,7 +37,7 @@ class Config_FullTransformer(object):
         self.DATA_PREP = 'embedding'
 
         #encoder depth = number of attention modules
-        self.ENC_DEPTH = 8
+        self.ENC_DEPTH = 4
 
         # dff = shape of dense layer in attention module
         self.DFF = 512 #128

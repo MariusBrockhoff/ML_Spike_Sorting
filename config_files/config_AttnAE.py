@@ -22,9 +22,9 @@ class Config_AttnAE(object):
         ###GENERAL
         self.REG_VALUE = 10e-3
         self.DROPOUT_RATE = 0.1
-        self.NUM_EPOCHS = 100 #75
+        self.NUM_EPOCHS = 10 #75
         self.PLOT = False
-        self.BATCH_SIZE = 128
+        self.BATCH_SIZE = 512
         self.LEARNING_RATE = 1e-5 #1e-9 #1e-12 #1e-5
         self.WITH_WARMUP = False #False
         self.LR_WARMUP = 10
@@ -37,7 +37,7 @@ class Config_AttnAE(object):
         self.DATA_PREP = 'embedding'
 
         #encoder depth = number of attention modules
-        self.ENC_DEPTH = 20 #12
+        self.ENC_DEPTH = 4 #12
 
         # dff = shape of dense layer in attention module
         self.DFF = 128 #128
