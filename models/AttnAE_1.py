@@ -31,17 +31,13 @@ class autoencoder(tf.keras.layers.Layer):
 
     def call(self, x, training):
 
-        #print('shape input:', x.shape)
-
         # internal layers in ae_encoder
         for i in range(len(self.dims[:-1])):
             x = self.encoder_layers[i](x)
             x = self.dropout(x, training=training)
-            #print('shape after encoder layer:', x.shape)
 
         # hidden layer
         latent_vec = self.hidden(x)  # hidden layer, features are extracted from here
-        #print('shape after latent_vec:', latent_vec.shape)
         x = latent_vec
 
         # internal layers in ae_decoder
@@ -49,11 +45,9 @@ class autoencoder(tf.keras.layers.Layer):
         for i in range(len(self.dims[:-1])):
             x = self.decoder_layers[i](x)
             x = self.dropout(x, training=training)
-            #print('shape after decoder layer:', x.shape)
 
         # back to default signal_length
         x = self.last_dense_layer(x)
-        #print('shape after last decoder layer:', x.shape)
 
         return x, latent_vec, x
 

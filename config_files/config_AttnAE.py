@@ -72,7 +72,8 @@ class Config_AttnAE(object):
 
         #SAVE MODEL
         self.SAVE_WEIGHTS = True
-        self.SAVE_DIR = '/home/jnt27/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}_{REG_VALUE}_{DROPOUT_RATE}_{DATA_PREP}_{ENC_DEPTH}_{DFF}_{DEC_LAYERS}_{D_MODEL}_{LATENT_LEN}_{DATA_AUG}.pth'.format(
+        self.SAVE_DIR = '/home/jnt27/ML_Spike_Sorting/trained_models/test.pth'
+        '''self.SAVE_DIR = '/home/jnt27/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}_{REG_VALUE}_{DROPOUT_RATE}_{DATA_PREP}_{ENC_DEPTH}_{DFF}_{DEC_LAYERS}_{D_MODEL}_{LATENT_LEN}_{DATA_AUG}.pth'.format(
             MODEL_TYPE=self.MODEL_TYPE,
             DATA_PREP_METHOD=self.DATA_PREP_METHOD,
             DATA_NORMALIZATION=self.DATA_NORMALIZATION,
@@ -84,6 +85,6 @@ class Config_AttnAE(object):
             DEC_LAYERS=self.DEC_LAYERS,
             D_MODEL=self.D_MODEL,
             LATENT_LEN=self.LATENT_LEN,
-            DATA_AUG=self.DATA_AUG)
+            DATA_AUG=self.DATA_AUG)'''
 
 
