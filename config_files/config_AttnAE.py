@@ -59,6 +59,7 @@ class Config_AttnAE(object):
         self.N_CLUSTERS = 5
         self.EPS = None
         self.MIN_CLUSTER_SIZE = 1000
+        self.KNN = 1000
 
         #AUGMENTATION
         self.DATA_AUG = False
