@@ -57,6 +57,8 @@ class Config_Finetuning(object):
 
         self.PSEUDO_EPOCHS = 50
 
+        self.PSEUDO_BATCH_SIZE = 256
+
         self.PSEUDO_RATIO = 0.2
 
         self.PSEUDO_SAVE_DIR = '/rds/user/jnt27/hpc-work/SpikeSorting/trained_models/ ' + "PseudoLabels_" + self.FILE_NAME + ".h5"
