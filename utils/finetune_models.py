@@ -486,10 +486,8 @@ class PseudoLabel(object):
 
     def finetune_on_pseudos(self, save_Pseudo_dir, x, y, x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points):
 
-        input_shape = (63,)
-
         finetuning_model = tf.keras.Sequential(
-            [tf.keras.layers.Input(shape=input_shape),
+            [tf.keras.layers.Input(shape=self.input_dim[0]),
                 self.encoder,
                 tf.keras.layers.Dropout(0.1),
                 tf.keras.layers.Dense(self.n_clusters, activation='softmax'),],
@@ -567,6 +565,13 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
         pseudo_label.initialize_model(ae_weights=load_dir)
 
         x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
+
+        print('shape x:', x.shape)
+        print('shape y:', y.shape)
+        print('shape x_label_points:', x_label_points.shape)
+        print('shape y_pred_labelled_points:', y_pred_labelled_points.shape)
+        print('shape x_unlabel_points:', x_unlabel_points.shape)
+        print('shape y_unlabel_points:', y_unlabel_points.shape)
 
         y_pred_finetuned = pseudo_label.finetune_on_pseudos(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                             x=x,
