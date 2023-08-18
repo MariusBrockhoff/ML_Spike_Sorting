@@ -87,7 +87,7 @@ class Config_DenseAutoencoder(object):
 
         self.SAVE_WEIGHTS = True
 
-        self.SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrained_dense_"+ self.FILE_NAME + ".h5"
+        self.SAVE_DIR = "/rds/user/jnt27/hpc-work/SpikeSorting/trained_models/" + "Pretrained_dense.h5"
 
         #self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
         #                '_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{LATENT_LEN}_{DIMS}.pth'.format(
