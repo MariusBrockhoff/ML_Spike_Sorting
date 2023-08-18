@@ -561,13 +561,13 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
 
         pseudo_label = PseudoLabel(model=model,
                                    input_dim=x[0,:].shape,
-                                   n_clusters=finetune_config.PSEUDOLABEL_N_CLUSTERS,
-                                   batch_size=finetune_config.PSEUDOLABEL_BATCH_SIZE,
+                                   n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
+                                   batch_size=finetune_config.PSEUDO_BATCH_SIZE,
                                    epochs=finetune_config.PSEUDO_EPOCHS)
 
-        x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y, label_ratio=finetune_config.PSEUDO_LABEL_RATIO)
+        x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
 
-        y_pred_finetuned = pseudo_label.finetune_on_pseudos(save_Pseudo_dir=finetune_config.PSEUDOLABEL_SAVE_DIR,
+        y_pred_finetuned = pseudo_label.finetune_on_pseudos(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                             x=x,
                                                             y=y,
                                                             x_label_points=x_label_points,
