@@ -51,5 +51,13 @@ class Config_Finetuning(object):
 
         self.IDEC_SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "IDEC_"+ self.FILE_NAME + ".h5"
 
+        # PseudoLabels
+
+        self.PSEUDO_EPOCHS = 50
+
+        self.PSEUDO_LABEL_RATIO = 0.2
+
+        self.PSEUDOLABEL_SAVE_DIR = '/rds/user/jnt27/hpc-work/SpikeSorting/trained_models/ ' + "PseudoLabels_" + self.FILE_NAME + ".h5"
+
 
 
