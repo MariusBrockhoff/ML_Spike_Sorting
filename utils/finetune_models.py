@@ -411,7 +411,7 @@ class PseudoLabel(object):
         self.model = None
         self.encoder = None
 
-    def initialize_model(self, ae_weights=None, optimizer='adam'):
+    def initialize_model(self, ae_weights=None):
         if ae_weights is not None:  # load pretrained weights of autoencoder
             dummy = tf.zeros(shape=[1,self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
             self.autoencoder(dummy)
@@ -564,6 +564,8 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
                                    n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
                                    batch_size=finetune_config.PSEUDO_BATCH_SIZE,
                                    epochs=finetune_config.PSEUDO_EPOCHS)
+
+        pseudo_label.initialize_model(ae_weights=load_dir)
 
         x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
 
