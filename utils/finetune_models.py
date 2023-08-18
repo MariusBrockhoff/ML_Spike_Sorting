@@ -421,7 +421,6 @@ class PseudoLabel(object):
             exit()
 
         self.encoder = self.autoencoder.Encoder
-        print(self.model.summary())
 
     def get_pseudo_labels(self, x, y, label_ratio):
 
