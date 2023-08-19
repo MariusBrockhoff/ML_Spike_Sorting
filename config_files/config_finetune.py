@@ -61,7 +61,7 @@ class Config_Finetuning(object):
 
         self.PSEUDO_RATIO = 0.2
 
-        self.PSEUDO_SAVE_DIR = '/rds/user/jnt27/hpc-work/SpikeSorting/trained_models/ ' + "PseudoLabels_" + self.FILE_NAME + ".h5"
+        self.PSEUDO_SAVE_DIR = '/rds/user/jnt27/hpc-work/SpikeSorting/trained_models/ ' + "PseudoLabels.h5"
 
 
 
