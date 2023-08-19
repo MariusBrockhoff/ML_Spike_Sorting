@@ -533,7 +533,7 @@ class PseudoLabel(object):
 
         print(acc(y_pred, y.astype(int)))
 
-        self.model.save_weights(save_Pseudo_dir)
+        self.encoder.save_weights(save_Pseudo_dir)
         return y_pred
 
 
