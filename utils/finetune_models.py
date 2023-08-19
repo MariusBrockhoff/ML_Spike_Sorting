@@ -471,8 +471,8 @@ class PseudoLabel(object):
         y_label_points = y[label_points]
         x_label_points = x[label_points, :]
 
-        y_unlabel_points = y[label_points]
-        x_unlabel_points = x[label_points, :]
+        y_unlabel_points = y[unlabelled_points]
+        x_unlabel_points = x[unlabelled_points, :]
 
         kmeans = KMeans(n_clusters=5)
         y_pred_labelled_points = kmeans.fit_predict(x_label_points)
@@ -496,7 +496,7 @@ class PseudoLabel(object):
         finetuning_model.compile(
             optimizer=tf.keras.optimizers.Adam(),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc"), acc],
+            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="CatAcc"), acc],
             run_eagerly=True)
 
         finetuning_history = finetuning_model.fit(
