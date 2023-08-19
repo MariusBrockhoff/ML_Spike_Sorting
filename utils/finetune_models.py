@@ -469,10 +469,10 @@ class PseudoLabel(object):
         labels[label_points] = 1
 
         y_label_points = y[label_points]
-        x_label_points = data[label_points, :]
+        x_label_points = x[label_points, :]
 
         y_unlabel_points = y[label_points]
-        x_unlabel_points = data[label_points, :]
+        x_unlabel_points = x[label_points, :]
 
         kmeans = KMeans(n_clusters=5)
         y_pred_labelled_points = kmeans.fit_predict(x_label_points)
