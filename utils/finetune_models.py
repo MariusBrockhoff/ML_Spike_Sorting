@@ -34,6 +34,31 @@ def acc(y_true, y_pred):
     ind = np.transpose(ind)
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
+def acc_tf(y_true, y_pred):
+    """
+    Calculate clustering accuracy. Require scikit-learn installed
+    # Arguments
+        y: true labels, numpy.array with shape `(n_samples,)`
+        y_pred: predicted labels, numpy.array with shape `(n_samples,)`
+    # Return
+        accuracy, in [0,1]
+    """
+    y_true = y_true.numpy()
+    y_pred = y_pred.numpy()
+    y_pred = y_pred.argmax(1)
+    y_pred = y_pred.astype(np.int64)
+    y_true = y_true.astype(np.int64)
+    assert y_pred.size == y_true.size
+    D = max(y_pred.max(), y_true.max()) + 1
+    w = np.zeros((D, D), dtype=np.int64)
+    for i in range(y_pred.size):
+        w[y_pred[i], y_true[i]] += 1
+    from scipy.optimize import linear_sum_assignment
+    ind = linear_sum_assignment(w.max() - w)
+    ind = np.asarray(ind)
+    ind = np.transpose(ind)
+    return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
+
 
 class ClusteringLayer(tf.keras.layers.Layer):
     """
@@ -496,7 +521,7 @@ class PseudoLabel(object):
         finetuning_model.compile(
             optimizer=tf.keras.optimizers.Adam(),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="CatAcc"), acc],
+            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc"), acc_tf],
             run_eagerly=True)
 
         finetuning_history = finetuning_model.fit(
@@ -565,13 +590,6 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
         pseudo_label.initialize_model(ae_weights=load_dir)
 
         x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
-
-        print('shape x:', x.shape)
-        print('shape y:', y.shape)
-        print('shape x_label_points:', x_label_points.shape)
-        print('shape y_pred_labelled_points:', y_pred_labelled_points.shape)
-        print('shape x_unlabel_points:', x_unlabel_points.shape)
-        print('shape y_unlabel_points:', y_unlabel_points.shape)
 
         y_pred_finetuned = pseudo_label.finetune_on_pseudos(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                             x=x,
