@@ -5,8 +5,7 @@ class Config_DenseAutoencoder(object):
         super(Config_DenseAutoencoder, self).__init__()
 
         self.data_path = data_path
-        self.FILE_NAME = self.data_path.rpartition('\\')[-1]
-
+        self.FILE_NAME = self.data_path.rpartition('/')[-1][:-4]
 
         # Data
 
@@ -20,26 +19,25 @@ class Config_DenseAutoencoder(object):
 
         self.BENCHMARK_START_IDX = 0
 
-        self.BENCHMARK_END_IDX = 5 #int(1/self.TRAIN_TEST_SPLIT)
+        self.BENCHMARK_END_IDX = 5  # int(1/self.TRAIN_TEST_SPLIT)
 
+        # TRAINING HYPERPARAMETERS
 
-       # TRAINING HYPERPARAMETERS
-
-        self.LEARNING_RATE = 1e-4 #1e-4 #1e-6
+        self.LEARNING_RATE = 1e-4  # 1e-4 #1e-6
 
         self.WITH_WARMUP = False
 
-        self.LR_WARMUP = 10 #2 #10
+        self.LR_WARMUP = 10  # 2 #10
 
-        self.LR_FINAL = 1e-4  #1e-6 1e-8
+        self.LR_FINAL = 1e-4  # 1e-6 1e-8
 
         self.WITH_WD = False
 
-        self.WEIGHT_DECAY = 1e-2 #1e-5 1e-7
+        self.WEIGHT_DECAY = 1e-2  # 1e-5 1e-7
 
-        self.WD_FINAL = 1e-4    #1e-41e-6
+        self.WD_FINAL = 1e-4  # 1e-41e-6
 
-        self.NUM_EPOCHS = 10
+        self.NUM_EPOCHS = 200
 
         self.BATCH_SIZE = 4096
 
@@ -49,12 +47,11 @@ class Config_DenseAutoencoder(object):
 
         self.MIN_DELTA = 0.0001
 
-        self.BASELINE = 0.0007
+        self.BASELINE = 0
 
         self.DATA_AUG = False
 
-
-        #Architecture
+        # Architecture
 
         self.MODEL_TYPE = "DenseAutoencoder"
 
@@ -66,8 +63,7 @@ class Config_DenseAutoencoder(object):
 
         self.ACT = "relu"
 
-
-        #Clustering
+        # Clustering
 
         self.CLUSTERING_METHOD = "Kmeans"
 
@@ -87,9 +83,9 @@ class Config_DenseAutoencoder(object):
 
         self.SAVE_WEIGHTS = True
 
-        self.SAVE_DIR = "/rds/user/jnt27/hpc-work/SpikeSorting/trained_models/" + "Pretrained_dense.h5"
+        self.SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
 
-        #self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
+        # self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
         #                '_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{LATENT_LEN}_{DIMS}.pth'.format(
         #    MODEL_TYPE=self.MODEL_TYPE,
         #    DATA_PREP_METHOD=self.DATA_PREP_METHOD,
