@@ -197,7 +197,6 @@ class IDEC(object):
         self.alpha = alpha
         self.batch_size = batch_size
         self.model = None
-        self.encoder = None
 
     def initialize_model(self, ae_weights=None, gamma=0.1, optimizer='adam'):
         if ae_weights is not None:  # load pretrained weights of autoencoder
@@ -208,10 +207,9 @@ class IDEC(object):
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
-        self.encoder = self.autoencoder.Encoder
 
         # prepare IDEC model
-        self.model = BaseModelIDEC(self.encoder, self.autoencoder.Decoder, self.n_clusters)
+        self.model = BaseModelIDEC(self.autoencoder.Encoder, self.autoencoder.Decoder, self.n_clusters)
         dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
         y = self.model(dummy)
         print(self.model.summary())
@@ -228,7 +226,7 @@ class IDEC(object):
         self.model.load_weights(weights_path)
 
     def extract_feature(self, x):  # extract features from before clustering layer
-        return self.model.Encoder(x)
+        return self.model.Encoder.predict(x)
 
 
     def predict_clusters(self, x):  # predict cluster labels using the output of clustering layer
@@ -253,7 +251,7 @@ class IDEC(object):
         # initialize cluster centers using k-means
         print('Initializing cluster centers with k-means.')
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred = kmeans.fit_predict(self.encoder.predict(x))
+        y_pred = kmeans.fit_predict(self.model.Encoder.predict(x))
         y_pred_last = y_pred
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
 
@@ -321,7 +319,6 @@ class DEC(object):
         self.alpha = alpha
         self.batch_size = batch_size
         self.model = None
-        self.encoder = None
 
     def initialize_model(self, optimizer, ae_weights=None):
         if ae_weights is not None:  # load pretrained weights of autoencoder
@@ -332,10 +329,9 @@ class DEC(object):
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
-        self.encoder = self.autoencoder.Encoder
 
         # prepare DEC model
-        self.model = BaseModelDEC(self.encoder, self.n_clusters)
+        self.model = BaseModelDEC(self.autoencoder.Encoder, self.n_clusters)
         self.model.compile(loss='kld', optimizer=optimizer)
         self.model.build((None, self.input_dim[0]))
         print(self.model.summary())
@@ -345,7 +341,7 @@ class DEC(object):
         self.model.load_weights(weights_path)
 
     def extract_feature(self, x):  # extract features from before clustering layer
-        return self.model.Encoder(x)
+        return self.model.Encoder.predict(x)
 
     def predict_clusters(self, x):  # predict cluster labels using the output of clustering layer
         q = self.model.predict(x, verbose=0)
@@ -367,11 +363,11 @@ class DEC(object):
         # initialize cluster centers using k-means
         print('Initializing cluster centers with k-means.')
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred = kmeans.fit_predict(self.encoder.predict(x))
+        y_pred = kmeans.fit_predict(self.model.Encoder.predict(x))
         y_pred_last = y_pred
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
 
-        np.random.shuffle(x)
+
         loss = 0
         index = 0
         for ite in range(int(maxiter)):
@@ -499,11 +495,11 @@ class PseudoLabel(object):
         y_unlabel_points = y[unlabelled_points]
         x_unlabel_points = x[unlabelled_points, :]
 
-        kmeans = KMeans(n_clusters=5)
+        kmeans = KMeans(n_clusters=5, n_init=20)
         y_pred_labelled_points = kmeans.fit_predict(x_label_points)
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
 
-        kmeans = KMeans(n_clusters=5)
+        kmeans = KMeans(n_clusters=5, n_init=20)
         y_pred = kmeans.fit_predict(data)
         print("vs. Accuracy on all points:", acc(y, y_pred))
 
@@ -556,7 +552,7 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
 
     if finetune_method == "DEC":
 
-        dec = DEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.DEC_N_CLUSTERS, batch_size=finetune_config.DEC_BATCH_SIZE) #TODO: All models
+        dec = DEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.DEC_N_CLUSTERS, batch_size=finetune_config.DEC_BATCH_SIZE)
         dec.initialize_model(
             optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.DEC_LEARNING_RATE, momentum=finetune_config.DEC_MOMENTUM),
             ae_weights=load_dir)

@@ -1,14 +1,5 @@
 import statistics
 import time
-import os
-import sys
-
-#cwd = os.getcwd()
-#sys.path.insert(0, cwd + os.sep + "ML_Spike_Sorting" + os.sep)
-#cwd = os.getcwd()
-#print(cwd)
-#root_folder = os.sep+"ML_Spike_Sorting"
-#sys.path.insert(0, cwd[:(cwd.index(root_folder)+len(root_folder))] + os.sep)
 
 from utils.model_initializer import *
 from utils.data_preparation import *
@@ -22,7 +13,6 @@ from utils.finetune_models import *
 from config_files.config_finetune import *
 
 
-#from models.FullTransformerAE import *
 
 
 class Run:
@@ -86,7 +76,7 @@ class Run:
         y_finetuned = finetune_model(model=model, config=self.config, finetune_config=fintune_config,
                                      finetune_method=self.fine_tune_method,
                                      dataset=dataset, dataset_test=dataset_test,
-                                     load_dir=self.config.SAVE_DIR)
+                                     load_dir=fintune_config.PRETRAINED_SAVE_DIR)
 
         return y_finetuned
 

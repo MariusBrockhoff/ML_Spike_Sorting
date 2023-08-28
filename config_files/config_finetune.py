@@ -12,7 +12,9 @@ class Config_Finetuning(object):
 
         self.MODEL_TYPE = "DenseAutoencoder"
 
-        self.PRETRAINED_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
+        self.PRETRAINED_SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
+
+        #"/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
 
         # DEC
 
@@ -51,3 +53,15 @@ class Config_Finetuning(object):
         self.IDEC_UPDATE_INTERVAL = 140
 
         self.IDEC_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "IDEC_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
+
+        # PseudoLabels
+
+        self.PSEUDO_N_CLUSTERS = 5
+
+        self.PSEUDO_EPOCHS = 50
+
+        self.PSEUDO_BATCH_SIZE = 256
+
+        self.PSEUDO_RATIO = 0.2
+
+        self.PSEUDO_SAVE_DIR = '/rds/user/jnt27/hpc-work/SpikeSorting/trained_models/' + "DensityPseudoLabel" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
