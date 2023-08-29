@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
 from sklearn.neighbors import KDTree
+import wandb
 
 nmi = normalized_mutual_info_score
 ari = adjusted_rand_score
@@ -272,6 +273,7 @@ class IDEC(object):
                     ari_var = np.round(ari(y, y_pred), 5)
                     loss = np.round(loss, 5)
                     print('Iter %d: acc = %.5f, nmi = %.5f, ari = %.5f' % (ite, acc_var, nmi_var, ari_var), ' ; loss=', loss)
+                    wandb.log({"Iteration": ite, "Accuracy": acc_var, "NMI": nmi_var, "ARI": ari_var, "Loss 1": loss[0], "Loss 2": loss[1], "Loss 3": loss[2]})
 
                 # check stop criterion
                 if ite > 0 and delta_label < tol:
@@ -385,6 +387,7 @@ class DEC(object):
                     ari_var = np.round(ari(y, y_pred), 5)
                     loss = np.round(loss, 5)
                     print('Iter %d: acc = %.5f, nmi = %.5f, ari = %.5f' % (ite, acc_var, nmi_var, ari_var), ' ; loss=', loss)
+                    wandb.log({"Iteration": ite, "Accuracy": acc_var, "NMI": nmi_var, "ARI": ari_var, "Loss": loss})
 
                 # check stop criterion
                 if ite > 0 and delta_label < tol:

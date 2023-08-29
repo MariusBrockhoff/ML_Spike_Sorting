@@ -45,10 +45,10 @@ def evaluate_clustering(y_pred, y_true, y_pred_test=None, y_true_test=None):
     if y_pred_test is not None:
         test_acc = acc(y_true_test.astype(int), y_pred_test)
         # Log with WandB
-        wandb.log({"Train ACC": train_acc,
-                   "Test ACC": test_acc})
+        wandb.log({"Final Train ACC": train_acc,
+                   "Final Test ACC": test_acc})
     else:
-        wandb.log({"Train ACC": train_acc})
+        wandb.log({"Final Train ACC": train_acc})
 
 
         

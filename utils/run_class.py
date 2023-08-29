@@ -42,8 +42,8 @@ class Run:
         model = model_initializer(self.config)
         return model
 
-    def initialize_wandb(self):
-        wandb_initializer(self.config)
+    def initialize_wandb(self, method, fine_tune_config=None):
+        wandb_initializer(self.config, method, fine_tune_config)
 
     def pretrain(self, model, dataset, dataset_test):
         print('---' * 30)
@@ -126,8 +126,8 @@ class Run:
             train_acc_lst = []
             test_acc_lst = []
             for i in range(len(dataset)):
-                self.initialize_wandb()
                 start_time = time.time()
+                self.initialize_wandb(self.pretrain_method)
                 model = self.initialize_model()
                 loss_lst, test_loss_lst, final_epoch = self.pretrain(model=model, dataset=dataset[i],
                                                                     dataset_test=dataset_test[i])
@@ -150,8 +150,8 @@ class Run:
                   statistics.stdev(test_acc_lst))
 
         else:
-            self.initialize_wandb()
             start_time = time.time()
+            self.initialize_wandb(self.pretrain_method)
             dataset, dataset_test = self.prepare_data()
             model = self.initialize_model()
             loss_lst, test_loss_lst, final_epoch = self.pretrain(model=model, dataset=dataset, dataset_test=dataset_test)
@@ -169,6 +169,7 @@ class Run:
     def execute_finetune(
             self):  # TODO: add finetuning workflow: prepare data --> load model --> choose + initialize finetuning --> fine-tune --> evaluate --> save
         start_time = time.time()
+        self.initialize_wandb(self.fine_tune_method, Config_Finetuning(self.config.data_path))
         dataset, dataset_test = self.prepare_data()
         model = self.initialize_model()
         y_pred_finetuned, y_true = self.finetune(model=model, dataset=dataset, dataset_test=dataset_test)
