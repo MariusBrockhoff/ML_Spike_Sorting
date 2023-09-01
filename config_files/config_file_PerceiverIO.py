@@ -3,8 +3,9 @@ class Config_PerceiverIO(object):
 
     def __init__(self, data_path):
         super(Config_PerceiverIO, self).__init__()
+        
         self.data_path = data_path
-        self.FILE_NAME = self.data_path.rpartition('\\')[-1]
+        self.FILE_NAME = self.data_path.rpartition('/')[-1][:-4]
 
 
 
@@ -27,7 +28,7 @@ class Config_PerceiverIO(object):
 
         self.LEARNING_RATE = 2e-5 #1e-4 #1e-6
 
-        self.WITH_WARMUP = False
+        self.WITH_WARMUP = True
 
         self.LR_WARMUP = 10 #2 #10
 
@@ -39,49 +40,49 @@ class Config_PerceiverIO(object):
 
         self.WD_FINAL = 1e-4    #1e-41e-6
 
-        self.NUM_EPOCHS = 2
+        self.NUM_EPOCHS = 100
 
         self.BATCH_SIZE = 512
 
         self.EARLY_STOPPING = True
 
-        self.PATIENCE = 50
+        self.PATIENCE = 100
 
         self.MIN_DELTA = 0
 
-        self.BASELINE = 0.0007
+        self.BASELINE = 0.0005
 
 
         #Architecture
 
         self.MODEL_TYPE = "PerceiverIO"
 
-        self.EMBEDDING_DIM = 16
+        self.EMBEDDING_DIM = 256
 
         self.SEQ_LEN = 63
 
-        self.LATENT_LEN = 16
+        self.LATENT_LEN = 10
 
 
         # Encoder
 
-        self.ENC_NUMBER_OF_LAYERS = 1
+        self.ENC_NUMBER_OF_LAYERS = 3
 
-        self.ENC_STATE_INDEX = 2
+        self.ENC_STATE_INDEX = 32
 
-        self.ENC_STATE_CHANNELS = 16
+        self.ENC_STATE_CHANNELS = 256
 
         self.ENC_DFF = self.ENC_STATE_CHANNELS*2
 
         self.ENC_X_ATTN_HEADS = 1
 
-        self.ENC_X_ATTN_DIM = 4 #int(self.ENC_STATE_CHANNELS / self.ENC_X_ATTN_HEADS)
+        self.ENC_X_ATTN_DIM = 64 #int(self.ENC_STATE_CHANNELS / self.ENC_X_ATTN_HEADS)
 
-        self.ENC_DEPTH = 1
+        self.ENC_DEPTH = 4
 
         self.ENC_NUM_ATTN_HEADS = 8
 
-        self.ENC_SELF_ATTN_DIM = 4 #int(self.ENC_STATE_CHANNELS / self.ENC_NUM_ATTN_HEADS)
+        self.ENC_SELF_ATTN_DIM = 64 #int(self.ENC_STATE_CHANNELS / self.ENC_NUM_ATTN_HEADS)
 
         self.ENC_DROPOUT_RATE = 0.1
 
@@ -90,21 +91,21 @@ class Config_PerceiverIO(object):
 
         self.DEC_NUMBER_OF_LAYERS = 1
 
-        self.DEC_STATE_INDEX = 2
+        self.DEC_STATE_INDEX = 32
 
-        self.DEC_STATE_CHANNELS = 16
+        self.DEC_STATE_CHANNELS = 256
 
         self.DEC_DFF = self.DEC_STATE_CHANNELS*2
 
         self.DEC_X_ATTN_HEADS = 1
 
-        self.DEC_X_ATTN_DIM = 4 #int(self.DEC_STATE_CHANNELS / self.DEC_X_ATTN_HEADS)
+        self.DEC_X_ATTN_DIM = 64 #int(self.DEC_STATE_CHANNELS / self.DEC_X_ATTN_HEADS)
 
-        self.DEC_DEPTH = 1
+        self.DEC_DEPTH = 4
 
         self.DEC_NUM_ATTN_HEADS = 8
 
-        self.DEC_SELF_ATTN_DIM = 4 #int(self.DEC_STATE_CHANNELS / self.DEC_NUM_ATTN_HEADS)
+        self.DEC_SELF_ATTN_DIM = 64 #int(self.DEC_STATE_CHANNELS / self.DEC_NUM_ATTN_HEADS)
 
         self.DEC_DROPOUT_RATE = 0
 
