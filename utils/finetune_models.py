@@ -498,11 +498,11 @@ class PseudoLabel(object):
         y_unlabel_points = y[unlabelled_points]
         x_unlabel_points = x[unlabelled_points, :]
 
-        kmeans = KMeans(n_clusters=5, n_init=20)
+        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred_labelled_points = kmeans.fit_predict(x_label_points)
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
 
-        kmeans = KMeans(n_clusters=5, n_init=20)
+        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred = kmeans.fit_predict(data)
         print("vs. Accuracy on all points:", acc(y, y_pred))
 
