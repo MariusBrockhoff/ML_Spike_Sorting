@@ -217,3 +217,15 @@ def wandb_initializer(config, method, fine_tune_config):
                         "IDEC_MAXITER": fine_tune_config.IDEC_MAXITER,
                         "IDEC_UPDATE_INTERVAL": fine_tune_config.IDEC_UPDATE_INTERVAL,
                         "IDEC_SAVE_DIR": fine_tune_config.IDEC_SAVE_DIR})
+
+    elif method == "PseudoLabel":
+            wandb.init(
+                    # set the wandb project where this run will be logged
+                    project="Finetuning_PseudoLabel_" + config.MODEL_TYPE,
+                    # track hyperparameters and run metadata with wandb.config
+                    config={"Model": config.MODEL_TYPE,
+                            "DATA": config.FILE_NAME,
+                            "PSEUDO_N_CLUSTERS": fine_tune_config.PSEUDO_N_CLUSTERS,
+                            "PSEUDO_EPOCHS": fine_tune_config.PSEUDO_EPOCHS,
+                            "PSEUDO_BATCH_SIZE": fine_tune_config.PSEUDO_BATCH_SIZE,
+                            "PSEUDO_RATIO": fine_tune_config.PSEUDO_RATIO})
