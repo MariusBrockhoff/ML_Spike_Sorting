@@ -4,7 +4,10 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
 from sklearn.neighbors import KDTree
+from os import path
 import wandb
+
+
 
 nmi = normalized_mutual_info_score
 ari = adjusted_rand_score
@@ -60,7 +63,16 @@ def acc_tf(y_true, y_pred):
     ind = np.transpose(ind)
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
-
+def check_filepath_naming(filepath):
+    if path.exists(filepath):
+        numb = 1
+        while True:
+            newPath = "{0}_{2}{1}".format(*path.splitext(filepath) + (numb,))
+            if path.exists(newPath):
+                numb += 1
+            else:
+                return newPath
+    return filepath
 class ClusteringLayer(tf.keras.layers.Layer):
     """
     Clustering layer converts input sample (feature) to soft label, i.e. a vector that represents the probability of the
@@ -301,6 +313,7 @@ class IDEC(object):
 
             ite += 1
 
+        save_IDEC_dir = check_filepath_naming(save_IDEC_dir)
         self.model.save_weights(save_IDEC_dir)
         return y_pred
 
@@ -413,7 +426,8 @@ class DEC(object):
 
             ite += 1
 
-        self.model.save_weights(save_DEC_dir) #TODO Smart naming for saved and load data
+        save_DEC_dir = check_filepath_naming(save_DEC_dir)
+        self.model.save_weights(save_DEC_dir)
         return y_pred
 
 
@@ -525,14 +539,15 @@ class PseudoLabel(object):
 
         finetuning_history = finetuning_model.fit(
             x_label_points, y_pred_labelled_points, epochs=self.epochs, batch_size=self.batch_size,
-            validation_data=(x_unlabel_points, y_unlabel_points))
+            validation_data=(x_unlabel_points, y_unlabel_points), verbose=0)
 
         pred = finetuning_model.predict(x)
         y_pred = pred.argmax(1)
 
         print(acc(y_pred, y.astype(int)))
 
-        self.encoder.save_weights(save_Pseudo_dir)
+        save_Pseudo_dir = check_filepath_naming(save_Pseudo_dir)
+        finetuning_model.save_weights(save_Pseudo_dir) #self.encoder.save_weights(save_Pseudo_dir)?
         return y_pred
 
 
@@ -563,7 +578,6 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
         y_pred_finetuned = dec.clustering(x, y=y, tol=finetune_config.DEC_TOL,
                                           maxiter=finetune_config.DEC_MAXITER, update_interval=finetune_config.DEC_UPDATE_INTERVAL,
                                           save_DEC_dir=finetune_config.DEC_SAVE_DIR)
-        #Todo: Best way to do all paths for saving and loading of files?
 
 
     elif finetune_method == "IDEC":

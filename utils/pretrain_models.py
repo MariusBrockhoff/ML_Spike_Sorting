@@ -4,7 +4,20 @@ import numpy as np
 import tensorflow_addons as tfa
 import wandb
 
+from os import path
 #TODO: add self-supervised backbone training
+
+
+def check_filepath_naming(filepath):
+    if path.exists(filepath):
+        numb = 1
+        while True:
+            newPath = "{0}_{2}{1}".format(*path.splitext(filepath) + (numb,))
+            if path.exists(newPath):
+                numb += 1
+            else:
+                return newPath
+    return filepath
 
 def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_warmup_value=0):
     warmup_schedule = np.array([])
@@ -315,14 +328,9 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
                 if early_stopper.early_stop(np.mean(test_loss_lst[-10:])): #test_loss
                     break
 
-        #print("Pre-trained model (reconstruction):")
-        #print("Encoder:")
-        ##print((batch_s.shape[-1]))
-        #print(model.Encoder.summary(batch_s.shape[-1])) #batch_s[0].shape
-        #print("Decoder:")
-        #print(model.Decoder.summary()) #model.Encoder.predict(batch_s)[0].shape)
 
-        if save_weights:
+        if save_weights: #add numbering system if file already exists
+            save_dir = check_filepath_naming(save_dir)
             model.save_weights(save_dir)
 
         return loss_lst, test_loss_lst, epoch+1
@@ -402,6 +410,7 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
             # break
 
         if save_weights:
+            save_dir = check_filepath_naming(save_dir)
             model.save_weights(save_dir)
 
         return loss_lst, loss_lst, epoch + 1

@@ -37,7 +37,7 @@ class Config_DenseAutoencoder(object):
 
         self.WD_FINAL = 1e-4  # 1e-41e-6
 
-        self.NUM_EPOCHS = 50
+        self.NUM_EPOCHS = 100
 
         self.BATCH_SIZE = 4096
 
@@ -67,7 +67,7 @@ class Config_DenseAutoencoder(object):
 
         self.CLUSTERING_METHOD = "Kmeans"
 
-        self.N_CLUSTERS = 15
+        self.N_CLUSTERS = 5
 
         self.EPS = None
 
@@ -83,8 +83,9 @@ class Config_DenseAutoencoder(object):
 
         self.SAVE_WEIGHTS = True
 
-        self.SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
-        
+        self.SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
+
+        #"/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
         #"C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
 
         # self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
