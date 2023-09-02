@@ -331,7 +331,7 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
 
         if save_weights: #add numbering system if file already exists
             save_dir = check_filepath_naming(save_dir)
-            print("Corrected save name:", save_dir)
+            wandb.log({"Actual save name": save_dir})
             model.save_weights(save_dir)
 
         return loss_lst, test_loss_lst, epoch+1
