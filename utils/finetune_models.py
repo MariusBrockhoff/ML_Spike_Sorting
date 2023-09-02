@@ -303,7 +303,7 @@ class IDEC(object):
 
             elif (index + 1) * self.batch_size > x.shape[0] and index * self.batch_size == x.shape[0]:
                 index = 0
-                loss = 0
+
 
             else:
                 loss = self.model.train_on_batch(x=x[index * self.batch_size:(index + 1) * self.batch_size],
