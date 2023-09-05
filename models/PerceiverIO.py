@@ -494,6 +494,8 @@ class Encoder(tf.keras.Model):
 
         self.positional_enc_inp = positional_encoding(self.seq_len, self.Embedding_dim)
 
+        self.positional_enc_state = positional_encoding(self.state_index, self.state_channels)
+
         self.ENC_state = tf.clip_by_value(tf.Variable(tf.random.normal((self.state_index,
 
                                           self.state_channels), mean=0.0, stddev=0.02),
@@ -538,6 +540,8 @@ class Encoder(tf.keras.Model):
 
         ENC_state = self.ENC_state
 
+        ENC_state += self.positional_enc_state
+
         ENC_state = self.AttentionPipe(ENC_state, inputs)
 
         logits = self.logs(ENC_state)
@@ -545,15 +549,6 @@ class Encoder(tf.keras.Model):
         logits = self.logits_to_latent(logits)
 
         return logits
-
-    #def summary(self, input_shape):
-     #   x = tf.keras.Input(shape=input_shape)
-      #  model = tf.keras.Model(inputs=x, outputs=self.call(x))
-       # return model.summary()
-
-    #def build_graph(self, raw_shape):
-     #   x = tf.keras.layers.Input(shape=raw_shape)
-      #  return tf.keras.Model(inputs=[x], outputs=self.call(x))
 
 
 class Decoder(tf.keras.Model):
@@ -618,6 +613,8 @@ class Decoder(tf.keras.Model):
 
         self.positional_inp = positional_encoding(self.latent_len, self.Embedding_dim)
 
+        self.positional_state = positional_encoding(self.state_index, self.state_channels)
+
         self.state = tf.clip_by_value(tf.Variable(tf.random.normal((self.state_index,
 
                                       self.state_channels), mean=0.0, stddev=0.02),
@@ -652,9 +649,6 @@ class Decoder(tf.keras.Model):
 
         self.outputadapter = KL.Dense(self.seq_len)
 
-        #self.outputadapter = Sequential([KL.Reshape((self.state_index*self.state_channels,), input_shape=(self.state_index, self.state_channels)),
-        #                                 KL.Dense(self.state_index*self.state_channels),
-          #                               KL.Dense(self.seq_len)])
     def call(self, inputs):
 
         inputs = rearrange(inputs, "a b -> a b 1")
@@ -664,6 +658,8 @@ class Decoder(tf.keras.Model):
         inputs += self.positional_inp
 
         state = self.state
+
+        state += self.positional_state
 
         state = self.AttentionPipe(state, inputs)
 
@@ -675,10 +671,6 @@ class Decoder(tf.keras.Model):
 
         return out
 
-    #def summary(self, input_shape):
-     #   x = tf.keras.Input(shape=input_shape)
-      #  model = tf.keras.Model(inputs=x, outputs=self.call(x))
-       # return model.summary()
 
 
 class AutoPerceiver(tf.keras.Model):
