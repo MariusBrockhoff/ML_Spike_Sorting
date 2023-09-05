@@ -67,7 +67,7 @@ class Config_DenseAutoencoder(object):
 
         self.CLUSTERING_METHOD = "Kmeans"
 
-        self.N_CLUSTERS = 5
+        self.N_CLUSTERS = 15
 
         self.EPS = None
 

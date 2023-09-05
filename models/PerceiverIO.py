@@ -648,7 +648,7 @@ class Decoder(tf.keras.Model):
 
         self.reshaping = KL.Reshape((self.state_index*self.state_channels,), input_shape=(self.state_index, self.state_channels))
 
-        self.multiply = KL.Dense(self.state_index*self.state_channels)
+        #self.multiply = KL.Dense(self.state_index*self.state_channels)
 
         self.outputadapter = KL.Dense(self.seq_len)
 
@@ -669,7 +669,7 @@ class Decoder(tf.keras.Model):
 
         state = self.reshaping(state)
 
-        state = self.multiply(state)
+        #state = self.multiply(state)
 
         out = self.outputadapter(state)
 
