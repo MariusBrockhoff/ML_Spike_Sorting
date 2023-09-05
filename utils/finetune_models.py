@@ -435,7 +435,7 @@ class PseudoLabel(object):
     def __init__(self,
                  model,
                  input_dim,
-                 n_clusters=10,
+                 n_clusters=5,
                  batch_size=256,
                  epochs=50):
 
@@ -464,9 +464,11 @@ class PseudoLabel(object):
 
         data = self.encoder.predict(x)
         k = 100
+        print("output self.encoder.predict(x):", data.shape)
 
         n, d = data.shape
         if d <= 10:
+            print("used KDTree")
             tree = KDTree(data)
             knn_dist, knn = tree.query(data, k=k)
         else:
@@ -513,7 +515,7 @@ class PseudoLabel(object):
         x_unlabel_points = x[unlabelled_points, :]
 
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred_labelled_points = kmeans.fit_predict(x_label_points)
+        y_pred_labelled_points = kmeans.fit_predict(self.encoder.predict(x_label_points))
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
 
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
