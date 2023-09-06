@@ -57,7 +57,7 @@ class Config_PerceiverIO(object):
 
         self.MODEL_TYPE = "PerceiverIO"
 
-        self.EMBEDDING_DIM = 128
+        self.EMBEDDING_DIM = 256
 
         self.SEQ_LEN = 63
 
@@ -70,17 +70,17 @@ class Config_PerceiverIO(object):
 
         self.ENC_STATE_INDEX = 32
 
-        self.ENC_STATE_CHANNELS = 128
+        self.ENC_STATE_CHANNELS = 256
 
         self.ENC_DFF = self.ENC_STATE_CHANNELS*2
 
         self.ENC_X_ATTN_HEADS = 1
 
-        self.ENC_X_ATTN_DIM = 128 #int(self.ENC_STATE_CHANNELS / self.ENC_X_ATTN_HEADS)
+        self.ENC_X_ATTN_DIM = 256 #int(self.ENC_STATE_CHANNELS / self.ENC_X_ATTN_HEADS)
 
         self.ENC_DEPTH = 4
 
-        self.ENC_NUM_ATTN_HEADS = 4
+        self.ENC_NUM_ATTN_HEADS = 8
 
         self.ENC_SELF_ATTN_DIM = 32 #int(self.ENC_STATE_CHANNELS / self.ENC_NUM_ATTN_HEADS)
 
@@ -93,17 +93,17 @@ class Config_PerceiverIO(object):
 
         self.DEC_STATE_INDEX = 32
 
-        self.DEC_STATE_CHANNELS = 128
+        self.DEC_STATE_CHANNELS = 256
 
         self.DEC_DFF = self.DEC_STATE_CHANNELS*2
 
         self.DEC_X_ATTN_HEADS = 1
 
-        self.DEC_X_ATTN_DIM = 128 #int(self.DEC_STATE_CHANNELS / self.DEC_X_ATTN_HEADS)
+        self.DEC_X_ATTN_DIM = 256 #int(self.DEC_STATE_CHANNELS / self.DEC_X_ATTN_HEADS)
 
         self.DEC_DEPTH = 4
 
-        self.DEC_NUM_ATTN_HEADS = 4
+        self.DEC_NUM_ATTN_HEADS = 8
 
         self.DEC_SELF_ATTN_DIM = 32 #int(self.DEC_STATE_CHANNELS / self.DEC_NUM_ATTN_HEADS)
 

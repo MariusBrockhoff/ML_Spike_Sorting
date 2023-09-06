@@ -62,6 +62,6 @@ class Config_Finetuning(object):
 
         self.PSEUDO_BATCH_SIZE = 256
 
-        self.PSEUDO_RATIO = 0.1
+        self.PSEUDO_RATIO = 0.2
 
         self.PSEUDO_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "DensityPseudoLabel_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
