@@ -337,7 +337,7 @@ class DEC(object):
 
     def initialize_model(self, optimizer, ae_weights=None):
         if ae_weights is not None:  # load pretrained weights of autoencoder
-            dummy = tf.zeros(shape=[1,self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+            dummy = tf.zeros(shape=[512,self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
             self.autoencoder(dummy)
             self.autoencoder.load_weights(ae_weights)
         else:
@@ -458,11 +458,11 @@ class PseudoLabel(object):
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
-        self.encoder = self.autoencoder.Encoder
+        #self.encoder = self.autoencoder.Encoder
 
     def get_pseudo_labels(self, x, y, label_ratio):
 
-        data = self.encoder.predict(x)
+        data = self.autoencoder.Encoder.predict(x)
         k = 100
         print("output self.encoder.predict(x):", data.shape)
 
@@ -505,8 +505,8 @@ class PseudoLabel(object):
 
         label_points = OrdRho[:int(data.shape[0] * label_ratio)]
         unlabelled_points = OrdRho[int(data.shape[0] * label_ratio):]
-        labels = np.zeros(shape=(data.shape[0],))
-        labels[label_points] = 1
+        #labels = np.zeros(shape=(data.shape[0],))
+        #labels[label_points] = 1
 
         y_label_points = y[label_points]
         x_label_points = x[label_points, :]
@@ -515,7 +515,7 @@ class PseudoLabel(object):
         x_unlabel_points = x[unlabelled_points, :]
 
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred_labelled_points = kmeans.fit_predict(self.encoder.predict(x_label_points))
+        y_pred_labelled_points = kmeans.fit_predict(self.autoencoder.Encoder.predict(x_label_points))
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
 
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
@@ -528,7 +528,7 @@ class PseudoLabel(object):
 
         finetuning_model = tf.keras.Sequential(
             [tf.keras.layers.Input(shape=self.input_dim[0]),
-                self.encoder,
+                self.autoencoder.Encoder,
                 tf.keras.layers.Dropout(0.1),
                 tf.keras.layers.Dense(self.n_clusters, activation='softmax'),],
             name="finetuning_model",
@@ -541,7 +541,7 @@ class PseudoLabel(object):
 
         finetuning_history = finetuning_model.fit(
             x_label_points, y_pred_labelled_points, epochs=self.epochs, batch_size=self.batch_size,
-            validation_data=(x_unlabel_points, y_unlabel_points), verbose=0)
+            validation_data=(x_unlabel_points, y_unlabel_points), verbose=1)
 
         pred = finetuning_model.predict(x)
         y_pred = pred.argmax(1)
@@ -554,7 +554,7 @@ class PseudoLabel(object):
 
 
 
-def finetune_model(model, config, finetune_config, finetune_method, dataset, dataset_test, load_dir):
+def finetune_model(model, finetune_config, finetune_method, dataset, dataset_test):
 
     #data prep --> combined train and test
     for step, batch in enumerate(dataset):
@@ -575,7 +575,7 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
         dec = DEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.DEC_N_CLUSTERS, batch_size=finetune_config.DEC_BATCH_SIZE)
         dec.initialize_model(
             optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.DEC_LEARNING_RATE, momentum=finetune_config.DEC_MOMENTUM),
-            ae_weights=load_dir)
+            ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
 
         y_pred_finetuned = dec.clustering(x, y=y, tol=finetune_config.DEC_TOL,
                                           maxiter=finetune_config.DEC_MAXITER, update_interval=finetune_config.DEC_UPDATE_INTERVAL,
@@ -587,7 +587,7 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
         idec = IDEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS, batch_size=finetune_config.IDEC_BATCH_SIZE) # TODO: All models
         idec.initialize_model(
             optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE, momentum=finetune_config.IDEC_MOMENTUM),
-            ae_weights=load_dir, gamma=finetune_config.IDEC_GAMMA)
+            ae_weights=finetune_config.PRETRAINED_SAVE_DIR, gamma=finetune_config.IDEC_GAMMA)
 
         y_pred_finetuned = idec.clustering(x, y=y, tol=finetune_config.IDEC_TOL,
                                             maxiter=finetune_config.IDEC_MAXITER, update_interval=finetune_config.IDEC_UPDATE_INTERVAL,
@@ -602,7 +602,7 @@ def finetune_model(model, config, finetune_config, finetune_method, dataset, dat
                                    batch_size=finetune_config.PSEUDO_BATCH_SIZE,
                                    epochs=finetune_config.PSEUDO_EPOCHS)
 
-        pseudo_label.initialize_model(ae_weights=load_dir)
+        pseudo_label.initialize_model(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
 
         x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
 

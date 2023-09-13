@@ -2,17 +2,18 @@
 
 class Config_Finetuning(object):
 
-    def __init__(self, data_path):
+    def __init__(self, data_path, model_type):
         super(Config_Finetuning, self).__init__()
 
         self.data_path = data_path
+        self.MODEL_TYPE = model_type
         self.FILE_NAME = self.data_path.rpartition('/')[-1][:-4]
 
         # Load Pretrained Model
 
-        self.MODEL_TYPE = "DenseAutoencoder"
+        self.PRETRAINED_SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
 
-        self.PRETRAINED_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
+        #"/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
         
         #"C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
 

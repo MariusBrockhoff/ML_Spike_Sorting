@@ -72,11 +72,10 @@ class Run:
         print('---' * 30)
         print('FINETUNING MODEL...')
         # load finetune config file
-        fintune_config = Config_Finetuning(self.config.data_path)
-        y_finetuned = finetune_model(model=model, config=self.config, finetune_config=fintune_config,
+        fintune_config = Config_Finetuning(self.config.data_path, self.config.MODEL_TYPE)
+        y_finetuned = finetune_model(model=model, finetune_config=fintune_config,
                                      finetune_method=self.fine_tune_method,
-                                     dataset=dataset, dataset_test=dataset_test,
-                                     load_dir=fintune_config.PRETRAINED_SAVE_DIR)
+                                     dataset=dataset, dataset_test=dataset_test)
 
         return y_finetuned
 
@@ -169,7 +168,7 @@ class Run:
     def execute_finetune(
             self):  # TODO: add finetuning workflow: prepare data --> load model --> choose + initialize finetuning --> fine-tune --> evaluate --> save
         start_time = time.time()
-        self.initialize_wandb(self.fine_tune_method, Config_Finetuning(self.config.data_path))
+        self.initialize_wandb(self.fine_tune_method, Config_Finetuning(self.config.data_path, self.config.MODEL_TYPE))
         dataset, dataset_test = self.prepare_data()
         model = self.initialize_model()
         y_pred_finetuned, y_true = self.finetune(model=model, dataset=dataset, dataset_test=dataset_test)
