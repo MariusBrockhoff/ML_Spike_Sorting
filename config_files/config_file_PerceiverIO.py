@@ -46,11 +46,11 @@ class Config_PerceiverIO(object):
 
         self.EARLY_STOPPING = True
 
-        self.PATIENCE = 100
+        self.PATIENCE = 10
 
         self.MIN_DELTA = 0
 
-        self.BASELINE = 0.001
+        self.BASELINE = 0.0001
 
 
         #Architecture

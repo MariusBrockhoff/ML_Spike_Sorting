@@ -11,7 +11,7 @@ class Config_Finetuning(object):
 
         # Load Pretrained Model
 
-        self.PRETRAINED_SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
+        self.PRETRAINED_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
 
         #"/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
         
