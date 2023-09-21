@@ -158,23 +158,23 @@ class SelfAttention(tf.keras.Model):
 
         self.attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
-                                    KL.Dense(self.dff, activation=tf.keras.activations.gelu), #, activity_regularizer=RegL1(0.01)),
+                                    KL.Dense(self.dff, activation=tf.keras.activations.gelu),
 
                                     KL.Dropout(self.dropout_rate),
 
-                                    KL.Dense(self.state_channels)]) #, activity_regularizer=RegL1(0.01))])
+                                    KL.Dense(self.state_channels)])
 
     def call(self, inputs):
+
+        x = inputs
         
         normed_inputs = self.attn_norm1(inputs)
 
-        state = self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
+        x += self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
 
-        state = self.attn_sum1([inputs, state])
+        x += self.attn_mlp(x)
 
-        state_mlp = self.attn_mlp(state)
-
-        return state_mlp
+        return x
 
 
 class CrossAttention(tf.keras.Model):
@@ -215,11 +215,11 @@ class CrossAttention(tf.keras.Model):
 
         self.x_attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
                                       
-                                      KL.Dense(self.dff, activation=tf.keras.activations.gelu), #, activity_regularizer=RegL1(0.01)),
+                                      KL.Dense(self.dff, activation=tf.keras.activations.gelu),
 
                                       KL.Dropout(self.dropout_rate),
 
-                                      KL.Dense(self.state_channels)]) #, activity_regularizer=RegL1(0.01))])
+                                      KL.Dense(self.state_channels)])
 
     def call(self, inputs):
 
@@ -229,11 +229,11 @@ class CrossAttention(tf.keras.Model):
 
         k_norm = self.x_attn_norm2(k)      
 
-        state = self.x_attn(q_norm, k_norm, return_attention_scores=False)
+        x = q + self.x_attn(q_norm, k_norm, return_attention_scores=False)
 
-        state_mlp = self.x_attn_mlp(state)
+        x += self.x_attn_mlp(x)
 
-        return state_mlp
+        return x
 
 
 class AttentionBlock(tf.keras.layers.Layer):
@@ -302,13 +302,13 @@ class AttentionBlock(tf.keras.layers.Layer):
 
                                 dropout_rate=self.dropout_rate)
 
-        self.state_stack = tf.TensorArray(tf.float32,
+        #self.state_stack = tf.TensorArray(tf.float32,
 
-                                              size=self.depth,
+                                             # size=self.depth,
 
-                                              dynamic_size=False,
+                                             # dynamic_size=False,
 
-                                              clear_after_read=False)
+                                             # clear_after_read=False)
 
         self.iter = tf.constant(1)
 
@@ -320,7 +320,7 @@ class AttentionBlock(tf.keras.layers.Layer):
 
         i = self.iter
 
-        state_stack = self.state_stack
+        #state_stack = self.state_stack
 
         state_0 = self.SelfAttention(latents)
 
@@ -328,13 +328,13 @@ class AttentionBlock(tf.keras.layers.Layer):
 
         #cond = lambda i, ss: tf.less(i, self.depth)
 
-        def body(i, state_stack):
+        #def body(i, state_stack):
 
-            state = self.SelfAttention(state_stack.read(i-1))
+            #state = self.SelfAttention(state_stack.read(i-1))
 
-            state_stack = state_stack.write(i, state)
+            #state_stack = state_stack.write(i, state)
 
-            return (i+1, state_stack)
+            #return (i+1, state_stack)
 
         #[i, state_stack] = tf.while_loop(cond,  body, [i, state_stack])
 
