@@ -70,15 +70,18 @@ def model_initializer(config):
                              reg_value=config.REG_VALUE)
 
     elif config.MODEL_TYPE == "FullTransformer":
-        model = FullTransformer(d_model=config.D_MODEL,
+        model = FullTransformer(embedding_dim=config.Embedding_dim,
                                 dff=config.DFF,
                                 seq_len=config.SEQ_LEN,
                                 latent_len=config.LATENT_LEN,
-                                ENC_depth=config.ENC_DEPTH,
-                                ENC_attn_dim=int(config.D_MODEL / config.NUM_ATTN_HEADS),
-                                ENC_attn_heads=config.NUM_ATTN_HEADS,
-                                ENC_dropout_rate=config.DROPOUT_RATE,
-                                reg_value=config.REG_VALUE)
+                                enc_depth=config.ENC_DEPTH,
+                                enc_attn_dim=int(config.Embedding_dim / config.ENC_NUM_ATTN_HEADS),
+                                enc_attn_heads=config.ENC_NUM_ATTN_HEADS,
+                                enc_dropout_rate=config.ENC_DROPOUT_RATE,
+                                dec_depth=config.DEC_DEPTH,
+                                dec_attn_dim=int(config.Embedding_dim / config.DEC_NUM_ATTN_HEADS),
+                                dec_attn_heads=config.DEC_NUM_ATTN_HEADS,
+                                dec_dropout_rate=config.DEC_DROPOUT_RATE)
 
 
 

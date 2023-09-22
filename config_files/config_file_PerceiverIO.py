@@ -21,7 +21,7 @@ class Config_PerceiverIO(object):
 
         self.BENCHMARK_START_IDX = 0
 
-        self.BENCHMARK_END_IDX = 5 #int(1/self.TRAIN_TEST_SPLIT)
+        self.BENCHMARK_END_IDX = 5
 
 
        # TRAINING HYPERPARAMETERS
@@ -147,31 +147,3 @@ class Config_PerceiverIO(object):
         self.SAVE_WEIGHTS = True
 
         self.SAVE_DIR = self.SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
-
-        #self.SAVE_WEIGHTS = False
-
-        #self.SAVE_DIR = '/home/mb2315/ML_Spike_Sorting/trained_models/{MODEL_TYPE}_{DATA_PREP_METHOD}_{DATA_NORMALIZATION}' \
-         #               '_{DATA_AUG}_{LEARNING_RATE}_{LR_FINAL}_{BATCH_SIZE}_{EMBEDDING_DIM}_{LATENT_LEN}_{ENC_NUMBER_OF_LAYERS}' \
-          #              '_{ENC_STATE_INDEX}_{ENC_STATE_CHANNELS}_{ENC_DEPTH}_{ENC_DROPOUT_RATE}_{DEC_NUMBER_OF_LAYERS}' \
-           #             '_{DEC_STATE_INDEX}_{DEC_STATE_CHANNELS}_{DEC_DEPTH}_{DEC_DROPOUT_RATE}.pth'.format(
-            #MODEL_TYPE=self.MODEL_TYPE,
-            #DATA_PREP_METHOD=self.DATA_PREP_METHOD,
-            #DATA_NORMALIZATION=self.DATA_NORMALIZATION,
-            #DATA_AUG=self.DATA_AUG,
-            #LEARNING_RATE=self.LEARNING_RATE,
-            #LR_FINAL=self.LR_FINAL,
-            #BATCH_SIZE=self.BATCH_SIZE,
-            #EMBEDDING_DIM=self.EMBEDDING_DIM,
-            #LATENT_LEN=self.LATENT_LEN,
-            #ENC_NUMBER_OF_LAYERS=self.ENC_NUMBER_OF_LAYERS,
-            #ENC_STATE_INDEX=self.ENC_STATE_INDEX,
-            #ENC_STATE_CHANNELS=self.ENC_STATE_CHANNELS,
-            #ENC_DEPTH=self.ENC_DEPTH,
-            #ENC_DROPOUT_RATE=self.ENC_DROPOUT_RATE,
-            #DEC_NUMBER_OF_LAYERS=self.DEC_NUMBER_OF_LAYERS,
-            #DEC_STATE_INDEX=self.DEC_STATE_INDEX,
-            #DEC_STATE_CHANNELS=self.DEC_STATE_CHANNELS,
-            #DEC_DEPTH=self.DEC_DEPTH,
-            #DEC_DROPOUT_RATE=self.DEC_DROPOUT_RATE)
-
-

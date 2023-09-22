@@ -325,7 +325,7 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
             print("Epoch: ", epoch + 1, ", Train loss: ", loss.numpy(), ", Test loss: ", test_loss.numpy())
 
             if config.EARLY_STOPPING:
-                if early_stopper.early_stop(np.mean(test_loss_lst[-10:])): #test_loss
+                if early_stopper.early_stop(test_loss_lst[-1]): #test_loss
                     break
 
 

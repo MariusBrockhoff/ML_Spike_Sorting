@@ -134,15 +134,17 @@ def wandb_initializer(config, method, fine_tune_config):
                             "LR_FINAL": config.LR_FINAL,
                             "NUM_EPOCHS": config.NUM_EPOCHS,
                             "BATCH_SIZE": config.BATCH_SIZE,
-                            "REG_VALUE": config.REG_VALUE,
-                            "DROPOUT_RATE": config.DROPOUT_RATE,
-                            "DATA_PREP": config.DATA_PREP,
-                            "ENC_DEPTH": config.ENC_DEPTH,
-                            "DFF": config.DFF,
-                            "NUM_ATTN_HEADS": config.NUM_ATTN_HEADS,
-                            "D_MODEL": config.D_MODEL,
                             "LATENT_LEN": config.LATENT_LEN,
+                            "Embedding_DIM": config.Embedding_dim,
+                            "DFF": config.DFF,
+                            "ENC_DEPTH": config.ENC_DEPTH,
+                            "ENC_NUM_ATTN_HEADS": config.ENC_NUM_ATTN_HEADS,
+                            "ENC_DROPOUT_RATE": config.ENC_DROPOUT_RATE,
+                            "DEC_DEPTH": config.DEC_DEPTH,
+                            "DEC_NUM_ATTN_HEADS": config.DEC_NUM_ATTN_HEADS,
+                            "DEC_DROPOUT_RATE": config.DEC_DROPOUT_RATE,
                             "DATA_AUG": config.DATA_AUG})
+
     elif method == "NNCLR":
         #TODO: implement NNCLR pretraining
         print("NNCLR still to be implemented")
