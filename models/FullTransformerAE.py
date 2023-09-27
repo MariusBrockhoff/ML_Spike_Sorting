@@ -173,15 +173,18 @@ class SelfAttention(tf.keras.Model):
 
         self.attn_norm1 = KL.LayerNormalization(axis=-1)
 
+        self.fin_norm = KL.LayerNormalization(axis=-1)
+
         self.attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
                                     KL.Dense(self.dff, activation=tf.keras.activations.gelu),
 
-                                    KL.Dropout(self.dropout_rate),
+                                    KL.Dense(self.Embedding_dim),
 
-                                    KL.Dense(self.Embedding_dim)])
+                                    KL.Dropout(self.dropout_rate)])
 
     def call(self, inputs):
+
         x = inputs
 
         normed_inputs = self.attn_norm1(inputs)
@@ -189,6 +192,8 @@ class SelfAttention(tf.keras.Model):
         x += self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
 
         x += self.attn_mlp(x)
+
+        x = self.fin_norm(x)
 
         return x
 
@@ -267,7 +272,7 @@ class Encoder(tf.keras.Model):
         self.Encoder = AttnModule(self.Embedding_dim, self.dff, self.ENC_depth, self.ENC_attn_dim, self.ENC_attn_heads,
                                    self.ENC_dropout_rate)
 
-        self.reduc_pos_enc = Sequential([KL.Dense(1, activation='relu'),
+        self.reduc_pos_enc = Sequential([KL.Dense(1),                               #KL.Dense(1, activation='relu'),
                                          KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))])
 
         self.ENC_to_logits = KL.Dense(self.latent_len) # PREVIOUS: self.ENC_to_logits = Sequential([KL.Dense(self.latent_len, activation='relu',
@@ -315,7 +320,7 @@ class Decoder(tf.keras.Model):
         self.decoder = AttnModule(self.Embedding_dim, self.dff, self.DEC_depth, self.DEC_attn_dim, self.DEC_attn_heads,
                                    self.DEC_dropout_rate)
 
-        self.reduc_pos_enc_dec = Sequential([KL.Dense(1, activation='relu'),
+        self.reduc_pos_enc_dec = Sequential([KL.Dense(1),                               #KL.Dense(1, activation='relu'),
                                              KL.Reshape((self.latent_len,), input_shape=(self.latent_len, 1))])
 
         self.outputadapter = KL.Dense(self.seq_len)
@@ -323,9 +328,9 @@ class Decoder(tf.keras.Model):
     def call(self, x):
 
         x = rearrange(x, "a b -> a b 1")
-
         x = self.embedding_dec(x)
         x += self.positional_enc_dec
+
         decoded = self.decoder(x)
         decoded = self.reduc_pos_enc_dec(decoded)
         output = self.outputadapter(decoded)

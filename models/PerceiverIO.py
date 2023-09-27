@@ -156,23 +156,27 @@ class SelfAttention(tf.keras.Model):
 
         self.attn_norm1 = KL.LayerNormalization(axis=-1)
 
+        self.fin_norm = KL.LayerNormalization(axis=-1)
+
         self.attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
                                     KL.Dense(self.dff, activation=tf.keras.activations.gelu),
 
-                                    KL.Dropout(self.dropout_rate),
+                                    KL.Dense(self.state_channels),
 
-                                    KL.Dense(self.state_channels)])
+                                    KL.Dropout(self.dropout_rate)])
 
     def call(self, inputs):
 
         x = inputs
-        
+
         normed_inputs = self.attn_norm1(inputs)
 
         x += self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
 
         x += self.attn_mlp(x)
+
+        x = self.fin_norm(x)
 
         return x
 
@@ -192,7 +196,6 @@ class CrossAttention(tf.keras.Model):
                  x_attn_heads=8,
 
                  dropout_rate=0.1):
-
         super(CrossAttention, self).__init__()
 
         self.state_index = state_index
@@ -213,25 +216,28 @@ class CrossAttention(tf.keras.Model):
 
         self.x_attn_norm2 = KL.LayerNormalization(axis=-1)
 
+        self.fin_norm = KL.LayerNormalization(axis=-1)
+
         self.x_attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
-                                      
+
                                       KL.Dense(self.dff, activation=tf.keras.activations.gelu),
 
-                                      KL.Dropout(self.dropout_rate),
+                                      KL.Dense(self.state_channels),
 
-                                      KL.Dense(self.state_channels)])
+                                      KL.Dropout(self.dropout_rate)])
 
     def call(self, inputs):
-
         q, k = inputs
 
         q_norm = self.x_attn_norm1(q)
 
-        k_norm = self.x_attn_norm2(k)      
+        k_norm = self.x_attn_norm2(k)
 
-        x = q + self.x_attn(q_norm, k_norm, return_attention_scores=False)
+        x = self.x_attn(q_norm, k_norm, return_attention_scores=False)  # q + self.x_attn(q_norm, k_norm, return_attention_scores=False)
 
         x += self.x_attn_mlp(x)
+
+        x = self.fin_norm(x)
 
         return x
 
@@ -417,12 +423,7 @@ class AttentionPipe(tf.keras.layers.Layer):
 
         b, *_ = inputs.shape
 
-        if b is not None:
-
-            x = repeat(latents, 'i c -> b i c', b=b)
-
-        else:
-            x = tf.keras.Input(shape=latents.shape) #tf.TensorSpec(shape=[None, latents.shape[0], latents.shape[1]])
+        x = repeat(latents, 'i c -> b i c', b=b)
 
         for i in range(self.number_of_layers):
 
@@ -645,8 +646,6 @@ class Decoder(tf.keras.Model):
 
         self.reshaping = KL.Reshape((self.state_index*self.state_channels,), input_shape=(self.state_index, self.state_channels))
 
-        #self.multiply = KL.Dense(self.state_index*self.state_channels)
-
         self.outputadapter = KL.Dense(self.seq_len)
 
     def call(self, inputs):
@@ -664,8 +663,6 @@ class Decoder(tf.keras.Model):
         state = self.AttentionPipe(state, inputs)
 
         state = self.reshaping(state)
-
-        #state = self.multiply(state)
 
         out = self.outputadapter(state)
 
