@@ -30,7 +30,7 @@ class Config_FullTransformer(object):
 
         self.LR_WARMUP = 10  # 2 #10
 
-        self.LR_FINAL = 0.000000001
+        self.LR_FINAL = 1e-9
 
         self.WITH_WD = False
 
@@ -44,11 +44,11 @@ class Config_FullTransformer(object):
 
         self.EARLY_STOPPING = True
 
-        self.PATIENCE = 10
+        self.PATIENCE = 100
 
         self.MIN_DELTA = 0
 
-        self.BASELINE = 0.0001
+        self.BASELINE = 0.001
 
 
         # Architecture

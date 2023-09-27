@@ -46,11 +46,11 @@ class Config_PerceiverIO(object):
 
         self.EARLY_STOPPING = True
 
-        self.PATIENCE = 10
+        self.PATIENCE = 100
 
         self.MIN_DELTA = 0
 
-        self.BASELINE = 0.0001
+        self.BASELINE = 0.001
 
 
         #Architecture
@@ -72,7 +72,7 @@ class Config_PerceiverIO(object):
 
         self.ENC_STATE_CHANNELS = 256
 
-        self.ENC_DFF = self.ENC_STATE_CHANNELS*2
+        self.ENC_DFF = self.ENC_STATE_CHANNELS*4
 
         self.ENC_X_ATTN_HEADS = 1
 
@@ -95,7 +95,7 @@ class Config_PerceiverIO(object):
 
         self.DEC_STATE_CHANNELS = 256
 
-        self.DEC_DFF = self.DEC_STATE_CHANNELS*2
+        self.DEC_DFF = self.DEC_STATE_CHANNELS*4
 
         self.DEC_X_ATTN_HEADS = 1
 
