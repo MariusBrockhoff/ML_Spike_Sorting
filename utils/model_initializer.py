@@ -12,8 +12,7 @@ import sys
 
 from models.PerceiverIO import *
 from models.DINOPerceiver import *
-from models.AttnAE_1 import *
-from models.AttnAE_2 import *
+from models.AttnE_DenseD import *
 from models.DenseAutoencoder import *
 from models.FullTransformerAE import *
 
@@ -47,26 +46,27 @@ def model_initializer(config):
 
 
     elif config.MODEL_TYPE == "AttnE_DenseD":
-        model = Attention_AE(embedding_dim=config.Embedding_dim,
+        model = Attention_AE(embedding_dim=config.EMBEDDING_DIM,
                                 dff=config.DFF,
                                 seq_len=config.SEQ_LEN,
                                 latent_len=config.LATENT_LEN,
                                 enc_depth=config.ENC_DEPTH,
-                                enc_attn_dim=int(config.Embedding_dim / config.ENC_NUM_ATTN_HEADS),
+                                enc_attn_dim=int(config.EMBEDDING_DIM / config.ENC_NUM_ATTN_HEADS),
                                 enc_attn_heads=config.ENC_NUM_ATTN_HEADS,
+                                enc_dropout_rate=config.ENC_DROPOUT_RATE,
                                 dec_layers=config.DEC_LAYERS)
 
     elif config.MODEL_TYPE == "FullTransformer":
-        model = FullTransformer(embedding_dim=config.Embedding_dim,
+        model = FullTransformer(embedding_dim=config.EMBEDDING_DIM,
                                 dff=config.DFF,
                                 seq_len=config.SEQ_LEN,
                                 latent_len=config.LATENT_LEN,
                                 enc_depth=config.ENC_DEPTH,
-                                enc_attn_dim=int(config.Embedding_dim / config.ENC_NUM_ATTN_HEADS),
+                                enc_attn_dim=int(config.EMBEDDING_DIM / config.ENC_NUM_ATTN_HEADS),
                                 enc_attn_heads=config.ENC_NUM_ATTN_HEADS,
                                 enc_dropout_rate=config.ENC_DROPOUT_RATE,
                                 dec_depth=config.DEC_DEPTH,
-                                dec_attn_dim=int(config.Embedding_dim / config.DEC_NUM_ATTN_HEADS),
+                                dec_attn_dim=int(config.EMBEDDING_DIM / config.DEC_NUM_ATTN_HEADS),
                                 dec_attn_heads=config.DEC_NUM_ATTN_HEADS,
                                 dec_dropout_rate=config.DEC_DROPOUT_RATE)
 

@@ -8,7 +8,7 @@ print("Start Time Code Exec: ", time.asctime(time.localtime(time.time())))
 
 from utils.run_class import  *
 from config_files.config_file_PerceiverIO import *
-from config_files.config_AttnAE import *
+from config_files.config_AttnE_DenseD import *
 from config_files.config_FullTransformer import *
 from config_files.config_file_DenseAutoencoder import *
 
@@ -36,7 +36,6 @@ elif args.Model == "DenseAutoencoder":
 elif args.Model == "AttnE_DenseD":
     config = Config_AttnAE(data_path=args.PathData)
     config.MODEL_TYPE = "AttnE_DenseD"
-    assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
 
 elif args.Model == "AE":
     config = Config_AttnAE(data_path=args.PathData)

@@ -84,7 +84,7 @@ def wandb_initializer(config, method, fine_tune_config):
                                     "NUM_EPOCHS": config.NUM_EPOCHS,
                                     "BATCH_SIZE": config.BATCH_SIZE,
                                     "LATENT_LEN": config.LATENT_LEN,
-                                    "Embedding_DIM": config.Embedding_dim,
+                                    "Embedding_DIM": config.EMBEDDING_DIM,
                                     "DFF": config.DFF,
                                     "ENC_DEPTH": config.ENC_DEPTH,
                                     "ENC_NUM_ATTN_HEADS": config.ENC_NUM_ATTN_HEADS,

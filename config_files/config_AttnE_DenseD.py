@@ -75,7 +75,7 @@ class Config_AttnAE(object):
 
         #Decoder
 
-        self.DEC_LAYERS = [2000, 2000, 500, 500]
+        self.DEC_LAYERS = [2000, 500, 500]
 
 
         # Data Augmentation
