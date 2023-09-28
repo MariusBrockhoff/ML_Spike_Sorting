@@ -35,111 +35,6 @@ def get_angles(pos, i, d_model):
   angle_rates = 1 / np.power(10000, (2 * (i//2)) / np.float32(d_model))
   return pos * angle_rates
 
-def fourier_encode(x, max_freq, num_bands=4, base=2):
-
-    x = tf.expand_dims(x, -1)
-
-    x = tf.cast(x, dtype=tf.float32)
-
-    orig_x = x
-
-    scales = tf.experimental.numpy.logspace(
-
-        1.0,
-
-        math.log(max_freq / 2) / math.log(base),
-
-        num=num_bands,
-
-        base=base,
-
-        dtype=tf.float32,
-
-    )
-
-    scales = scales[(*((None,) * (len(x.shape) - 1)), Ellipsis)]
-
-
-
-    x = x * scales * math.pi
-
-    x = tf.concat([tf.math.sin(x), tf.math.cos(x)], axis=-1)
-
-    x = tf.concat((x, orig_x), axis=-1)
-
-    return x
-
-
-class fourier_encoding(tf.keras.layers.Layer):
-    # input shape: (batch_size, seq_lenght, n_features, 1)
-    # output shape: (batch_size, seq_length*n_features, d_model)
-    def __init__(self, max_freq, num_bands, base):
-        super(fourier_encoding, self).__init__()
-
-        self.max_freq = max_freq
-
-        self.num_bands = num_bands
-
-        self.base = base
-
-    def fourier_encode(self, x, max_freq, num_bands, base):
-        x = tf.expand_dims(x, -1)
-
-        x = tf.cast(x, dtype=tf.float32)
-
-        orig_x = x
-
-        scales = tf.experimental.numpy.logspace(
-
-            1.0,
-
-            math.log(max_freq / 2) / math.log(base),
-
-            num=num_bands,
-
-            base=base,
-
-            dtype=tf.float32,
-
-        )
-
-        scales = scales[(*((None,) * (len(x.shape) - 1)), Ellipsis)]
-
-        x = x * scales * math.pi
-
-        x = tf.concat([tf.math.sin(x), tf.math.cos(x)], axis=-1)
-
-        x = tf.concat((x, orig_x), axis=-1)
-
-        return x
-
-    def call(self, input):
-        b, *axis, _ = input.shape
-
-        axis_pos = list(map(lambda size: tf.linspace(-1.0, 1.0, num=size), axis))
-
-        pos = tf.stack(tf.meshgrid(*axis_pos, indexing="ij"), axis=-1)
-
-        enc_pos = self.fourier_encode(pos,
-
-                                      self.max_freq,
-
-                                      self.num_bands,
-
-                                      self.base)
-
-        enc_pos = rearrange(enc_pos, "... n d -> ... (n d)")
-
-        enc_pos = rearrange(enc_pos, "... c -> (...) c")
-
-        enc_pos = repeat(enc_pos, "... -> b ...", b=b)
-
-        input = rearrange(input, "b ... d -> b (...) d")
-
-        output = input + enc_pos
-
-        return output
-
 
 class SelfAttention(tf.keras.Model):
 
@@ -227,7 +122,7 @@ class AttnModule(tf.keras.layers.Layer):
 
         self.dropout_rate = dropout_rate
 
-        self.layers = [SelfAttention(d_model=self.Embedding_dim,
+        self.layers = [SelfAttention(embedding_dim=self.Embedding_dim,
 
                                   dff=self.dff,
 
