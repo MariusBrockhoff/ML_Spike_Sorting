@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-class Config_FullTransformer(object):
+class Config_AttnAE(object):
 
     def __init__(self, data_path):
-        super(Config_FullTransformer, self).__init__()
+        super(Config_AttnAE, self).__init__()
 
         self.data_path = data_path
         self.FILE_NAME = self.data_path.rpartition('/')[-1][:-4]
@@ -53,7 +53,7 @@ class Config_FullTransformer(object):
 
         # Architecture
 
-        self.MODEL_TYPE = "FullTransformer"
+        self.MODEL_TYPE = "AttnE_DenseD"
 
         self.EMBEDDING_DIM = 256
 
@@ -75,11 +75,7 @@ class Config_FullTransformer(object):
 
         #Decoder
 
-        self.DEC_DEPTH = 4
-
-        self.DEC_NUM_ATTN_HEADS = 8
-
-        self.DEC_DROPOUT_RATE = 0.1
+        self.DEC_LAYERS = [2000, 2000, 500, 500]
 
 
         # Data Augmentation

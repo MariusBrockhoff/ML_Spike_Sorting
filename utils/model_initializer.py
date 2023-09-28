@@ -45,29 +45,16 @@ def model_initializer(config):
                               DEC_attn_heads=config.DEC_NUM_ATTN_HEADS,
                               DEC_dropout_rate=config.DEC_DROPOUT_RATE)
 
-    elif config.MODEL_TYPE == "AttnAE_1":
-        model = TransformerEncoder_AEDecoder(num_layers=config.ENC_DEPTH,
-                                             d_model=config.D_MODEL,
-                                             num_heads=config.NUM_ATTN_HEADS,
-                                             dff=config.DFF,
-                                             pe_input=config.SEQ_LEN,
-                                             latent_len=config.LATENT_LEN,
-                                             dropout=config.DROPOUT_RATE,
-                                             dec_dims=config.DEC_LAYERS,
-                                             reg_value=config.REG_VALUE)
 
-
-    elif config.MODEL_TYPE == "AttnAE_2":
-        model = Attention_AE(d_model=config.D_MODEL,
-                             dff=config.DFF,
-                             seq_len=config.SEQ_LEN,
-                             latent_len=config.LATENT_LEN,
-                             ENC_depth=config.ENC_DEPTH,
-                             ENC_attn_dim=int(config.D_MODEL / config.NUM_ATTN_HEADS),
-                             ENC_attn_heads=config.NUM_ATTN_HEADS,
-                             ENC_dropout_rate=config.DROPOUT_RATE,
-                             DEC_layers=config.DEC_LAYERS,
-                             reg_value=config.REG_VALUE)
+    elif config.MODEL_TYPE == "AttnE_DenseD":
+        model = Attention_AE(embedding_dim=config.Embedding_dim,
+                                dff=config.DFF,
+                                seq_len=config.SEQ_LEN,
+                                latent_len=config.LATENT_LEN,
+                                enc_depth=config.ENC_DEPTH,
+                                enc_attn_dim=int(config.Embedding_dim / config.ENC_NUM_ATTN_HEADS),
+                                enc_attn_heads=config.ENC_NUM_ATTN_HEADS,
+                                dec_layers=config.DEC_LAYERS)
 
     elif config.MODEL_TYPE == "FullTransformer":
         model = FullTransformer(embedding_dim=config.Embedding_dim,

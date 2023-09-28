@@ -220,28 +220,26 @@ class Decoder(tf.keras.Model):
 class Attention_AE(tf.keras.Model):
 
     def __init__(self,
-                 d_model,
+                 embedding_dim,
                  dff,
                  seq_len,
                  latent_len,
-                 ENC_depth,
-                 ENC_attn_dim,
-                 ENC_attn_heads,
-                 ENC_dropout_rate,
-                 DEC_layers,
-                 reg_value):
+                 enc_depth,
+                 enc_attn_dim,
+                 enc_attn_heads,
+                 enc_dropout_rate,
+                 dec_layers):
         super(Attention_AE, self).__init__()
 
-        self.d_model = d_model
+        self.Embedding_dim = embedding_dim
         self.dff = dff
         self.seq_len = seq_len
         self.latent_len = latent_len
-        self.ENC_depth = ENC_depth
-        self.ENC_attn_dim = ENC_attn_dim
-        self.ENC_attn_heads = ENC_attn_heads
-        self.ENC_dropout_rate = ENC_dropout_rate
-        self.DEC_layers = DEC_layers
-        self.reg_value = reg_value
+        self.ENC_depth = enc_depth
+        self.ENC_attn_dim = enc_attn_dim
+        self.ENC_attn_heads = enc_attn_heads
+        self.ENC_dropout_rate = enc_dropout_rate
+        self.DEC_layers = dec_layers
 
         self.Encoder = Encoder(embedding_dim=self.Embedding_dim,
                                dff=self.dff,

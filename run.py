@@ -33,14 +33,9 @@ if args.Model == "PerceiverIO":
 elif args.Model == "DenseAutoencoder":
     config = Config_DenseAutoencoder(data_path=args.PathData)
 
-elif args.Model == "AttnAE_1":
+elif args.Model == "AttnE_DenseD":
     config = Config_AttnAE(data_path=args.PathData)
-    config.MODEL_TYPE = "AttnAE_1"
-    assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
-    
-elif args.Model == "AttnAE_2":
-    config = Config_AttnAE(data_path=args.PathData)
-    config.MODEL_TYPE = "AttnAE_2"
+    config.MODEL_TYPE = "AttnE_DenseD"
     assert config.D_MODEL % config.NUM_ATTN_HEADS == 0
 
 elif args.Model == "AE":
