@@ -48,7 +48,7 @@ class Config_AttnAE(object):
 
         self.MIN_DELTA = 0
 
-        self.BASELINE = 0.001
+        self.BASELINE = 0.0008
 
 
         # Architecture

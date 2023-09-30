@@ -66,7 +66,7 @@ class Config_PerceiverIO(object):
 
         # Encoder
 
-        self.ENC_NUMBER_OF_LAYERS = 10
+        self.ENC_NUMBER_OF_LAYERS = 5
 
         self.ENC_STATE_INDEX = 32
 
@@ -89,7 +89,7 @@ class Config_PerceiverIO(object):
 
         #Decoder
 
-        self.DEC_NUMBER_OF_LAYERS = 10
+        self.DEC_NUMBER_OF_LAYERS = 5
 
         self.DEC_STATE_INDEX = 32
 
