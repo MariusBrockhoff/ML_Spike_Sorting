@@ -298,9 +298,10 @@ def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_w
                     [_, output] = model(batch_s)
 
                     loss = mse(batch_s, output)
+                    loss_lst.append(loss)
                     grads = tape.gradient(loss, model.trainable_weights)
                     optimizer.apply_gradients(zip(grads, model.trainable_weights))
-            loss_lst.append(loss)
+
 
             #test loss
             for step, batch in enumerate(dataset_test):
