@@ -68,7 +68,7 @@ class SelfAttention(tf.keras.Model):
 
         self.attn_norm1 = KL.LayerNormalization(axis=-1)
 
-        self.fin_norm = KL.LayerNormalization(axis=-1)
+        #self.fin_norm = KL.LayerNormalization(axis=-1)
 
         self.attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
@@ -80,15 +80,15 @@ class SelfAttention(tf.keras.Model):
 
     def call(self, inputs):
 
-        x = inputs
+        #x = inputs
 
         normed_inputs = self.attn_norm1(inputs)
 
-        x += self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
+        x = self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
 
         x += self.attn_mlp(x)
 
-        x = self.fin_norm(x)
+        #x = self.fin_norm(x)
 
         return x
 
@@ -170,8 +170,7 @@ class Encoder(tf.keras.Model):
         self.reduc_pos_enc = Sequential([KL.Dense(1),                               #KL.Dense(1, activation='relu'),
                                          KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))])
 
-        self.ENC_to_logits = KL.Dense(self.latent_len) # PREVIOUS: self.ENC_to_logits = Sequential([KL.Dense(self.latent_len, activation='relu',
-        # activity_regularizer=tf.keras.regularizers.l1(self.reg_value))])
+        self.ENC_to_logits = KL.Dense(self.latent_len)
 
     def call(self, inputs):
 

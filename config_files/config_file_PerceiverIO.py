@@ -74,9 +74,9 @@ class Config_PerceiverIO(object):
 
         self.ENC_DFF = self.ENC_STATE_CHANNELS*4
 
-        self.ENC_X_ATTN_HEADS = 1
+        self.ENC_X_ATTN_HEADS = 8
 
-        self.ENC_X_ATTN_DIM = 256 #int(self.ENC_STATE_CHANNELS / self.ENC_X_ATTN_HEADS)
+        self.ENC_X_ATTN_DIM = 32 #int(self.ENC_STATE_CHANNELS / self.ENC_X_ATTN_HEADS)
 
         self.ENC_DEPTH = 4
 
@@ -97,9 +97,9 @@ class Config_PerceiverIO(object):
 
         self.DEC_DFF = self.DEC_STATE_CHANNELS*4
 
-        self.DEC_X_ATTN_HEADS = 1
+        self.DEC_X_ATTN_HEADS = 8
 
-        self.DEC_X_ATTN_DIM = 256 #int(self.DEC_STATE_CHANNELS / self.DEC_X_ATTN_HEADS)
+        self.DEC_X_ATTN_DIM = 32 #int(self.DEC_STATE_CHANNELS / self.DEC_X_ATTN_HEADS)
 
         self.DEC_DEPTH = 4
 

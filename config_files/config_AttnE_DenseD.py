@@ -44,9 +44,9 @@ class Config_AttnAE(object):
 
         self.EARLY_STOPPING = True
 
-        self.PATIENCE = 100
+        self.PATIENCE = 20
 
-        self.MIN_DELTA = 0
+        self.MIN_DELTA = 0.0001
 
         self.BASELINE = 0.0008
 
@@ -55,7 +55,7 @@ class Config_AttnAE(object):
 
         self.MODEL_TYPE = "AttnE_DenseD"
 
-        self.EMBEDDING_DIM = 256
+        self.EMBEDDING_DIM = 512
 
         self.DFF = self.EMBEDDING_DIM*4
 
@@ -66,7 +66,7 @@ class Config_AttnAE(object):
 
         #Encoder
 
-        self.ENC_DEPTH = 4
+        self.ENC_DEPTH = 8
 
         self.ENC_NUM_ATTN_HEADS = 8
 

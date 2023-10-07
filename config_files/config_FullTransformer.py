@@ -24,7 +24,7 @@ class Config_FullTransformer(object):
 
         # TRAINING HYPERPARAMETERS
 
-        self.LEARNING_RATE = 2e-5  # 1e-4 #1e-6
+        self.LEARNING_RATE = 2e-3  # 1e-4 #1e-6
 
         self.WITH_WARMUP = True
 
@@ -66,20 +66,20 @@ class Config_FullTransformer(object):
 
         #Encoder
 
-        self.ENC_DEPTH = 4
+        self.ENC_DEPTH = 20
 
         self.ENC_NUM_ATTN_HEADS = 8
 
-        self.ENC_DROPOUT_RATE = 0.1
+        self.ENC_DROPOUT_RATE = 0
 
 
         #Decoder
 
-        self.DEC_DEPTH = 4
+        self.DEC_DEPTH = 20
 
         self.DEC_NUM_ATTN_HEADS = 8
 
-        self.DEC_DROPOUT_RATE = 0.1
+        self.DEC_DROPOUT_RATE = 0
 
 
         # Data Augmentation

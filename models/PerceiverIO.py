@@ -12,77 +12,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers as KL
 
 
-class FourierEncoding(tf.keras.layers.Layer):
-    #input shape: (batch_size, seq_length, n_features, 1)
-    #output shape: (batch_size, seq_length*n_features, d_model)
-
-    def __init__(self, max_freq, num_bands, base):
-    
-        super(FourierEncoding, self).__init__()
-
-        self.max_freq = max_freq
-
-        self.num_bands = num_bands
-
-        self.base = base
-
-    def fourier_encode(self, x, max_freq, num_bands, base):
-
-        x = tf.expand_dims(x, -1)
-
-        x = tf.cast(x, dtype=tf.float32)
-
-        orig_x = x
-
-        scales = tf.experimental.numpy.logspace(
-
-            1.0,
-
-            math.log(max_freq / 2) / math.log(base),
-
-            num=num_bands,
-
-            base=base,
-
-            dtype=tf.float32)
-
-        scales = scales[(*((None,) * (len(x.shape) - 1)), Ellipsis)]
-
-        x = x * scales * math.pi
-
-        x = tf.concat([tf.math.sin(x), tf.math.cos(x)], axis=-1)
-
-        x = tf.concat((x, orig_x), axis=-1)
-
-        return x
-
-    def call(self, input):
-
-        b, *axis, _ = input.shape
-
-        axis_pos = list(map(lambda size: tf.linspace(-1.0, 1.0, num=size), axis))
-
-        pos = tf.stack(tf.meshgrid(*axis_pos, indexing="ij"), axis=-1)
-
-        enc_pos = self.fourier_encode(pos,
-
-                                     self.max_freq,
-
-                                     self.num_bands,
-
-                                     self.base)
-
-        enc_pos = rearrange(enc_pos, "... n d -> ... (n d)")
-
-        enc_pos = rearrange(enc_pos, "... c -> (...) c")
-
-        enc_pos = repeat(enc_pos, "... -> b ...", b=b)
-
-        input = rearrange(input, "b ... d -> b (...) d")
-
-        output = input + enc_pos
-
-        return output
 
 
 def get_angles(pos, i, d_model):
@@ -156,7 +85,7 @@ class SelfAttention(tf.keras.Model):
 
         self.attn_norm1 = KL.LayerNormalization(axis=-1)
 
-        self.fin_norm = KL.LayerNormalization(axis=-1)
+        #self.fin_norm = KL.LayerNormalization(axis=-1)
 
         self.attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
@@ -168,15 +97,15 @@ class SelfAttention(tf.keras.Model):
 
     def call(self, inputs):
 
-        x = inputs
+        #x = inputs
 
         normed_inputs = self.attn_norm1(inputs)
 
-        x += self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
+        x = self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
 
         x += self.attn_mlp(x)
 
-        x = self.fin_norm(x)
+        #x = self.fin_norm(x)
 
         return x
 
@@ -216,7 +145,7 @@ class CrossAttention(tf.keras.Model):
 
         self.x_attn_norm2 = KL.LayerNormalization(axis=-1)
 
-        self.fin_norm = KL.LayerNormalization(axis=-1)
+        #self.fin_norm = KL.LayerNormalization(axis=-1)
 
         self.x_attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
@@ -237,7 +166,7 @@ class CrossAttention(tf.keras.Model):
 
         x += self.x_attn_mlp(x)
 
-        x = self.fin_norm(x)
+        #x = self.fin_norm(x)
 
         return x
 
@@ -529,7 +458,7 @@ class Encoder(tf.keras.Model):
 
                                 KL.LayerNormalization(axis=-1, trainable=False)])
 
-        self.logits_to_latent = KL.Dense(self.latent_len) #Sequential([KL.Dense(self.latent_len)])
+        self.logits_to_latent = KL.Dense(self.latent_len)
 
     def call(self, inputs):
 
