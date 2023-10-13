@@ -2,9 +2,22 @@
 import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
-import pandas as pd
 import wandb
 
+from os import path
+#TODO: add self-supervised backbone training
+
+
+def check_filepath_naming(filepath):
+    if path.exists(filepath):
+        numb = 1
+        while True:
+            newPath = "{0}_{2}{1}".format(*path.splitext(filepath) + (numb,))
+            if path.exists(newPath):
+                numb += 1
+            else:
+                return newPath
+    return filepath
 
 def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_warmup_value=0):
     warmup_schedule = np.array([])
@@ -230,7 +243,7 @@ class DINOLoss(tf.keras.layers.Layer):
         self.update_center(teacher_output)
         return total_loss
 
-def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
+def pretrain_model(model, config, pretrain_method, dataset, dataset_test, save_weights, save_dir):
 
     if config.EARLY_STOPPING:
         early_stopper = EarlyStopper(patience=config.PATIENCE, min_delta=config.MIN_DELTA, baseline=config.BASELINE)
@@ -252,145 +265,148 @@ def train_model(model, config, dataset, dataset_test, save_weights, save_dir):
     test_loss_lst = []
     mse = tf.keras.losses.MeanSquaredError()
 
-    augmenter = SpikeAugmentation(apply_noise=config.APPLY_NOISE, max_noise_lvl=config.MAX_NOISE_LVL,
-                                  apply_flip=config.APPLY_FLIP, flip_probability=config.FLIP_PROBABILITY,
-                                  apply_hshift=config.APPLY_HSHIFT, max_hshift=config.MAX_HSHIFT)
-
-    for epoch in range(config.NUM_EPOCHS):
-
-        optimizer.learning_rate = lr_schedule[epoch]
-        optimizer.weight_decay = wd_schedule[epoch]
-
-        for step, batch in enumerate(dataset):
-            
-            if config.DATA_AUG:
-                batch_s = augmenter(batch[0])
-            else:
-                batch_s = batch[0]
-                
-            with tf.GradientTape() as tape:
-                [_, _, output] = model(batch_s)
-
-                loss = mse(batch_s, output)
-                grads = tape.gradient(loss, model.trainable_weights)
-                optimizer.apply_gradients(zip(grads, model.trainable_weights))
-        loss_lst.append(loss)
-
-        #test loss
-        for step, batch in enumerate(dataset_test):
-            batch_t = batch[0]
-            [_, _, output] = model(batch_t)
-            test_loss = mse(batch_t, output)
-            test_loss_lst.append(test_loss)
-
-        wandb.log({
-            "Epoch": epoch,
-            "Train Loss": loss.numpy(),
-            "Valid Loss": test_loss.numpy()})
-
-        print("Epoch: ", epoch + 1, ", Train loss: ", loss, ", Test loss: ", test_loss)
-
-        if config.EARLY_STOPPING:
-            if early_stopper.early_stop(np.mean(test_loss_lst[-10:])): #test_loss
-                break
+    if config.DATA_AUG:
+        augmenter = SpikeAugmentation(apply_noise=config.APPLY_NOISE, max_noise_lvl=config.MAX_NOISE_LVL,
+                                      apply_flip=config.APPLY_FLIP, flip_probability=config.FLIP_PROBABILITY,
+                                      apply_hshift=config.APPLY_HSHIFT, max_hshift=config.MAX_HSHIFT)
 
 
+    if pretrain_method == "reconstruction":
+        initializer = True
+        for epoch in range(config.NUM_EPOCHS):
+
+            optimizer.learning_rate = lr_schedule[epoch]
+            optimizer.weight_decay = wd_schedule[epoch]
+
+            for step, batch in enumerate(dataset):
+
+                if config.DATA_AUG:
+                    batch_s = augmenter(batch[0])
+                else:
+                    batch_s = batch[0]
 
 
-    if save_weights:
-        model.save_weights(save_dir)
+                if initializer:
+                    y = model(batch_s)
+                    print(model.Encoder.summary())
+                    print(model.Decoder.summary())
+                    print(model.summary())
+                    initializer = False
 
-    return loss_lst, test_loss_lst, epoch+1
+
+                with tf.GradientTape() as tape:
+                    [_, output] = model(batch_s)
+
+                    loss = mse(batch_s, output)
+                    loss_lst.append(loss)
+                    grads = tape.gradient(loss, model.trainable_weights)
+                    optimizer.apply_gradients(zip(grads, model.trainable_weights))
 
 
-def train_DINO(model, config, dataset, dataset_test, save_weights, save_dir):
-    if config.EARLY_STOPPING:
-        early_stopper = EarlyStopper(patience=config.PATIENCE, min_delta=config.MIN_DELTA, baseline=config.BASELINE)
+            #test loss
+            for step, batch in enumerate(dataset_test):
+                batch_t = batch[0]
+                [_, output] = model(batch_t)
+                test_loss = mse(batch_t, output)
+                test_loss_lst.append(test_loss)
 
-    if config.WITH_WARMUP:
-        lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
-                                       warmup_epochs=config.LR_WARMUP, start_warmup_value=0)
+            wandb.log({
+                "Epoch": epoch,
+                "Train Loss": np.mean(loss_lst[-dataset.cardinality().numpy():]),
+                "Valid Loss": np.mean(test_loss_lst[-dataset_test.cardinality().numpy():])})
+
+            print("Epoch: ", epoch + 1, ", Train loss: ", np.mean(loss_lst[-dataset.cardinality().numpy():]), ", Test loss: ", np.mean(test_loss_lst[-dataset_test.cardinality().numpy():]))
+            if config.EARLY_STOPPING:
+                if early_stopper.early_stop(np.mean(test_loss_lst[-dataset_test.cardinality().numpy():])): #test_loss
+                    break
+
+
+        if save_weights: #add numbering system if file already exists
+            save_dir = check_filepath_naming(save_dir)
+            wandb.log({"Actual save name": save_dir})
+            model.save_weights(save_dir)
+
+        return loss_lst, test_loss_lst, epoch+1
+
+
+    elif pretrain_method == "NNCLR":
+        #TODO: implement NNCLR pretraining
+        print("NNCLR still to be implemented")
+
+    elif pretrain_method == "DINO":
+
+        loss_lst = []
+        m_student = model[0]
+        m_teacher = model[1]
+        c = tf.zeros((1, config.LATENT_LEN))
+        m = config.CENTERING_RATE
+        l = config.LEARNING_MOMENTUM_RATE
+        tau_student = config.STUDENT_TEMPERATURE
+        tau_teacher = config.TEACHER_TEMPERATURE
+        tau_teacher_final = config.TEACHER_TEMPERATURE_FINAL
+        warmup = config.TEACHER_WARMUP
+
+        dino_loss = DINOLoss(tau_teacher, tau_teacher_final, warmup, config.NUM_EPOCHS, tau_student,
+                             config.NUMBER_LOCAL_CROPS + 2, c, m)
+
+        augmenter = DINOSpikeAugmentation(max_noise_lvl=config.MAX_NOISE_LVL,
+                                          crop_pcts=config.CROP_PCTS,
+                                          number_local_crops=config.NUMBER_LOCAL_CROPS)
+        for epoch in range(config.NUM_EPOCHS):
+
+            optimizer.learning_rate = lr_schedule[epoch]
+            optimizer.weight_decay = wd_schedule[epoch]
+            l = config.LEARNING_MOMENTUM_RATE + .002 * np.cos(epoch * np.pi / config.NUM_EPOCHS)
+
+            for step, batch in enumerate(dataset):
+
+                if config.DATA_AUG:
+                    batch_t, batch_s = augmenter(batch[0])
+
+                with tf.GradientTape() as tape:
+                    student_logs = []
+                    for single_batch in batch_s:
+                        _, single_student_logits = m_student(single_batch)
+                        student_logs.append(single_student_logits)
+                    student_logits = tf.concat(student_logs, axis=0)
+
+                    with tape.stop_recording():
+                        teacher_logs = []
+                        for single_batch in batch_t:
+                            _, single_teacher_logits = m_teacher(single_batch)
+                            teacher_logs.append(single_teacher_logits)
+                        teacher_logits = tf.concat(teacher_logs, axis=0)
+
+                    loss = dino_loss(student_logits, teacher_logits, epoch)
+
+                grads = tape.gradient(loss, m_student.trainable_weights)
+                optimizer.apply_gradients(zip(grads, m_student.trainable_weights))
+                loss_lst.append(loss)
+
+            for layer_s, layer_t in zip(m_student.layers, m_teacher.layers):
+                weights_s = layer_s.get_weights()
+                weights_t = layer_t.get_weights()
+                weights_update = []
+                # Weights of the teacher are updated according to DINO idea
+                for weight_s, weight_t in zip(weights_s, weights_t):
+                    weights_update.append(
+                        l * weight_t + (1 - l) * weight_s)
+
+                layer_t.set_weights(weights_update)
+
+            wandb.log({
+                "Epoch": epoch,
+                "DINO Loss": loss.numpy()})
+
+            # if config.EARLY_STOPPING:
+            # if early_stopper.early_stop(test_loss):
+            # break
+
+        if save_weights:
+            save_dir = check_filepath_naming(save_dir)
+            model.save_weights(save_dir)
+
+        return loss_lst, loss_lst, epoch + 1
+
     else:
-        lr_schedule = cosine_scheduler(config.LEARNING_RATE, config.LR_FINAL, config.NUM_EPOCHS,
-                                       warmup_epochs=0, start_warmup_value=0)
-    wd_schedule = cosine_scheduler(config.WEIGHT_DECAY, config.WD_FINAL, config.NUM_EPOCHS,
-                                   warmup_epochs=0, start_warmup_value=0)
-    if config.WITH_WD:
-        optimizer = tfa.optimizers.AdamW(weight_decay=wd_schedule[0], learning_rate=lr_schedule[0])
-    else:
-        optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule[0])
-
-    loss_lst = []
-    m_student = model[0]
-    m_teacher = model[1]
-    c = tf.zeros((1, config.LATENT_LEN))
-    m = config.CENTERING_RATE
-    l = config.LEARNING_MOMENTUM_RATE
-    tau_student = config.STUDENT_TEMPERATURE
-    tau_teacher = config.TEACHER_TEMPERATURE
-    tau_teacher_final = config.TEACHER_TEMPERATURE_FINAL
-    warmup = config.TEACHER_WARMUP
-
-    dino_loss = DINOLoss(tau_teacher, tau_teacher_final, warmup, config.NUM_EPOCHS, tau_student,
-                         config.NUMBER_LOCAL_CROPS + 2, c, m)
-
-    augmenter = DINOSpikeAugmentation(max_noise_lvl=config.MAX_NOISE_LVL,
-                                         crop_pcts=config.CROP_PCTS,
-                                         number_local_crops=config.NUMBER_LOCAL_CROPS)
-    for epoch in range(config.NUM_EPOCHS):
-
-        optimizer.learning_rate = lr_schedule[epoch]
-        optimizer.weight_decay = wd_schedule[epoch]
-        l = config.LEARNING_MOMENTUM_RATE + .002 * np.cos(epoch * np.pi / config.NUM_EPOCHS)
-
-
-        for step, batch in enumerate(dataset):
-
-            if config.DATA_AUG:
-                batch_t, batch_s = augmenter(batch[0])
-
-            with tf.GradientTape() as tape:
-                student_logs = []
-                for single_batch in batch_s:
-                    _, single_student_logits = m_student(single_batch)
-                    student_logs.append(single_student_logits)
-                student_logits = tf.concat(student_logs, axis=0)
-
-                with tape.stop_recording():
-                    teacher_logs = []
-                    for single_batch in batch_t:
-                        _, single_teacher_logits = m_teacher(single_batch)
-                        teacher_logs.append(single_teacher_logits)
-                    teacher_logits = tf.concat(teacher_logs, axis=0)
-
-
-                loss = dino_loss(student_logits, teacher_logits, epoch)
-
-            grads = tape.gradient(loss, m_student.trainable_weights)
-            optimizer.apply_gradients(zip(grads, m_student.trainable_weights))
-            loss_lst.append(loss)
-
-        for layer_s, layer_t in zip(m_student.layers, m_teacher.layers):
-            weights_s = layer_s.get_weights()
-            weights_t = layer_t.get_weights()
-            weights_update = []
-            # Weights of the teacher are updated according to DINO idea
-            for weight_s, weight_t in zip(weights_s, weights_t):
-                weights_update.append(
-                    l * weight_t + (1 - l) * weight_s)
-
-            layer_t.set_weights(weights_update)
-
-
-        wandb.log({
-            "Epoch": epoch,
-            "DINO Loss": loss.numpy()})
-
-        #if config.EARLY_STOPPING:
-            #if early_stopper.early_stop(test_loss):
-                #break
-
-    if save_weights:
-        model.save_weights(save_dir)
-
-    return loss_lst, loss_lst, epoch + 1
+        print("Choose valid pre train method pls")

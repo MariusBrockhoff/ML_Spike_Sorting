@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-class Config_PerceiverIO(object):
+class Config_AttnAE(object):
 
     def __init__(self, data_path):
-        super(Config_PerceiverIO, self).__init__()
-        
+        super(Config_AttnAE, self).__init__()
+
         self.data_path = data_path
         self.FILE_NAME = self.data_path.rpartition('/')[-1][:-4]
-
-
 
         # Data
 
@@ -24,21 +22,21 @@ class Config_PerceiverIO(object):
         self.BENCHMARK_END_IDX = 5
 
 
-       # TRAINING HYPERPARAMETERS
+        # TRAINING HYPERPARAMETERS
 
-        self.LEARNING_RATE = 2e-5 #1e-4 #1e-6
+        self.LEARNING_RATE = 2e-5  # 1e-4 #1e-6
 
         self.WITH_WARMUP = True
 
-        self.LR_WARMUP = 10 #2 #10
+        self.LR_WARMUP = 10  # 2 #10
 
-        self.LR_FINAL = 1e-9  #1e-6 1e-8
+        self.LR_FINAL = 1e-9
 
         self.WITH_WD = False
 
-        self.WEIGHT_DECAY = 1e-2 #1e-5 1e-7
+        self.WEIGHT_DECAY = 1e-2  # 1e-5 1e-7
 
-        self.WD_FINAL = 1e-4    #1e-41e-6
+        self.WD_FINAL = 1e-4  # 1e-41e-6
 
         self.NUM_EPOCHS = 100
 
@@ -46,68 +44,39 @@ class Config_PerceiverIO(object):
 
         self.EARLY_STOPPING = True
 
-        self.PATIENCE = 100
+        self.PATIENCE = 20
 
-        self.MIN_DELTA = 0
+        self.MIN_DELTA = 0.0001
 
-        self.BASELINE = 0.001
+        self.BASELINE = 0.0008
 
 
-        #Architecture
+        # Architecture
 
-        self.MODEL_TYPE = "PerceiverIO"
+        self.MODEL_TYPE = "AttnE_DenseD"
 
-        self.EMBEDDING_DIM = 256
+        self.EMBEDDING_DIM = 512
+
+        self.DFF = self.EMBEDDING_DIM*4
 
         self.SEQ_LEN = 63
 
         self.LATENT_LEN = 10
 
 
-        # Encoder
+        #Encoder
 
-        self.ENC_NUMBER_OF_LAYERS = 5
-
-        self.ENC_STATE_INDEX = 32
-
-        self.ENC_STATE_CHANNELS = 256
-
-        self.ENC_DFF = self.ENC_STATE_CHANNELS*4
-
-        self.ENC_X_ATTN_HEADS = 8
-
-        self.ENC_X_ATTN_DIM = 32 #int(self.ENC_STATE_CHANNELS / self.ENC_X_ATTN_HEADS)
-
-        self.ENC_DEPTH = 4
+        self.ENC_DEPTH = 8
 
         self.ENC_NUM_ATTN_HEADS = 8
-
-        self.ENC_SELF_ATTN_DIM = 32 #int(self.ENC_STATE_CHANNELS / self.ENC_NUM_ATTN_HEADS)
 
         self.ENC_DROPOUT_RATE = 0.1
 
 
         #Decoder
 
-        self.DEC_NUMBER_OF_LAYERS = 5
+        self.DEC_LAYERS = [2000, 500, 500]
 
-        self.DEC_STATE_INDEX = 32
-
-        self.DEC_STATE_CHANNELS = 256
-
-        self.DEC_DFF = self.DEC_STATE_CHANNELS*4
-
-        self.DEC_X_ATTN_HEADS = 8
-
-        self.DEC_X_ATTN_DIM = 32 #int(self.DEC_STATE_CHANNELS / self.DEC_X_ATTN_HEADS)
-
-        self.DEC_DEPTH = 4
-
-        self.DEC_NUM_ATTN_HEADS = 8
-
-        self.DEC_SELF_ATTN_DIM = 32 #int(self.DEC_STATE_CHANNELS / self.DEC_NUM_ATTN_HEADS)
-
-        self.DEC_DROPOUT_RATE = 0
 
         # Data Augmentation
 
@@ -126,7 +95,7 @@ class Config_PerceiverIO(object):
         self.MAX_HSHIFT = None
 
 
-        #Clustering
+        # Clustering
 
         self.CLUSTERING_METHOD = "Kmeans"
 
@@ -137,6 +106,7 @@ class Config_PerceiverIO(object):
         self.MIN_CLUSTER_SIZE = 1000
 
         self.KNN = 1000
+
 
         # SAVE MODEL
 

@@ -12,6 +12,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers as KL
 
 
+
+
 def positional_encoding(position, d_model):
   angle_rads = get_angles(np.arange(position)[:, np.newaxis],
                           np.arange(d_model)[np.newaxis, :],
@@ -34,7 +36,6 @@ def get_angles(pos, i, d_model):
   #       --> in our setting: no embedding necessary, so always i=1 and d_model=1
   angle_rates = 1 / np.power(10000, (2 * (i//2)) / np.float32(d_model))
   return pos * angle_rates
-
 
 class SelfAttention(tf.keras.Model):
 
@@ -68,7 +69,7 @@ class SelfAttention(tf.keras.Model):
 
         self.attn_norm1 = KL.LayerNormalization(axis=-1)
 
-        #self.fin_norm = KL.LayerNormalization(axis=-1)
+        self.fin_norm = KL.LayerNormalization(axis=-1)
 
         self.attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
@@ -80,18 +81,17 @@ class SelfAttention(tf.keras.Model):
 
     def call(self, inputs):
 
-        #x = inputs
+        x = inputs
 
         normed_inputs = self.attn_norm1(inputs)
 
-        x = self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
+        x += self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
 
         x += self.attn_mlp(x)
 
-        #x = self.fin_norm(x)
+        x = self.fin_norm(x)
 
         return x
-
 
 class AttnModule(tf.keras.layers.Layer):
 
@@ -170,7 +170,8 @@ class Encoder(tf.keras.Model):
         self.reduc_pos_enc = Sequential([KL.Dense(1),                               #KL.Dense(1, activation='relu'),
                                          KL.Reshape((self.seq_len,), input_shape=(self.seq_len, 1))])
 
-        self.ENC_to_logits = KL.Dense(self.latent_len)
+        self.ENC_to_logits = KL.Dense(self.latent_len) # PREVIOUS: self.ENC_to_logits = Sequential([KL.Dense(self.latent_len, activation='relu',
+        # activity_regularizer=tf.keras.regularizers.l1(self.reg_value))])
 
     def call(self, inputs):
 
@@ -188,53 +189,35 @@ class Encoder(tf.keras.Model):
 
 class Decoder(tf.keras.Model):
     def __init__(self,
-                 embedding_dim,
-                 dff,
-                 seq_len,
-                 latent_len,
-                 dec_depth,
-                 dec_attn_dim,
-                 dec_attn_heads,
-                 dec_dropout_rate):
+                 DEC_layers,
+                 seq_len):
         super(Decoder, self).__init__()
 
-        self.Embedding_dim = embedding_dim
-        self.dff = dff
+        self.DEC_layers = DEC_layers
         self.seq_len = seq_len
-        self.latent_len = latent_len
-        self.DEC_depth = dec_depth
-        self.DEC_attn_dim = dec_attn_dim
-        self.DEC_attn_heads = dec_attn_heads
-        self.DEC_dropout_rate = dec_dropout_rate
 
-        self.embedding_dec = KL.Dense(self.Embedding_dim)
+        self.decoder_layers = [KL.Dense(self.DEC_layers[i], kernel_initializer='glorot_uniform') for i in
+                               range(len(self.DEC_layers))]
 
-        self.positional_enc_dec = positional_encoding(self.latent_len, self.Embedding_dim)
+        self.outputadapter = Sequential([KL.Dense(self.seq_len)])
 
-        self.decoder = AttnModule(self.Embedding_dim, self.dff, self.DEC_depth, self.DEC_attn_dim, self.DEC_attn_heads,
-                                   self.DEC_dropout_rate)
+    def call(self, inputs):
 
-        self.reduc_pos_enc_dec = Sequential([KL.Dense(1),                               #KL.Dense(1, activation='relu'),
-                                             KL.Reshape((self.latent_len,), input_shape=(self.latent_len, 1))])
+        x = inputs
 
-        self.outputadapter = KL.Dense(self.seq_len)
+        # Decoder
+        for i in range(len(self.decoder_layers)):
+            x = self.decoder_layers[i](x)
 
-    def call(self, x):
-
-        x = rearrange(x, "a b -> a b 1")
-        x = self.embedding_dec(x)
-        x += self.positional_enc_dec
-
-        decoded = self.decoder(x)
-        decoded = self.reduc_pos_enc_dec(decoded)
-        output = self.outputadapter(decoded)
+        output = self.outputadapter(x)
 
         return output
 
 
 
 
-class FullTransformer(tf.keras.Model):
+
+class Attention_AE(tf.keras.Model):
 
     def __init__(self,
                  embedding_dim,
@@ -245,27 +228,18 @@ class FullTransformer(tf.keras.Model):
                  enc_attn_dim,
                  enc_attn_heads,
                  enc_dropout_rate,
-                 dec_depth,
-                 dec_attn_dim,
-                 dec_attn_heads,
-                 dec_dropout_rate):
-        super(FullTransformer, self).__init__()
+                 dec_layers):
+        super(Attention_AE, self).__init__()
 
         self.Embedding_dim = embedding_dim
         self.dff = dff
         self.seq_len = seq_len
         self.latent_len = latent_len
-
         self.ENC_depth = enc_depth
         self.ENC_attn_dim = enc_attn_dim
         self.ENC_attn_heads = enc_attn_heads
         self.ENC_dropout_rate = enc_dropout_rate
-
-        self.DEC_depth = dec_depth
-        self.DEC_attn_dim = dec_attn_dim
-        self.DEC_attn_heads = dec_attn_heads
-        self.DEC_dropout_rate = dec_dropout_rate
-
+        self.DEC_layers = dec_layers
 
         self.Encoder = Encoder(embedding_dim=self.Embedding_dim,
                                dff=self.dff,
@@ -276,20 +250,13 @@ class FullTransformer(tf.keras.Model):
                                enc_attn_heads=self.ENC_attn_heads,
                                enc_dropout_rate=self.ENC_dropout_rate)
 
-        self.Decoder = Decoder(embedding_dim=self.Embedding_dim,
-                               dff=self.dff,
-                               seq_len=self.seq_len,
-                               latent_len=self.latent_len,
-                               dec_depth=self.DEC_depth,
-                               dec_attn_dim=self.DEC_attn_dim,
-                               dec_attn_heads=self.DEC_attn_heads,
-                               dec_dropout_rate=self.DEC_dropout_rate)
-
+        self.Decoder = Decoder(DEC_layers=self.DEC_layers,
+                               seq_len=self.seq_len)
 
     def call(self, inputs):
 
-        latent = self.Encoder(inputs)
+        latent_vec = self.Encoder(inputs)
 
-        output = self.Decoder(latent)
+        final_output = self.Decoder(latent_vec)
 
-        return latent, output
+        return latent_vec, final_output

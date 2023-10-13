@@ -4,85 +4,14 @@ Definition of the PerceiverIO Class for Spike Sorting
 """
 import numpy as np
 import math
+import tensorflow as tf
 
 
 from einops import rearrange, repeat
-import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers as KL
 
 
-class FourierEncoding(tf.keras.layers.Layer):
-    #input shape: (batch_size, seq_length, n_features, 1)
-    #output shape: (batch_size, seq_length*n_features, d_model)
-
-    def __init__(self, max_freq, num_bands, base):
-    
-        super(FourierEncoding, self).__init__()
-
-        self.max_freq = max_freq
-
-        self.num_bands = num_bands
-
-        self.base = base
-
-    def fourier_encode(self, x, max_freq, num_bands, base):
-
-        x = tf.expand_dims(x, -1)
-
-        x = tf.cast(x, dtype=tf.float32)
-
-        orig_x = x
-
-        scales = tf.experimental.numpy.logspace(
-
-            1.0,
-
-            math.log(max_freq / 2) / math.log(base),
-
-            num=num_bands,
-
-            base=base,
-
-            dtype=tf.float32)
-
-        scales = scales[(*((None,) * (len(x.shape) - 1)), Ellipsis)]
-
-        x = x * scales * math.pi
-
-        x = tf.concat([tf.math.sin(x), tf.math.cos(x)], axis=-1)
-
-        x = tf.concat((x, orig_x), axis=-1)
-
-        return x
-
-    def call(self, input):
-
-        b, *axis, _ = input.shape
-
-        axis_pos = list(map(lambda size: tf.linspace(-1.0, 1.0, num=size), axis))
-
-        pos = tf.stack(tf.meshgrid(*axis_pos, indexing="ij"), axis=-1)
-
-        enc_pos = self.fourier_encode(pos,
-
-                                     self.max_freq,
-
-                                     self.num_bands,
-
-                                     self.base)
-
-        enc_pos = rearrange(enc_pos, "... n d -> ... (n d)")
-
-        enc_pos = rearrange(enc_pos, "... c -> (...) c")
-
-        enc_pos = repeat(enc_pos, "... -> b ...", b=b)
-
-        input = rearrange(input, "b ... d -> b (...) d")
-
-        output = input + enc_pos
-
-        return output
 
 
 def get_angles(pos, i, d_model):
@@ -156,25 +85,29 @@ class SelfAttention(tf.keras.Model):
 
         self.attn_norm1 = KL.LayerNormalization(axis=-1)
 
+        #self.fin_norm = KL.LayerNormalization(axis=-1)
+
         self.attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
 
-                                    KL.Dense(self.dff, activation=tf.keras.activations.gelu), #, activity_regularizer=RegL1(0.01)),
+                                    KL.Dense(self.dff, activation=tf.keras.activations.gelu),
 
-                                    KL.Dropout(self.dropout_rate),
+                                    KL.Dense(self.state_channels),
 
-                                    KL.Dense(self.state_channels)]) #, activity_regularizer=RegL1(0.01))])
+                                    KL.Dropout(self.dropout_rate)])
 
     def call(self, inputs):
-        
+
+        #x = inputs
+
         normed_inputs = self.attn_norm1(inputs)
 
-        state = self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
+        x = self.attn(normed_inputs, normed_inputs, return_attention_scores=False)
 
-        state = self.attn_sum1([inputs, state])
+        x += self.attn_mlp(x)
 
-        state_mlp = self.attn_mlp(state)
+        #x = self.fin_norm(x)
 
-        return state_mlp
+        return x
 
 
 class CrossAttention(tf.keras.Model):
@@ -192,7 +125,6 @@ class CrossAttention(tf.keras.Model):
                  x_attn_heads=8,
 
                  dropout_rate=0.1):
-
         super(CrossAttention, self).__init__()
 
         self.state_index = state_index
@@ -213,27 +145,30 @@ class CrossAttention(tf.keras.Model):
 
         self.x_attn_norm2 = KL.LayerNormalization(axis=-1)
 
+        #self.fin_norm = KL.LayerNormalization(axis=-1)
+
         self.x_attn_mlp = Sequential([KL.LayerNormalization(axis=-1),
-                                      
-                                      KL.Dense(self.dff, activation=tf.keras.activations.gelu), #, activity_regularizer=RegL1(0.01)),
 
-                                      KL.Dropout(self.dropout_rate),
+                                      KL.Dense(self.dff, activation=tf.keras.activations.gelu),
 
-                                      KL.Dense(self.state_channels)]) #, activity_regularizer=RegL1(0.01))])
+                                      KL.Dense(self.state_channels),
+
+                                      KL.Dropout(self.dropout_rate)])
 
     def call(self, inputs):
-
         q, k = inputs
 
         q_norm = self.x_attn_norm1(q)
 
-        k_norm = self.x_attn_norm2(k)      
+        k_norm = self.x_attn_norm2(k)
 
-        state = self.x_attn(q_norm, k_norm, return_attention_scores=False)
+        x = self.x_attn(q_norm, k_norm, return_attention_scores=False)  # q + self.x_attn(q_norm, k_norm, return_attention_scores=False)
 
-        state_mlp = self.x_attn_mlp(state)
+        x += self.x_attn_mlp(x)
 
-        return state_mlp
+        #x = self.fin_norm(x)
+
+        return x
 
 
 class AttentionBlock(tf.keras.layers.Layer):
@@ -302,13 +237,13 @@ class AttentionBlock(tf.keras.layers.Layer):
 
                                 dropout_rate=self.dropout_rate)
 
-        self.state_stack = tf.TensorArray(tf.float32,
+        #self.state_stack = tf.TensorArray(tf.float32,
 
-                                              size=self.depth,
+                                             # size=self.depth,
 
-                                              dynamic_size=False,
+                                             # dynamic_size=False,
 
-                                              clear_after_read=False)
+                                             # clear_after_read=False)
 
         self.iter = tf.constant(1)
 
@@ -320,27 +255,33 @@ class AttentionBlock(tf.keras.layers.Layer):
 
         i = self.iter
 
-        state_stack = self.state_stack
+        #state_stack = self.state_stack
 
         state_0 = self.SelfAttention(latents)
 
-        state_stack = state_stack.write(0, state_0)
+        #state_stack = state_stack.write(0, state_0)
 
-        cond = lambda i, ss: tf.less(i, self.depth)
+        #cond = lambda i, ss: tf.less(i, self.depth)
 
-        def body(i, state_stack):
+        #def body(i, state_stack):
 
-            state = self.SelfAttention(state_stack.read(i-1))
+            #state = self.SelfAttention(state_stack.read(i-1))
 
-            state_stack = state_stack.write(i, state)
+            #state_stack = state_stack.write(i, state)
 
-            return (i+1, state_stack)
+            #return (i+1, state_stack)
 
-        [i, state_stack] = tf.while_loop(cond,  body, [i, state_stack])
+        #[i, state_stack] = tf.while_loop(cond,  body, [i, state_stack])
 
-        state_out = state_stack.read(i-1)
+        while i < self.depth:
 
-        return state_out
+            state_0 = self.SelfAttention(state_0)
+
+            i += 1
+
+        #state_out = state_stack.read(i-1)
+
+        return state_0
 
 
 class AttentionPipe(tf.keras.layers.Layer):
@@ -420,7 +361,7 @@ class AttentionPipe(tf.keras.layers.Layer):
         return x
 
 
-class Encoder(tf.keras.layers.Layer):
+class Encoder(tf.keras.Model):
 
     def __init__(self,
 
@@ -483,6 +424,8 @@ class Encoder(tf.keras.layers.Layer):
 
         self.positional_enc_inp = positional_encoding(self.seq_len, self.Embedding_dim)
 
+        self.positional_enc_state = positional_encoding(self.state_index, self.state_channels)
+
         self.ENC_state = tf.clip_by_value(tf.Variable(tf.random.normal((self.state_index,
 
                                           self.state_channels), mean=0.0, stddev=0.02),
@@ -515,7 +458,7 @@ class Encoder(tf.keras.layers.Layer):
 
                                 KL.LayerNormalization(axis=-1, trainable=False)])
 
-        self.logits_to_latent = Sequential([KL.Dense(self.latent_len)])
+        self.logits_to_latent = KL.Dense(self.latent_len)
 
     def call(self, inputs):
 
@@ -527,16 +470,18 @@ class Encoder(tf.keras.layers.Layer):
 
         ENC_state = self.ENC_state
 
+        ENC_state += self.positional_enc_state
+
         ENC_state = self.AttentionPipe(ENC_state, inputs)
 
         logits = self.logs(ENC_state)
 
         logits = self.logits_to_latent(logits)
 
-        return ENC_state, logits
+        return logits
 
 
-class Decoder(tf.keras.layers.Layer):
+class Decoder(tf.keras.Model):
 
     def __init__(self,
 
@@ -598,6 +543,8 @@ class Decoder(tf.keras.layers.Layer):
 
         self.positional_inp = positional_encoding(self.latent_len, self.Embedding_dim)
 
+        self.positional_state = positional_encoding(self.state_index, self.state_channels)
+
         self.state = tf.clip_by_value(tf.Variable(tf.random.normal((self.state_index,
 
                                       self.state_channels), mean=0.0, stddev=0.02),
@@ -626,11 +573,10 @@ class Decoder(tf.keras.layers.Layer):
 
                                            dropout_rate=self.dropout_rate)
 
-        self.outputadapter = Sequential([KL.Reshape((self.state_index*self.state_channels,), input_shape=(self.state_index, self.state_channels)),
+        self.reshaping = KL.Reshape((self.state_index*self.state_channels,), input_shape=(self.state_index, self.state_channels))
 
-                                        KL.Dense(self.state_index*self.state_channels),
+        self.outputadapter = KL.Dense(self.seq_len)
 
-                                        KL.Dense(self.seq_len)])
     def call(self, inputs):
 
         inputs = rearrange(inputs, "a b -> a b 1")
@@ -641,11 +587,16 @@ class Decoder(tf.keras.layers.Layer):
 
         state = self.state
 
+        state += self.positional_state
+
         state = self.AttentionPipe(state, inputs)
 
-        output = self.outputadapter(state)
+        state = self.reshaping(state)
 
-        return output
+        out = self.outputadapter(state)
+
+        return out
+
 
 
 class AutoPerceiver(tf.keras.Model):
@@ -801,8 +752,8 @@ class AutoPerceiver(tf.keras.Model):
 
     def call(self, inputs):
 
-        ENC_state, logits = self.Encoder(inputs)
+        logits = self.Encoder(inputs)
 
         output = self.Decoder(logits)
 
-        return ENC_state, logits, output
+        return logits, output

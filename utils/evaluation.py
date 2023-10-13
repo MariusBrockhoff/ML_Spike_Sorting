@@ -25,7 +25,7 @@ def acc(y_true, y_pred):
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
 
-def evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
+def evaluate_clustering(y_pred, y_true, y_pred_test=None, y_true_test=None):
     
     '''
     # Split data in kmeans and FHC
@@ -41,11 +41,16 @@ def evaluate_clustering(y_pred, y_pred_test, y_true, y_true_test):
     '''
     
     train_acc = acc(y_true.astype(int), y_pred)
-    test_acc = acc(y_true_test.astype(int), y_pred_test)
+    test_acc = np.nan
+    if y_pred_test is not None:
+        test_acc = acc(y_true_test.astype(int), y_pred_test)
+        # Log with WandB
+        wandb.log({"Final Train ACC": train_acc,
+                   "Final Test ACC": test_acc})
+    else:
+        wandb.log({"Final Train ACC": train_acc})
 
-    # Log with WandB
-    wandb.log({"Train ACC": train_acc,
-        "Test ACC": test_acc})
+
         
     '''
     wandb.log({  

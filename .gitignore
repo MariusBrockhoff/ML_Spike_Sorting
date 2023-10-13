@@ -1,2 +1,4 @@
 /venv/
 /Data/
+/trained_models/
+/wandb/
