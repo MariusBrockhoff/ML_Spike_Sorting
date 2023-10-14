@@ -451,6 +451,7 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                 isolated_string = path.split("Pretrain_")[0]
                 save_enc = isolated_string + "Pretrain_" + "NNCLR_encoder_" + path.split("Pretrain_")[1]
                 save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + path.split("Pretrain_")[1]
+
                 nnclr.encoder.save_weights(save_enc)
                 nnclr.projection_head.save_weights(save_proj)
 
