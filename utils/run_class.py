@@ -52,14 +52,13 @@ class Run:
         print('---' * 30)
         print('PRETRAINING MODEL...')
 
-        loss_lst, test_loss_lst, final_epoch = pretrain_model(model=model, model_config=self.model_config,
-                                                              pretraining_config=self.pretraining_config,
-                                                              pretrain_method=self.pretrain_method,
-                                                              dataset=dataset, dataset_test=dataset_test,
-                                                              save_weights=self.pretraining_config.SAVE_WEIGHTS,
-                                                              save_dir=self.pretraining_config.SAVE_DIR)
+        pretrain_model(model=model, model_config=self.model_config,
+                      pretraining_config=self.pretraining_config,
+                      pretrain_method=self.pretrain_method,
+                      dataset=dataset, dataset_test=dataset_test,
+                      save_weights=self.pretraining_config.SAVE_WEIGHTS,
+                      save_dir=self.pretraining_config.SAVE_DIR)
 
-        return loss_lst, test_loss_lst, final_epoch
 
     def finetune(self, model, dataset, dataset_test):
         print('---' * 30)
@@ -86,7 +85,7 @@ class Run:
                                         knn=self.pretraining_config.KNN)
         y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.pretraining_config.CLUSTERING_METHOD,
                                                   n_clusters=self.pretraining_config.N_CLUSTERS, eps=self.pretraining_config.EPS,
-                                                  min_cluster_size=self.v.MIN_CLUSTER_SIZE, knn=self.pretraining_config.KNN)
+                                                  min_cluster_size=self.MIN_CLUSTER_SIZE, knn=self.pretraining_config.KNN)
 
         return y_pred, n_clusters, y_pred_test, n_clusters_test
 
@@ -107,40 +106,35 @@ class Run:
                 start_time = time.time()
                 self.initialize_wandb(self.pretrain_method)
                 model = self.initialize_model()
-                loss_lst, test_loss_lst, final_epoch = self.pretrain(model=model, dataset=dataset[i],
-                                                                    dataset_test=dataset_test[i])
-                encoded_data, encoded_data_test, y_true, y_true_test = self.predict(model=model, dataset=dataset[i],
-                                                                                   dataset_test=dataset_test[i])
-                y_pred, n_clusters, y_pred_test, n_clusters_test = self.cluster_data(encoded_data=encoded_data,
-                                                                                    encoded_data_test=encoded_data_test)
-                train_acc, test_acc = self.evaluate_spike_sorting(y_pred, y_true, y_pred_test, y_true_test)
-                train_acc_lst.append(train_acc)
-                test_acc_lst.append(test_acc)
+                self.pretrain(model=model, dataset=dataset[i], dataset_test=dataset_test[i])
+                if self.pretrain_method == "reconstruction":
+                    encoded_data, encoded_data_test, y_true, y_true_test = self.predict(model=model, dataset=dataset[i],
+                                                                                       dataset_test=dataset_test[i])
+                    y_pred, n_clusters, y_pred_test, n_clusters_test = self.cluster_data(encoded_data=encoded_data,
+                                                                                        encoded_data_test=encoded_data_test)
+                    train_acc, test_acc = self.evaluate_spike_sorting(y_pred, y_true, y_pred_test, y_true_test)
+                    train_acc_lst.append(train_acc)
+                    test_acc_lst.append(test_acc)
+                    print("Train Acc: ", train_acc)
+                    print("Test Acc: ", test_acc)
                 end_time = time.time()
                 print("Time Run Execution: ", end_time - start_time)
-                print("Train Acc: ", train_acc)
-                print("Test Acc: ", test_acc)
-            print("Train Accuracies: ", train_acc_lst)
-            print("Test Accuracies: ", test_acc_lst)
-            print("Mean Train Accuracy: ", statistics.mean(train_acc_lst), ", Standarddeviation: ",
-                  statistics.stdev(train_acc_lst))
-            print("Mean Test Accuracy: ", statistics.mean(test_acc_lst), ", Standarddeviation: ",
-                  statistics.stdev(test_acc_lst))
 
         else:
             start_time = time.time()
             self.initialize_wandb(self.pretrain_method)
             dataset, dataset_test = self.prepare_data()
             model = self.initialize_model()
-            loss_lst, test_loss_lst, final_epoch = self.pretrain(model=model, dataset=dataset, dataset_test=dataset_test)
-            encoded_data, encoded_data_test, y_true, y_true_test = self.predict(model=model, dataset=dataset,
-                                                                               dataset_test=dataset_test)
-            y_pred, n_clusters, y_pred_test, n_clusters_test = self.cluster_data(encoded_data=encoded_data,
-                                                                                encoded_data_test=encoded_data_test)
+            self.pretrain(model=model, dataset=dataset, dataset_test=dataset_test)
+            if self.pretrain_method == "reconstruction":
+                encoded_data, encoded_data_test, y_true, y_true_test = self.predict(model=model, dataset=dataset,
+                                                                                   dataset_test=dataset_test)
+                y_pred, n_clusters, y_pred_test, n_clusters_test = self.cluster_data(encoded_data=encoded_data,
+                                                                                    encoded_data_test=encoded_data_test)
 
-            train_acc, test_acc = self.evaluate_spike_sorting(y_pred, y_true, y_pred_test, y_true_test)
-            print("Train Accuracy: ", train_acc)
-            print("Test Accuracy: ", test_acc)
+                train_acc, test_acc = self.evaluate_spike_sorting(y_pred, y_true, y_pred_test, y_true_test)
+                print("Train Accuracy: ", train_acc)
+                print("Test Accuracy: ", test_acc)
             end_time = time.time()
             print("Time Run Execution: ", end_time - start_time)
 

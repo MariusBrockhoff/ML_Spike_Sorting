@@ -420,7 +420,6 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
             wandb.log({"Actual save name": save_dir})
             model.save_weights(save_dir)
 
-        return loss_lst, test_loss_lst, epoch+1
 
 
     elif pretrain_method == "NNCLR":
@@ -442,7 +441,7 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                       classification_augmenter=classification_augmenter)
         nnclr.compile(contrastive_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR),
                       probe_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR))
-        nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test)
+        nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=1)
 
         if save_weights: #add numbering system if file already exists
             save_dir = check_filepath_naming(save_dir)

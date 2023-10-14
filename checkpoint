@@ -1,0 +1,2 @@
+model_checkpoint_path: "Pretrain_NNCLR_projection_head_Pretrain_"
+all_model_checkpoint_paths: "Pretrain_NNCLR_projection_head_Pretrain_"
