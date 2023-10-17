@@ -433,13 +433,15 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
         nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=0, callbacks=[WandbMetricsLogger()])
 
         if save_weights: #add numbering system if file already exists
-            save_dir = check_filepath_naming(save_dir)
             wandb.log({"Actual save name": save_dir})
             if "Pretrain_" in save_dir:
                 # Split the path at 'Pretrain_' and take the second part
                 isolated_string = save_dir.split("Pretrain_")[0]
                 save_enc = isolated_string + "Pretrain_" + "NNCLR_encoder_" + save_dir.split("Pretrain_")[1]
                 save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + save_dir.split("Pretrain_")[1]
+
+                save_enc = check_filepath_naming(save_enc)
+                save_proj = check_filepath_naming(save_proj)
 
                 nnclr.encoder.save_weights(save_enc)
                 nnclr.projection_head.save_weights(save_proj)
