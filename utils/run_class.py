@@ -38,7 +38,7 @@ class Run:
     def prepare_data(self):
         print('---' * 30)
         print('PREPARING DATA...')
-        dataset, dataset_test = data_preparation(self.model_config, self.pretraining_config, self.pretrain_method, self.benchmark)
+        dataset, dataset_test, self.pretraining_config, self.fintune_config = data_preparation(self.model_config, self.pretraining_config, self.pretrain_method, self.fintune_config, self.benchmark)
         return dataset, dataset_test
 
     def initialize_model(self):

@@ -514,7 +514,6 @@ class PseudoLabel(object):
                 name="projection_head",
             )
             self.encoder = self.autoencoder.Encoder
-            ae_weights = check_filepath_naming(ae_weights)
             isolated_string = ae_weights.split("Pretrain_")[0]
             save_enc = isolated_string + "Pretrain_" + "NNCLR_encoder_" + ae_weights.split("Pretrain_")[1]
             save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + ae_weights.split("Pretrain_")[1]

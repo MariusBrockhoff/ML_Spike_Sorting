@@ -21,16 +21,26 @@ def gradient_transform(X, fsample):
   return X_grad
 
 
-def data_preparation(model_config, pretraining_config, pretrain_method, benchmark=False):
+def data_preparation(model_config, pretraining_config, pretrain_method, fintune_config, benchmark=False):
 
     batch_size = pretraining_config.BATCH_SIZE if pretrain_method == "reconstruction" else pretraining_config.BATCH_SIZE_NNCLR
 
     with open(pretraining_config.DATA_SAVE_PATH, 'rb') as f:
         X = pickle.load(f)
         fsample = 20000
+        #Shuffle data
+        X = np.random.shuffle(X)
         labels = X[:, 0]
         spike_times = X[:, 1]
         spikes = X[:, 2:]
+        classes_from_data_pretrain = True
+        classes_from_data_finetune = True
+        if classes_from_data_pretrain:
+            pretraining_config.N_CLUSTERS = len(np.unique(labels))
+        if classes_from_data_finetune:
+            fintune_config.DEC_N_CLUSTERS = len(np.unique(labels))
+            fintune_config.IDEC_N_CLUSTERS = len(np.unique(labels))
+            fintune_config.PSEUDO_N_CLUSTERS = len(np.unique(labels))
         del X
 
     if pretraining_config.DATA_NORMALIZATION == "MinMax":
@@ -93,6 +103,6 @@ def data_preparation(model_config, pretraining_config, pretrain_method, benchmar
         dataset_test = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size, drop_remainder=True).take(
             epoch_size).shuffle(buffer_size=len(x_test))
 
-        return dataset, dataset_test
+        return dataset, dataset_test, pretraining_config, fintune_config
 
 
