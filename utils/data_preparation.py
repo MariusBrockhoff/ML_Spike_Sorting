@@ -29,7 +29,7 @@ def data_preparation(model_config, pretraining_config, pretrain_method, fintune_
         X = pickle.load(f)
         fsample = 20000
         #Shuffle data
-        X = np.random.shuffle(X)
+        np.random.shuffle(X)
         labels = X[:, 0]
         spike_times = X[:, 1]
         spikes = X[:, 2:]
