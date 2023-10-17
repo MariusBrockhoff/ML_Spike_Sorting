@@ -64,6 +64,7 @@ class Run:
         print('---' * 30)
         print('FINETUNING MODEL...')
         y_finetuned = finetune_model(model=model, finetune_config=self.fintune_config,
+                                     pretrain_method=self.pretrain_method,
                                      finetune_method=self.fine_tune_method,
                                      dataset=dataset, dataset_test=dataset_test)
 

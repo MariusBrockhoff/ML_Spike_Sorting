@@ -12,7 +12,6 @@ class Config_Finetuning(object):
         # Load Pretrained Model
 
         self.PRETRAINED_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
-
         #"/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
         
         #"C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
@@ -59,10 +58,17 @@ class Config_Finetuning(object):
 
         self.PSEUDO_N_CLUSTERS = 5
 
-        self.PSEUDO_EPOCHS = 50
+        self.K_NEAREST_NEIGHBOURS = 500
+
+        self.PSEUDO_EPOCHS = 25
 
         self.PSEUDO_BATCH_SIZE = 256
 
         self.PSEUDO_RATIO = 0.2
+
+        self.CLASSIFICATION_AUGMENTER = {"apply_noise": True,
+                                    "max_noise_lvl": 0.1,
+                                    "scale": (1.0, 1.0),
+                                    "name": "classification_augmenter"}
 
         self.PSEUDO_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "DensityPseudoLabel_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"

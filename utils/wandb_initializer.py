@@ -256,7 +256,7 @@ def wandb_initializer(model_config, pretraining_config, fintune_config, method):
                 project="Finetuning_DEC_" + model_config.MODEL_TYPE,
                 # track hyperparameters and run metadata with wandb.model_config
                 config={"Model": model_config.MODEL_TYPE,
-                        "DATA": model_config.FILE_NAME,
+                        "DATA": fintune_config.FILE_NAME,
                         "DEC_N_CLUSTERS": fintune_config.DEC_N_CLUSTERS,
                         "DEC_BATCH_SIZE": fintune_config.DEC_BATCH_SIZE,
                         "DEC_LEARNING_RATE": fintune_config.DEC_LEARNING_RATE,
@@ -272,7 +272,7 @@ def wandb_initializer(model_config, pretraining_config, fintune_config, method):
                 project="Finetuning_IDEC_" + model_config.MODEL_TYPE,
                 # track hyperparameters and run metadata with wandb.model_config
                 config={"Model": model_config.MODEL_TYPE,
-                        "DATA": model_config.FILE_NAME,
+                        "DATA": fintune_config.FILE_NAME,
                         "IDEC_N_CLUSTERS": fintune_config.IDEC_N_CLUSTERS,
                         "IDEC_BATCH_SIZE": fintune_config.IDEC_BATCH_SIZE,
                         "IDEC_LEARNING_RATE": fintune_config.IDEC_LEARNING_RATE,
@@ -289,8 +289,9 @@ def wandb_initializer(model_config, pretraining_config, fintune_config, method):
                     project="Finetuning_PseudoLabel_" + model_config.MODEL_TYPE,
                     # track hyperparameters and run metadata with wandb.model_config
                     config={"Model": model_config.MODEL_TYPE,
-                            "DATA": model_config.FILE_NAME,
+                            "DATA": fintune_config.FILE_NAME,
                             "PSEUDO_N_CLUSTERS": fintune_config.PSEUDO_N_CLUSTERS,
+                            "K_NEAREST_NEIGHBOURS": fintune_config.K_NEAREST_NEIGHBOURS,
                             "PSEUDO_EPOCHS": fintune_config.PSEUDO_EPOCHS,
                             "PSEUDO_BATCH_SIZE": fintune_config.PSEUDO_BATCH_SIZE,
                             "PSEUDO_RATIO": fintune_config.PSEUDO_RATIO})

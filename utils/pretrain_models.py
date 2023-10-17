@@ -318,15 +318,14 @@ class NNCLR(tf.keras.Model):
             zip(gradients, self.linear_probe.trainable_weights)
         )
         self.probe_accuracy.update_state(labels, class_logits)
+
         res = {
-            "c_loss": tf.reduce_mean(contrastive_loss),
+            "c_loss": contrastive_loss,
             "c_acc": self.contrastive_accuracy.result(),
             "r_acc": self.correlation_accuracy.result(),
             "p_loss": probe_loss,
             "p_acc": self.probe_accuracy.result(),
         }
-
-        #wandb.log(res)
 
         return res
 
@@ -341,8 +340,6 @@ class NNCLR(tf.keras.Model):
         probe_loss = self.probe_loss(labels, class_logits)
 
         self.probe_accuracy.update_state(labels, class_logits)
-        #wandb.log({#"val_p_loss": probe_loss,
-         #          "val_p_acc": self.probe_accuracy.result()})
         return {"p_loss": probe_loss, "p_acc": self.probe_accuracy.result()}
 
 
@@ -424,35 +421,25 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
 
     elif pretrain_method == "NNCLR":
 
-        contrastive_augmenter  = {"apply_noise": True,
-                                  "max_noise_lvl": 0.075,
-                                  "scale": (1.0, 1.0),
-                                  "name": "contrastive_augmenter"}
-
-        classification_augmenter = {"apply_noise": True,
-                                    "max_noise_lvl": 0.04,
-                                    "scale": (1.0, 1.0),
-                                    "name": "classification_augmenter"}
-
         #Prepare dataset
         dataset = tf.data.Dataset.zip((dataset, dataset)).prefetch(buffer_size=tf.data.AUTOTUNE)
 
-        nnclr = NNCLR(model_config=model_config, pretraining_config=pretraining_config, encoder=model.Encoder, contrastive_augmenter=contrastive_augmenter,
-                      classification_augmenter=classification_augmenter)
+        nnclr = NNCLR(model_config=model_config, pretraining_config=pretraining_config, encoder=model.Encoder,
+                      contrastive_augmenter=pretraining_config.CONTRASTIVE_AUGMENTER,
+                      classification_augmenter=pretraining_config.CLASSIFICATION_AUGMENTER)
         nnclr.compile(contrastive_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR),
                       probe_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR))
-        nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=0)
+        from wandb.keras import WandbMetricsLogger
+        nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=0, callbacks=[WandbMetricsLogger()])
 
         if save_weights: #add numbering system if file already exists
             save_dir = check_filepath_naming(save_dir)
             wandb.log({"Actual save name": save_dir})
             if "Pretrain_" in save_dir:
                 # Split the path at 'Pretrain_' and take the second part
-                isolated_string = path.split("Pretrain_")[0]
-                save_enc = isolated_string + "Pretrain_" + "NNCLR_encoder_" + path.split("Pretrain_")[1]
-                save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + path.split("Pretrain_")[1]
-                print(save_enc)
-                print(save_proj)
+                isolated_string = save_dir.split("Pretrain_")[0]
+                save_enc = isolated_string + "Pretrain_" + "NNCLR_encoder_" + save_dir.split("Pretrain_")[1]
+                save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + save_dir.split("Pretrain_")[1]
 
                 nnclr.encoder.save_weights(save_enc)
                 nnclr.projection_head.save_weights(save_proj)

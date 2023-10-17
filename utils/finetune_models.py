@@ -5,6 +5,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
 from sklearn.neighbors import KDTree
 from os import path
+from utils.pretrain_models import *
 import wandb
 
 
@@ -73,6 +74,44 @@ def check_filepath_naming(filepath):
             else:
                 return newPath
     return filepath
+
+def calculate_densities(data, k):
+    n, d = data.shape
+    if d <= 10:
+        tree = KDTree(data)
+        knn_dist, knn = tree.query(data, k=k)
+    else:
+        """#Faster but High RAM version
+        dist = np.sqrt(np.sum((data[:, np.newaxis, :] - data[np.newaxis, :, :]) ** 2, axis=2))
+        knn = np.argsort(dist, axis=1)[:, 1:k+1]
+        knn_dist = dist[np.arange(n)[:, None], knn]"""
+
+        # Slower but less memory hungry
+        dist = np.empty((n, n), dtype=np.float64)
+        knn = np.empty((n, k), dtype=np.int64)
+        fills = np.empty((n, d), dtype=np.float64)
+        for i in range(n):
+            # Compute squared Euclidean distances to all other points
+            np.square(data[i] - data, out=fills)
+            np.sum(fills, axis=1, out=dist[i])
+
+            # Find indices of k+1 nearest neighbors
+            neighbors = np.argpartition(dist[i], k + 1)[:k + 1]
+            knn[i] = neighbors[1:]  # exclude the point itself
+
+            # Replace distances to self with infinity
+            dist[i, i] = np.inf
+        # Compute distances to k nearest neighbors
+        knn_dist = np.sqrt(dist[np.arange(n)[:, None], knn])
+        for i, neighbors in enumerate(knn):
+            knn_dist[i] = dist[i, neighbors]
+
+    # calculate the knn-density value
+    rho = knn_dist[:, -1] ** -1
+
+    # search for NPN(neighbor-parent node) and record depth value
+    OrdRho = np.argsort(-rho)
+    return OrdRho
 class ClusteringLayer(tf.keras.layers.Layer):
     """
     Clustering layer converts input sample (feature) to soft label, i.e. a vector that represents the probability of the
@@ -436,6 +475,7 @@ class PseudoLabel(object):
                  model,
                  input_dim,
                  n_clusters=5,
+                 k_nearest_neighbours=500,
                  batch_size=256,
                  epochs=50):
 
@@ -444,9 +484,10 @@ class PseudoLabel(object):
         self.autoencoder = model
         self.input_dim = input_dim
         self.n_clusters = n_clusters
+        self.k_nearest_neighbours = k_nearest_neighbours
         self.batch_size = batch_size
         self.epochs = epochs
-        self.model = None
+        self.projection_head = None
         self.encoder = None
 
     def initialize_model(self, ae_weights=None):
@@ -458,55 +499,39 @@ class PseudoLabel(object):
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
-        #self.encoder = self.autoencoder.Encoder
+        self.encoder = self.autoencoder.Encoder
+
+    def initialize_model_NNCLR(self, ae_weights=None):
+        if ae_weights is not None:  # load pretrained weights of autoencoder
+            dummy = tf.zeros(shape=[1,self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+            out_1, out_2 = self.autoencoder(dummy)
+            self.projection_head = tf.keras.Sequential(
+                [
+                    tf.keras.layers.Input(shape=(out_1.shape[1],)),
+                    tf.keras.layers.Dense(out_1.shape[1], activation="relu"),
+                    tf.keras.layers.Dense(out_1.shape[1]),
+                ],
+                name="projection_head",
+            )
+            self.encoder = self.autoencoder.Encoder
+            ae_weights = check_filepath_naming(ae_weights)
+            isolated_string = ae_weights.split("Pretrain_")[0]
+            save_enc = isolated_string + "Pretrain_" + "NNCLR_encoder_" + ae_weights.split("Pretrain_")[1]
+            save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + ae_weights.split("Pretrain_")[1]
+            self.encoder.load_weights(save_enc)
+            self.projection_head.load_weights(save_proj)
+
+        else:
+            print('ae_weights, i.e. path to weights of a pretrained model must be given')
+            exit()
 
     def get_pseudo_labels(self, x, y, label_ratio):
 
         data = self.autoencoder.Encoder.predict(x)
-        k = 100
-        print("output self.encoder.predict(x):", data.shape)
-
-        n, d = data.shape
-        if d <= 10:
-            print("used KDTree")
-            tree = KDTree(data)
-            knn_dist, knn = tree.query(data, k=k)
-        else:
-            """#Faster but High RAM version
-            dist = np.sqrt(np.sum((data[:, np.newaxis, :] - data[np.newaxis, :, :]) ** 2, axis=2))
-            knn = np.argsort(dist, axis=1)[:, 1:k+1]
-            knn_dist = dist[np.arange(n)[:, None], knn]"""
-
-            # Slower but less memory hungry
-            dist = np.empty((n, n), dtype=np.float64)
-            knn = np.empty((n, k), dtype=np.int64)
-            fills = np.empty((n, d), dtype=np.float64)
-            for i in range(n):
-                # Compute squared Euclidean distances to all other points
-                np.square(data[i] - data, out=fills)
-                np.sum(fills, axis=1, out=dist[i])
-
-                # Find indices of k+1 nearest neighbors
-                neighbors = np.argpartition(dist[i], k + 1)[:k + 1]
-                knn[i] = neighbors[1:]  # exclude the point itself
-
-                # Replace distances to self with infinity
-                dist[i, i] = np.inf
-            # Compute distances to k nearest neighbors
-            knn_dist = np.sqrt(dist[np.arange(n)[:, None], knn])
-            for i, neighbors in enumerate(knn):
-                knn_dist[i] = dist[i, neighbors]
-
-        # calculate the knn-density value
-        rho = knn_dist[:, -1] ** -1
-
-        # search for NPN(neighbor-parent node) and record depth value
-        OrdRho = np.argsort(-rho)
+        OrdRho = calculate_densities(data=data, k=self.k_nearest_neighbours)
 
         label_points = OrdRho[:int(data.shape[0] * label_ratio)]
         unlabelled_points = OrdRho[int(data.shape[0] * label_ratio):]
-        #labels = np.zeros(shape=(data.shape[0],))
-        #labels[label_points] = 1
 
         y_label_points = y[label_points]
         x_label_points = x[label_points, :]
@@ -517,10 +542,57 @@ class PseudoLabel(object):
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred_labelled_points = kmeans.fit_predict(self.autoencoder.Encoder.predict(x_label_points))
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
+        wandb.log({"Accuracy on high density points": acc(y_label_points, y_pred_labelled_points)})
+
 
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred = kmeans.fit_predict(data)
         print("vs. Accuracy on all points:", acc(y, y_pred))
+        wandb.log({"Accuracy on all points": acc(y, y_pred)})
+
+        return x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points
+
+    def get_pseudo_labels_NNCLR(self, x, y, label_ratio):
+        pseudo = tf.keras.Sequential(
+            [self.encoder,
+             self.projection_head])
+
+        data = pseudo.predict(x)
+        OrdRho = calculate_densities(data=data, k=self.k_nearest_neighbours)
+
+        check_dense_acc = True
+        if check_dense_acc:
+            for i in range(1, 51):
+                label_ratio = i * 0.02
+                label_points = OrdRho[:int(data.shape[0] * label_ratio)]
+                y_train_label_points = y[label_points]
+                x_train_label_points = data[label_points, :]
+
+                kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
+                y_pred_labelled_points = kmeans.fit_predict(x_train_label_points)
+                print("Accuracy on high density points for ", label_ratio, "densest points:", acc(y_train_label_points, y_pred_labelled_points))
+                wandb.log({"Label ratio": label_ratio, "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points)})
+
+        label_points = OrdRho[:int(data.shape[0] * label_ratio)]
+        unlabelled_points = OrdRho[int(data.shape[0] * label_ratio):]
+
+
+        y_label_points = y[label_points]
+        x_label_points = x[label_points, :]
+
+        y_unlabel_points = y[unlabelled_points]
+        x_unlabel_points = x[unlabelled_points, :]
+
+        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
+        y_pred_labelled_points = kmeans.fit_predict(pseudo.predict(x_label_points))
+        print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
+        wandb.log({"Accuracy on high density points": acc(y_label_points, y_pred_labelled_points)})
+
+
+        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
+        y_pred = kmeans.fit_predict(data)
+        print("vs. Accuracy on all points:", acc(y, y_pred))
+        wandb.log({"Accuracy on all points": acc(y, y_pred)})
 
         return x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points
 
@@ -535,83 +607,184 @@ class PseudoLabel(object):
         )
         finetuning_model.compile(
             optimizer=tf.keras.optimizers.Adam(),
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc"), acc_tf],
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
+            metrics=[acc_tf], #tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
             run_eagerly=True)
 
+        from wandb.keras import WandbMetricsLogger
         finetuning_history = finetuning_model.fit(
             x_label_points, y_pred_labelled_points, epochs=self.epochs, batch_size=self.batch_size,
-            validation_data=(x_unlabel_points, y_unlabel_points), verbose=1)
+            validation_data=(x_unlabel_points, y_unlabel_points), verbose=0, callbacks=[WandbMetricsLogger()])
 
         pred = finetuning_model.predict(x)
         y_pred = pred.argmax(1)
-
-        print(acc(y_pred, y.astype(int)))
-
         save_Pseudo_dir = check_filepath_naming(save_Pseudo_dir)
-        finetuning_model.save_weights(save_Pseudo_dir) #self.encoder.save_weights(save_Pseudo_dir)?
+        finetuning_model.save_weights(save_Pseudo_dir)
+        return y_pred
+
+    def finetune_on_pseudos_NNCLR(self, save_Pseudo_dir, input_dim, x, y, x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points, classification_augmenter):
+
+        finetuning_model = tf.keras.Sequential(
+            [
+                tf.keras.layers.Input(shape=input_dim),
+                ConditionalAugmentation(spikeaugmentation(**classification_augmenter)),
+                self.encoder,
+                self.projection_head,
+                tf.keras.layers.Dropout(0.1),
+                tf.keras.layers.Dense(self.n_clusters, activation='softmax'),
+            ],
+            name="finetuning_model",
+        )
+        finetuning_model.compile(
+            optimizer=tf.keras.optimizers.Adam(),
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
+            metrics=[acc_tf], #tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
+            run_eagerly=True)
+
+        from wandb.keras import WandbMetricsLogger
+        finetuning_history = finetuning_model.fit(
+            x_label_points, y_pred_labelled_points, epochs=self.epochs, batch_size=self.batch_size,
+            validation_data=(x_unlabel_points, y_unlabel_points), verbose=0, callbacks=[WandbMetricsLogger()])
+
+        pred = finetuning_model.predict(x)
+        y_pred = pred.argmax(1)
+        final_acc = acc(y, y_pred)
+        print("final_acc:", final_acc)
+        wandb.log({"Final Acc": final_acc})
+        save_Pseudo_dir = check_filepath_naming(save_Pseudo_dir)
+        finetuning_model.save_weights(save_Pseudo_dir)
         return y_pred
 
 
+def finetune_model(model, pretrain_method, finetune_config, finetune_method, dataset, dataset_test):
 
-def finetune_model(model, finetune_config, finetune_method, dataset, dataset_test):
+    if pretrain_method == "reconstruction":
+        for step, batch in enumerate(dataset):
+            if step == 0:
+                x = batch[0]
+                y = batch[1]
+            else:
+                x = np.concatenate((x, batch[0]), axis=0)
+                y = np.concatenate((y, batch[1]), axis=0)
 
-    #data prep --> combined train and test
-    for step, batch in enumerate(dataset):
-        if step == 0:
-            x = batch[0]
-            y = batch[1]
-        else:
+        for step, batch in enumerate(dataset_test):
             x = np.concatenate((x, batch[0]), axis=0)
             y = np.concatenate((y, batch[1]), axis=0)
 
-    for step, batch in enumerate(dataset_test):
-        x = np.concatenate((x, batch[0]), axis=0)
-        y = np.concatenate((y, batch[1]), axis=0)
+
+        if finetune_method == "DEC":
+
+            dec = DEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.DEC_N_CLUSTERS, batch_size=finetune_config.DEC_BATCH_SIZE)
+            dec.initialize_model(
+                optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.DEC_LEARNING_RATE, momentum=finetune_config.DEC_MOMENTUM),
+                ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
+
+            y_pred_finetuned = dec.clustering(x, y=y, tol=finetune_config.DEC_TOL,
+                                              maxiter=finetune_config.DEC_MAXITER, update_interval=finetune_config.DEC_UPDATE_INTERVAL,
+                                              save_DEC_dir=finetune_config.DEC_SAVE_DIR)
 
 
-    if finetune_method == "DEC":
+        elif finetune_method == "IDEC":
 
-        dec = DEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.DEC_N_CLUSTERS, batch_size=finetune_config.DEC_BATCH_SIZE)
-        dec.initialize_model(
-            optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.DEC_LEARNING_RATE, momentum=finetune_config.DEC_MOMENTUM),
-            ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
+            idec = IDEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS, batch_size=finetune_config.IDEC_BATCH_SIZE) # TODO: All models
+            idec.initialize_model(
+                optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE, momentum=finetune_config.IDEC_MOMENTUM),
+                ae_weights=finetune_config.PRETRAINED_SAVE_DIR, gamma=finetune_config.IDEC_GAMMA)
 
-        y_pred_finetuned = dec.clustering(x, y=y, tol=finetune_config.DEC_TOL,
-                                          maxiter=finetune_config.DEC_MAXITER, update_interval=finetune_config.DEC_UPDATE_INTERVAL,
-                                          save_DEC_dir=finetune_config.DEC_SAVE_DIR)
-
-
-    elif finetune_method == "IDEC":
-
-        idec = IDEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS, batch_size=finetune_config.IDEC_BATCH_SIZE) # TODO: All models
-        idec.initialize_model(
-            optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE, momentum=finetune_config.IDEC_MOMENTUM),
-            ae_weights=finetune_config.PRETRAINED_SAVE_DIR, gamma=finetune_config.IDEC_GAMMA)
-
-        y_pred_finetuned = idec.clustering(x, y=y, tol=finetune_config.IDEC_TOL,
-                                            maxiter=finetune_config.IDEC_MAXITER, update_interval=finetune_config.IDEC_UPDATE_INTERVAL,
-                                            save_IDEC_dir=finetune_config.IDEC_SAVE_DIR)
+            y_pred_finetuned = idec.clustering(x, y=y, tol=finetune_config.IDEC_TOL,
+                                                maxiter=finetune_config.IDEC_MAXITER, update_interval=finetune_config.IDEC_UPDATE_INTERVAL,
+                                                save_IDEC_dir=finetune_config.IDEC_SAVE_DIR)
 
 
-    elif finetune_method == "PseudoLabel":
+        elif finetune_method == "PseudoLabel":
 
-        pseudo_label = PseudoLabel(model=model,
-                                   input_dim=x[0,:].shape,
-                                   n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
-                                   batch_size=finetune_config.PSEUDO_BATCH_SIZE,
-                                   epochs=finetune_config.PSEUDO_EPOCHS)
+            pseudo_label = PseudoLabel(model=model,
+                                       input_dim=x[0,:].shape,
+                                       n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
+                                       k_nearest_neighbours=finetune_config.K_NEAREST_NEIGHBOURS,
+                                       batch_size=finetune_config.PSEUDO_BATCH_SIZE,
+                                       epochs=finetune_config.PSEUDO_EPOCHS)
 
-        pseudo_label.initialize_model(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
+            pseudo_label.initialize_model(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
 
-        x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
+            x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
 
-        y_pred_finetuned = pseudo_label.finetune_on_pseudos(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
-                                                            x=x,
-                                                            y=y,
-                                                            x_label_points=x_label_points,
-                                                            y_pred_labelled_points=y_pred_labelled_points,
-                                                            x_unlabel_points=x_unlabel_points,
-                                                            y_unlabel_points=y_unlabel_points)
+            y_pred_finetuned = pseudo_label.finetune_on_pseudos(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
+                                                                x=x,
+                                                                y=y,
+                                                                x_label_points=x_label_points,
+                                                                y_pred_labelled_points=y_pred_labelled_points,
+                                                                x_unlabel_points=x_unlabel_points,
+                                                                y_unlabel_points=y_unlabel_points)
 
-    return y_pred_finetuned, y
+        return y_pred_finetuned, y
+
+    elif pretrain_method == "NNCLR":
+        # data prep --> combined train and test
+        for step, batch in enumerate(dataset):
+            if step == 0:
+                x = batch[0]
+                y = batch[1]
+            else:
+                x = np.concatenate((x, batch[0]), axis=0)
+                y = np.concatenate((y, batch[1]), axis=0)
+
+        for step, batch in enumerate(dataset_test):
+            x = np.concatenate((x, batch[0]), axis=0)
+            y = np.concatenate((y, batch[1]), axis=0)
+
+        if finetune_method == "DEC":
+
+            dec = DEC(model=model, input_dim=x[0, :].shape, n_clusters=finetune_config.DEC_N_CLUSTERS,
+                      batch_size=finetune_config.DEC_BATCH_SIZE)
+            dec.initialize_model(
+                optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.DEC_LEARNING_RATE,
+                                                  momentum=finetune_config.DEC_MOMENTUM),
+                ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
+
+            y_pred_finetuned = dec.clustering(x, y=y, tol=finetune_config.DEC_TOL,
+                                              maxiter=finetune_config.DEC_MAXITER,
+                                              update_interval=finetune_config.DEC_UPDATE_INTERVAL,
+                                              save_DEC_dir=finetune_config.DEC_SAVE_DIR)
+
+
+        elif finetune_method == "IDEC":
+
+            idec = IDEC(model=model, input_dim=x[0, :].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS,
+                        batch_size=finetune_config.IDEC_BATCH_SIZE)  # TODO: All models
+            idec.initialize_model(
+                optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE,
+                                                  momentum=finetune_config.IDEC_MOMENTUM),
+                ae_weights=finetune_config.PRETRAINED_SAVE_DIR, gamma=finetune_config.IDEC_GAMMA)
+
+            y_pred_finetuned = idec.clustering(x, y=y, tol=finetune_config.IDEC_TOL,
+                                               maxiter=finetune_config.IDEC_MAXITER,
+                                               update_interval=finetune_config.IDEC_UPDATE_INTERVAL,
+                                               save_IDEC_dir=finetune_config.IDEC_SAVE_DIR)
+
+
+        elif finetune_method == "PseudoLabel":
+
+            pseudo_label = PseudoLabel(model=model,
+                                       input_dim=x[0, :].shape,
+                                       n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
+                                       k_nearest_neighbours=finetune_config.K_NEAREST_NEIGHBOURS,
+                                       batch_size=finetune_config.PSEUDO_BATCH_SIZE,
+                                       epochs=finetune_config.PSEUDO_EPOCHS)
+
+            pseudo_label.initialize_model_NNCLR(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
+
+            x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
+                x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
+
+            y_pred_finetuned = pseudo_label.finetune_on_pseudos_NNCLR(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
+                                                                x=x,
+                                                                y=y,
+                                                                input_dim=x[0, :].shape,
+                                                                classification_augmenter=finetune_config.CLASSIFICATION_AUGMENTER,
+                                                                x_label_points=x_label_points,
+                                                                y_pred_labelled_points=y_pred_labelled_points,
+                                                                x_unlabel_points=x_unlabel_points,
+                                                                y_unlabel_points=y_unlabel_points)
+
+        return y_pred_finetuned, y
