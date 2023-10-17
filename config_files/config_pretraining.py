@@ -42,7 +42,7 @@ class Config_Pretraining(object):
         self.LR_WARMUP_NNCLR = 10  # 2 #10
         self.LR_FINAL_NNCLR = 1e-4  # 1e-6 1e-8
 
-        self.NUM_EPOCHS_NNCLR = 2
+        self.NUM_EPOCHS_NNCLR = 50
         self.BATCH_SIZE_NNCLR = 512
 
         self.TEMPERATURE = 0.1

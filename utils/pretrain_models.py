@@ -441,7 +441,7 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                       classification_augmenter=classification_augmenter)
         nnclr.compile(contrastive_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR),
                       probe_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR))
-        nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=1)
+        nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=0)
 
         if save_weights: #add numbering system if file already exists
             save_dir = check_filepath_naming(save_dir)
@@ -451,6 +451,8 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                 isolated_string = path.split("Pretrain_")[0]
                 save_enc = isolated_string + "Pretrain_" + "NNCLR_encoder_" + path.split("Pretrain_")[1]
                 save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + path.split("Pretrain_")[1]
+                print(save_enc)
+                print(save_proj)
 
                 nnclr.encoder.save_weights(save_enc)
                 nnclr.projection_head.save_weights(save_proj)
