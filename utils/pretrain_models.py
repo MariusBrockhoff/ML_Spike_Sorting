@@ -436,15 +436,21 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
             wandb.log({"Actual save name": save_dir})
             if "Pretrain_" in save_dir:
                 # Split the path at 'Pretrain_' and take the second part
+                pseudo = tf.keras.Sequential([nnclr.encoder,
+                                     nnclr.projection_head])
+                for step, batch in enumerate(dataset):
+                    batch_t = batch[0][0]
+                    break
+                pseudo.predict(batch_t)
                 isolated_string = save_dir.split("Pretrain_")[0]
-                save_enc = isolated_string + "Pretrain_" + "NNCLR_encoder_" + save_dir.split("Pretrain_")[1]
-                save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + save_dir.split("Pretrain_")[1]
+                save_pseudo = isolated_string + "Pretrain_" + "NNCLR_" + save_dir.split("Pretrain_")[1]
+                #save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + save_dir.split("Pretrain_")[1]
 
-                save_enc = check_filepath_naming(save_enc)
-                save_proj = check_filepath_naming(save_proj)
+                save_pseudo = check_filepath_naming(save_pseudo)
+                #save_proj = check_filepath_naming(save_proj)
 
-                nnclr.encoder.save_weights(save_enc)
-                nnclr.projection_head.save_weights(save_proj)
+                pseudo.save_weights(save_pseudo)
+                #nnclr.projection_head.save_weights(save_proj)
 
 
 
