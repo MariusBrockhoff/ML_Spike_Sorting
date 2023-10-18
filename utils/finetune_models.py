@@ -517,14 +517,11 @@ class PseudoLabel(object):
             self.encoder = self.autoencoder.Encoder
             self.pseudo = tf.keras.Sequential([self.encoder,
                                              self.projection_head])
+                                             
+            self.pseudo(dummy)
 
             self.pseudo.load_weights(ae_weights)
 
-            #isolated_string = ae_weights.split("Pretrain_")[0]
-            #save_enc = isolated_string + "Pretrain_" + "NNCLR_encoder_" + ae_weights.split("Pretrain_")[1]
-            #save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + ae_weights.split("Pretrain_")[1]
-            #self.encoder.load_weights(save_enc)
-            #self.projection_head.load_weights(save_proj)
 
         else:
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
@@ -566,15 +563,15 @@ class PseudoLabel(object):
         check_dense_acc = True
         if check_dense_acc:
             for i in range(1, 51):
-                label_ratio = i * 0.02
-                label_points = OrdRho[:int(data.shape[0] * label_ratio)]
+                lr = i * 0.02
+                label_points = OrdRho[:int(data.shape[0] * lr)]
                 y_train_label_points = y[label_points]
                 x_train_label_points = data[label_points, :]
 
                 kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
                 y_pred_labelled_points = kmeans.fit_predict(x_train_label_points)
-                print("Accuracy on high density points for ", label_ratio, "densest points:", acc(y_train_label_points, y_pred_labelled_points))
-                wandb.log({"Label ratio": label_ratio, "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points)})
+                print("Accuracy on high density points for ", lr, "densest points:", acc(y_train_label_points, y_pred_labelled_points))
+                wandb.log({"Label ratio": lr, "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points)})
 
         label_points = OrdRho[:int(data.shape[0] * label_ratio)]
         unlabelled_points = OrdRho[int(data.shape[0] * label_ratio):]
@@ -587,7 +584,7 @@ class PseudoLabel(object):
         x_unlabel_points = x[unlabelled_points, :]
 
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred_labelled_points = kmeans.fit_predict(pseudo.predict(x_label_points))
+        y_pred_labelled_points = kmeans.fit_predict(self.pseudo.predict(x_label_points))
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
         wandb.log({"Accuracy on high density points": acc(y_label_points, y_pred_labelled_points)})
 
