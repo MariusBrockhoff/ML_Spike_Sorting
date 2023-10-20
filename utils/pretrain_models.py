@@ -6,7 +6,9 @@ import wandb
 
 from os import path
 from utils.evaluation import *
-
+#temp
+from sklearn.cluster import KMeans
+from sklearn.neighbors import KDTree
 
 
 def check_filepath_naming(filepath):
@@ -430,7 +432,7 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
         nnclr.compile(contrastive_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR),
                       probe_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR))
         from wandb.keras import WandbMetricsLogger
-        nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=0, callbacks=[WandbMetricsLogger()])
+        nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=1, callbacks=[WandbMetricsLogger()])
 
         if save_weights: #add numbering system if file already exists
             wandb.log({"Actual save name": save_dir})
@@ -442,15 +444,75 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                     batch_t = batch[0][0]
                     break
                 pseudo.predict(batch_t)
+
+                check_dense_acc = True
+                if check_dense_acc:
+                    def calculate_densities(data, k):
+                        n, d = data.shape
+                        if d <= 10:
+                            tree = KDTree(data)
+                            knn_dist, knn = tree.query(data, k=k)
+                        else:
+                            """#Faster but High RAM version
+                            dist = np.sqrt(np.sum((data[:, np.newaxis, :] - data[np.newaxis, :, :]) ** 2, axis=2))
+                            knn = np.argsort(dist, axis=1)[:, 1:k+1]
+                            knn_dist = dist[np.arange(n)[:, None], knn]"""
+
+                            # Slower but less memory hungry
+                            dist = np.empty((n, n), dtype=np.float64)
+                            knn = np.empty((n, k), dtype=np.int64)
+                            fills = np.empty((n, d), dtype=np.float64)
+                            for i in range(n):
+                                # Compute squared Euclidean distances to all other points
+                                np.square(data[i] - data, out=fills)
+                                np.sum(fills, axis=1, out=dist[i])
+
+                                # Find indices of k+1 nearest neighbors
+                                neighbors = np.argpartition(dist[i], k + 1)[:k + 1]
+                                knn[i] = neighbors[1:]  # exclude the point itself
+
+                                # Replace distances to self with infinity
+                                dist[i, i] = np.inf
+                            # Compute distances to k nearest neighbors
+                            knn_dist = np.sqrt(dist[np.arange(n)[:, None], knn])
+                            for i, neighbors in enumerate(knn):
+                                knn_dist[i] = dist[i, neighbors]
+
+                        # calculate the knn-density value
+                        rho = knn_dist[:, -1] ** -1
+
+                        # search for NPN(neighbor-parent node) and record depth value
+                        OrdRho = np.argsort(-rho)
+                        return OrdRho
+                    for step, batch in enumerate(dataset):
+                        if step == 0:
+                            x = batch[0][0]
+                            y = batch[0][1]
+                        else:
+                            x = np.concatenate((x, batch[0][0]), axis=0)
+                            y = np.concatenate((y, batch[0][1]), axis=0)
+                    data = pseudo.predict(x)
+                    OrdRho = calculate_densities(data=data, k=500)
+
+                    for i in range(1, 51):
+                        label_ratio = i * 0.02
+                        label_points = OrdRho[:int(data.shape[0] * label_ratio)]
+                        y_train_label_points = y[label_points]
+                        x_train_label_points = data[label_points, :]
+
+                        kmeans = KMeans(n_clusters=5, n_init=20)
+                        y_pred_labelled_points = kmeans.fit_predict(x_train_label_points)
+                        print("Accuracy on high density points for ", label_ratio, "densest points:",
+                              acc(y_train_label_points, y_pred_labelled_points))
+                        wandb.log({"Label ratio": label_ratio,
+                                   "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points)})
+
+
                 isolated_string = save_dir.split("Pretrain_")[0]
                 save_pseudo = isolated_string + "Pretrain_" + "NNCLR_" + save_dir.split("Pretrain_")[1]
-                #save_proj = isolated_string + "Pretrain_" + "NNCLR_projection_head_" + save_dir.split("Pretrain_")[1]
 
                 save_pseudo = check_filepath_naming(save_pseudo)
-                #save_proj = check_filepath_naming(save_proj)
-
                 pseudo.save_weights(save_pseudo)
-                #nnclr.projection_head.save_weights(save_proj)
 
 
 

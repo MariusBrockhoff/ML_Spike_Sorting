@@ -563,7 +563,7 @@ class PseudoLabel(object):
         data = self.pseudo.predict(x)
         OrdRho = calculate_densities(data=data, k=self.k_nearest_neighbours)
 
-        check_dense_acc = True
+        check_dense_acc = False
         if check_dense_acc:
             for i in range(1, 51):
                 label_ratio = i * 0.02
