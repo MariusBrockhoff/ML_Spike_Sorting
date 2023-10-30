@@ -28,11 +28,14 @@ def data_preparation(model_config, pretraining_config, pretrain_method, fintune_
     with open(pretraining_config.DATA_SAVE_PATH, 'rb') as f:
         X = pickle.load(f)
         fsample = 20000
+        print("X shape", X.shape)
         #Shuffle data
         np.random.shuffle(X)
         labels = X[:, 0]
+        print("Number of classes:", len(np.unique(labels)))
         spike_times = X[:, 1]
         spikes = X[:, 2:]
+        model_config.SEQ_LEN = spikes.shape[1]
         classes_from_data_pretrain = True
         classes_from_data_finetune = True
         if classes_from_data_pretrain:
@@ -54,12 +57,11 @@ def data_preparation(model_config, pretraining_config, pretrain_method, fintune_
     if pretraining_config.DATA_PREP_METHOD == "gradient":
         grad_spikes = gradient_transform(spikes, fsample)
         spikes = scaler.fit_transform(grad_spikes)
-        model_config.SEQ_LEN = 63
+        model_config.SEQ_LEN = model_config.SEQ_LEN - 1
         
     elif pretraining_config.DATA_PREP_METHOD == "raw_spikes":
         spikes = scaler.fit_transform(spikes)
         spikes = scaler.fit_transform(spikes)
-        model_config.SEQ_LEN = 64
 
     elif pretraining_config.DATA_PREP_METHOD == "fft":
         FT_spikes = np.abs(fft(spikes))[:, :33]
@@ -96,6 +98,7 @@ def data_preparation(model_config, pretraining_config, pretrain_method, fintune_
         y_test = labels[-number_of_test_samples:]
         x_train = spikes[:-number_of_test_samples, :]
         y_train = labels[:-number_of_test_samples]
+
 
         epoch_size = int(x_train.shape[0] / batch_size)
         dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size, drop_remainder=True).take(

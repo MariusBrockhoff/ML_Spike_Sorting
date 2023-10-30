@@ -9,6 +9,7 @@ from utils.evaluation import *
 #temp
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KDTree
+from sklearn import metrics
 
 
 def check_filepath_naming(filepath):
@@ -127,7 +128,7 @@ class RandomNoise(tf.keras.layers.Layer):
 def spikeaugmentation(apply_noise, max_noise_lvl, scale, name):
     return tf.keras.Sequential(
         [
-            tf.keras.Input(shape=(63,)),
+            #tf.keras.Input(shape=(63,)),
             RandomNoise(apply_noise=apply_noise, max_noise_lvl=max_noise_lvl),
             #RandomResizedCrop1D(scale=scale, seq_len=input_shape[0]),
         ],
@@ -168,7 +169,7 @@ class NNCLR(tf.keras.Model):
             name="projection_head",
         )
         self.linear_probe = tf.keras.Sequential(
-            [tf.keras.layers.Input(shape=(self.projection_width,)), tf.keras.layers.Dense(5)], name="linear_probe"
+            [tf.keras.layers.Input(shape=(self.projection_width,)), tf.keras.layers.Dense(pretraining_config.N_CLUSTERS)], name="linear_probe"
         )
         self.temperature = self.pretraining_config.TEMPERATURE
 
@@ -435,7 +436,7 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
         nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=1, callbacks=[WandbMetricsLogger()])
 
         if save_weights: #add numbering system if file already exists
-            wandb.log({"Actual save name": save_dir})
+
             if "Pretrain_" in save_dir:
                 # Split the path at 'Pretrain_' and take the second part
                 pseudo = tf.keras.Sequential([nnclr.encoder,
@@ -445,7 +446,7 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                     break
                 pseudo.predict(batch_t)
 
-                check_dense_acc = True
+                check_dense_acc = False
                 if check_dense_acc:
                     def calculate_densities(data, k):
                         n, d = data.shape
@@ -500,12 +501,23 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                         y_train_label_points = y[label_points]
                         x_train_label_points = data[label_points, :]
 
-                        kmeans = KMeans(n_clusters=5, n_init=20)
+                        kmeans = KMeans(n_clusters=pretraining_config.N_CLUSTERS, n_init=20)
                         y_pred_labelled_points = kmeans.fit_predict(x_train_label_points)
+
+                        #Silhouette score
+                        from sklearn import metrics
+                        s_score = metrics.silhouette_score(x_train_label_points, y_pred_labelled_points)
+                        db_score = metrics.davies_bouldin_score(x_train_label_points, y_pred_labelled_points)
+
                         print("Accuracy on high density points for ", label_ratio, "densest points:",
-                              acc(y_train_label_points, y_pred_labelled_points))
+                              acc(y_train_label_points, y_pred_labelled_points), s_score, db_score)
+
+
+
                         wandb.log({"Label ratio": label_ratio,
-                                   "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points)})
+                                   "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points),
+                                   "Sil score": s_score,
+                                   "DB score": db_score})
 
 
                 isolated_string = save_dir.split("Pretrain_")[0]
@@ -513,6 +525,10 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
 
                 save_pseudo = check_filepath_naming(save_pseudo)
                 pseudo.save_weights(save_pseudo)
+                wandb.log({"Actual save name": save_pseudo})
+
+
+    return save_pseudo
 
 
 

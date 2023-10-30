@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
 from sklearn.neighbors import KDTree
-from os import path
+from sklearn import metrics
 from utils.pretrain_models import *
 import wandb
 
@@ -554,15 +554,18 @@ class PseudoLabel(object):
 
         return x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points
 
-    def get_pseudo_labels_NNCLR(self, x, y, label_ratio):
-
-
+    def get_pseudo_labels_NNCLR(self, x, y):
         data = self.pseudo.predict(x)
         OrdRho = calculate_densities(data=data, k=self.k_nearest_neighbours)
 
-        check_dense_acc = False
+        check_dense_acc = True
         if check_dense_acc:
-            for i in range(1, 51):
+            lrs = []
+            elbow_scores = []
+            s_scores = []
+            db_scores = []
+            cb_scores = []
+            for i in range(1, 25):
                 lr = i * 0.02
                 label_points = OrdRho[:int(data.shape[0] * lr)]
                 y_train_label_points = y[label_points]
@@ -570,13 +573,39 @@ class PseudoLabel(object):
 
                 kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
                 y_pred_labelled_points = kmeans.fit_predict(x_train_label_points)
-                print("Accuracy on high density points for ", lr, "densest points:", acc(y_train_label_points, y_pred_labelled_points))
-                wandb.log({"Label ratio": lr, "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points)})
+                elbow_score = kmeans.inertia_
+                s_score = metrics.silhouette_score(x_train_label_points, y_pred_labelled_points)
+                db_score = metrics.davies_bouldin_score(x_train_label_points, y_pred_labelled_points)
+                cb_score = metrics.calinski_harabasz_score(x_train_label_points, y_pred_labelled_points)
 
+                lrs.append(lr)
+                s_scores.append(s_score)
+                elbow_scores.append(elbow_score)
+                db_scores.append(db_score)
+                cb_scores.append(cb_score)
+                print("Accuracy on high density points for ", lr, "densest points:",
+                      acc(y_train_label_points, y_pred_labelled_points), elbow_score, s_score, db_score, cb_score)
+                wandb.log({"Label ratio": lr,
+                           "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points),
+                           "elbow_score": elbow_score,
+                           "Sil score": s_score,
+                           "DB score": db_score,
+                           "CB score": cb_score})
+
+        score = (1 / np.array(db_scores)) * np.sqrt(np.array(lrs))
+        print("score:", score)
+        print("lr sil method:", lrs[s_scores.index(max(s_scores))])
+        from kneed import KneeLocator
+        kn = KneeLocator(lrs, elbow_scores, curve='convex', direction='increasing')
+        print("lr elbow method:", kn.knee)
+        print("lr db method:", lrs[db_scores.index(min(db_scores))])
+        print("lr cb method:", lrs[cb_scores.index(max(cb_scores))])
+        label_ratio = np.mean(np.array([lrs[s_scores.index(max(s_scores))], kn.knee, lrs[db_scores.index(min(db_scores))]]))
+
+        #lrs[db_scores.index(min(db_scores))] + 0.06 # lrs[db_scores.index(min(db_scores))] #lrs[cb_scores.index(max(cb_scores))] #lrs[np.argmax(score)]
+        print("Chosen label ratio:", label_ratio)
         label_points = OrdRho[:int(data.shape[0] * label_ratio)]
         unlabelled_points = OrdRho[int(data.shape[0] * label_ratio):]
-
-
         y_label_points = y[label_points]
         x_label_points = x[label_points, :]
 
@@ -611,14 +640,14 @@ class PseudoLabel(object):
             name="finetuning_model",
         )
         finetuning_model.compile(
-            optimizer=tf.keras.optimizers.Adam(),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
             metrics=[acc_tf], #tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
             run_eagerly=True)
 
         from wandb.keras import WandbMetricsLogger
         finetuning_history = finetuning_model.fit(
-            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=0, callbacks=[WandbMetricsLogger()])
+            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=1, callbacks=[WandbMetricsLogger()])
 
         pred = finetuning_model.predict(x)
         y_pred = pred.argmax(1)
@@ -645,14 +674,14 @@ class PseudoLabel(object):
             name="finetuning_model",
         )
         finetuning_model.compile(
-            optimizer=tf.keras.optimizers.Adam(),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
             metrics=[acc_tf], #tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
             run_eagerly=True)
 
         from wandb.keras import WandbMetricsLogger
         finetuning_model.fit(
-            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=0, callbacks=[WandbMetricsLogger()])
+            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=1, callbacks=[WandbMetricsLogger()])
 
         pred = finetuning_model.predict(x)
         y_pred = pred.argmax(1)
@@ -699,7 +728,7 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
         elif finetune_method == "IDEC":
 
             idec = IDEC(model=model, input_dim=x[0, :].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS,
-                        batch_size=finetune_config.IDEC_BATCH_SIZE)  # TODO: All models
+                        batch_size=finetune_config.IDEC_BATCH_SIZE)
             idec.initialize_model(
                 optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE,
                                                   momentum=finetune_config.IDEC_MOMENTUM),
@@ -723,7 +752,7 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
             pseudo_label.initialize_model_NNCLR(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
 
             x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
-                x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
+                x=x, y=y)
 
             y_pred_finetuned = pseudo_label.finetune_on_pseudos_NNCLR(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                                 x=x,

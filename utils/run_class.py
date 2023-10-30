@@ -52,13 +52,13 @@ class Run:
         print('---' * 30)
         print('PRETRAINING MODEL...')
 
-        pretrain_model(model=model, model_config=self.model_config,
+        save_pseudo = pretrain_model(model=model, model_config=self.model_config,
                       pretraining_config=self.pretraining_config,
                       pretrain_method=self.pretrain_method,
                       dataset=dataset, dataset_test=dataset_test,
                       save_weights=self.pretraining_config.SAVE_WEIGHTS,
                       save_dir=self.pretraining_config.SAVE_DIR)
-
+        return save_pseudo
 
     def finetune(self, model, dataset, dataset_test):
         print('---' * 30)
@@ -125,7 +125,7 @@ class Run:
             self.initialize_wandb(self.pretrain_method)
             dataset, dataset_test = self.prepare_data()
             model = self.initialize_model()
-            self.pretrain(model=model, dataset=dataset, dataset_test=dataset_test)
+            self.fintune_config.PRETRAINED_SAVE_DIR = self.pretrain(model=model, dataset=dataset, dataset_test=dataset_test)
             if self.pretrain_method == "reconstruction":
                 encoded_data, encoded_data_test, y_true, y_true_test = self.predict(model=model, dataset=dataset,
                                                                                    dataset_test=dataset_test)

@@ -293,5 +293,4 @@ def wandb_initializer(model_config, pretraining_config, fintune_config, method):
                             "PSEUDO_N_CLUSTERS": fintune_config.PSEUDO_N_CLUSTERS,
                             "K_NEAREST_NEIGHBOURS": fintune_config.K_NEAREST_NEIGHBOURS,
                             "PSEUDO_EPOCHS": fintune_config.PSEUDO_EPOCHS,
-                            "PSEUDO_BATCH_SIZE": fintune_config.PSEUDO_BATCH_SIZE,
-                            "PSEUDO_RATIO": fintune_config.PSEUDO_RATIO})
+                            "PSEUDO_BATCH_SIZE": fintune_config.PSEUDO_BATCH_SIZE})
