@@ -57,9 +57,11 @@ class Config_Finetuning(object):
 
         # PseudoLabels
 
-        self.PSEUDO_N_CLUSTERS = 5
+        self.PSEUDO_N_CLUSTERS = None
 
-        self.K_NEAREST_NEIGHBOURS = 500
+        self.PSEUDO_LABEL_RATIO = None
+
+        self.K_NEAREST_NEIGHBOURS = 0.005 #relative of number of spikes
 
         self.PSEUDO_EPOCHS = 50
 

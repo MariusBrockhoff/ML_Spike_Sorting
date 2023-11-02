@@ -474,16 +474,18 @@ class PseudoLabel(object):
     def __init__(self,
                  model,
                  input_dim,
-                 n_clusters=5,
-                 k_nearest_neighbours=500,
-                 batch_size=256,
-                 epochs=50):
+                 n_clusters,
+                 pseudo_label_ratio,
+                 k_nearest_neighbours,
+                 batch_size,
+                 epochs):
 
         super(PseudoLabel, self).__init__()
 
         self.autoencoder = model
         self.input_dim = input_dim
         self.n_clusters = n_clusters
+        self.pseudo_label_ratio = pseudo_label_ratio
         self.k_nearest_neighbours = k_nearest_neighbours
         self.batch_size = batch_size
         self.epochs = epochs
@@ -527,13 +529,13 @@ class PseudoLabel(object):
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
-    def get_pseudo_labels(self, x, y, label_ratio):
+    def get_pseudo_labels(self, x, y):
 
         data = self.autoencoder.Encoder.predict(x)
         OrdRho = calculate_densities(data=data, k=self.k_nearest_neighbours)
 
-        label_points = OrdRho[:int(data.shape[0] * label_ratio)]
-        unlabelled_points = OrdRho[int(data.shape[0] * label_ratio):]
+        label_points = OrdRho[:int(data.shape[0] * self.pseudo_label_ratio)]
+        unlabelled_points = OrdRho[int(data.shape[0] * self.pseudo_label_ratio):]
 
         y_label_points = y[label_points]
         x_label_points = x[label_points, :]
@@ -556,17 +558,41 @@ class PseudoLabel(object):
 
     def get_pseudo_labels_NNCLR(self, x, y):
         data = self.pseudo.predict(x)
-        OrdRho = calculate_densities(data=data, k=self.k_nearest_neighbours)
+        OrdRho = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]))
 
-        check_dense_acc = True
-        if check_dense_acc:
+        if self.n_clusters is None:
+            ks = []
+            elbow_scores = []
+            label_ratio = 0.2
+            label_points = OrdRho[:int(data.shape[0] * label_ratio)]
+            y_train_label_points = y[label_points]
+            x_train_label_points = data[label_points, :]
+            for i in range(2, 15):
+                n_clusters = i
+                kmeans = KMeans(n_clusters=n_clusters, n_init=20)
+                y_pred_labelled_points = kmeans.fit_predict(x_train_label_points)
+                elbow_score = kmeans.inertia_
+                ks.append(n_clusters)
+                elbow_scores.append(elbow_score)
+                print("Accuracy on high density points for ", n_clusters, "cluster:",
+                      acc(y_train_label_points, y_pred_labelled_points), elbow_score)
+                wandb.log({"K": n_clusters,
+                           "Accuracy on Ks": acc(y_train_label_points, y_pred_labelled_points)})
+
+            from kneed import KneeLocator
+            kn = KneeLocator(ks, elbow_scores, curve='convex', direction='decreasing')
+            print("Predicted number of clusters elbow method:", kn.knee)
+            wandb.log({"Final number of clusters": self.n_clusters})
+
+        self.n_clusters = 5
+
+        if self.pseudo_label_ratio is None:
             lrs = []
             elbow_scores = []
             s_scores = []
             db_scores = []
-            cb_scores = []
-            for i in range(1, 25):
-                lr = i * 0.02
+            for i in range(7, 75):
+                lr = i * 0.01
                 label_points = OrdRho[:int(data.shape[0] * lr)]
                 y_train_label_points = y[label_points]
                 x_train_label_points = data[label_points, :]
@@ -576,36 +602,31 @@ class PseudoLabel(object):
                 elbow_score = kmeans.inertia_
                 s_score = metrics.silhouette_score(x_train_label_points, y_pred_labelled_points)
                 db_score = metrics.davies_bouldin_score(x_train_label_points, y_pred_labelled_points)
-                cb_score = metrics.calinski_harabasz_score(x_train_label_points, y_pred_labelled_points)
 
                 lrs.append(lr)
                 s_scores.append(s_score)
                 elbow_scores.append(elbow_score)
                 db_scores.append(db_score)
-                cb_scores.append(cb_score)
                 print("Accuracy on high density points for ", lr, "densest points:",
-                      acc(y_train_label_points, y_pred_labelled_points), elbow_score, s_score, db_score, cb_score)
+                      acc(y_train_label_points, y_pred_labelled_points), elbow_score, s_score, db_score)
                 wandb.log({"Label ratio": lr,
                            "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points),
                            "elbow_score": elbow_score,
                            "Sil score": s_score,
-                           "DB score": db_score,
-                           "CB score": cb_score})
+                           "DB score": db_score})
 
-        score = (1 / np.array(db_scores)) * np.sqrt(np.array(lrs))
-        print("score:", score)
-        print("lr sil method:", lrs[s_scores.index(max(s_scores))])
-        from kneed import KneeLocator
-        kn = KneeLocator(lrs, elbow_scores, curve='convex', direction='increasing')
-        print("lr elbow method:", kn.knee)
-        print("lr db method:", lrs[db_scores.index(min(db_scores))])
-        print("lr cb method:", lrs[cb_scores.index(max(cb_scores))])
-        label_ratio = np.mean(np.array([lrs[s_scores.index(max(s_scores))], kn.knee, lrs[db_scores.index(min(db_scores))]]))
+            score = (1 / np.array(db_scores)) * np.sqrt(np.array(lrs))
+            print("score:", score)
+            print("lr sil method:", lrs[s_scores.index(max(s_scores))])
+            from kneed import KneeLocator
+            kn = KneeLocator(lrs, elbow_scores, curve='convex', direction='increasing')
+            print("lr elbow method:", kn.knee)
+            print("lr db method:", lrs[db_scores.index(min(db_scores))])
+            self.pseudo_label_ratio = np.mean(np.array([lrs[s_scores.index(max(s_scores))], kn.knee, lrs[db_scores.index(min(db_scores))]]))
 
-        #lrs[db_scores.index(min(db_scores))] + 0.06 # lrs[db_scores.index(min(db_scores))] #lrs[cb_scores.index(max(cb_scores))] #lrs[np.argmax(score)]
-        print("Chosen label ratio:", label_ratio)
-        label_points = OrdRho[:int(data.shape[0] * label_ratio)]
-        unlabelled_points = OrdRho[int(data.shape[0] * label_ratio):]
+        print("Ratio of Pseudo Labelled points:", self.pseudo_label_ratio)
+        label_points = OrdRho[:int(data.shape[0] * self.pseudo_label_ratio)]
+        unlabelled_points = OrdRho[int(data.shape[0] * self.pseudo_label_ratio):]
         y_label_points = y[label_points]
         x_label_points = x[label_points, :]
 
@@ -745,6 +766,7 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
             pseudo_label = PseudoLabel(model=model,
                                        input_dim=x[0, :].shape,
                                        n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
+                                       pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO,
                                        k_nearest_neighbours=finetune_config.K_NEAREST_NEIGHBOURS,
                                        batch_size=finetune_config.PSEUDO_BATCH_SIZE,
                                        epochs=finetune_config.PSEUDO_EPOCHS)
@@ -796,13 +818,14 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
             pseudo_label = PseudoLabel(model=model,
                                        input_dim=x[0,:].shape,
                                        n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
+                                       pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO,
                                        k_nearest_neighbours=finetune_config.K_NEAREST_NEIGHBOURS,
                                        batch_size=finetune_config.PSEUDO_BATCH_SIZE,
                                        epochs=finetune_config.PSEUDO_EPOCHS)
 
             pseudo_label.initialize_model(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
 
-            x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y, label_ratio=finetune_config.PSEUDO_RATIO)
+            x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y)
 
             y_pred_finetuned = pseudo_label.finetune_on_pseudos(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                                 x=x,

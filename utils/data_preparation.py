@@ -32,12 +32,12 @@ def data_preparation(model_config, pretraining_config, pretrain_method, fintune_
         #Shuffle data
         np.random.shuffle(X)
         labels = X[:, 0]
-        print("Number of classes:", len(np.unique(labels)))
+        print("Ground Truth Number of classes:", len(np.unique(labels)))
         spike_times = X[:, 1]
         spikes = X[:, 2:]
         model_config.SEQ_LEN = spikes.shape[1]
         classes_from_data_pretrain = True
-        classes_from_data_finetune = True
+        classes_from_data_finetune = False
         if classes_from_data_pretrain:
             pretraining_config.N_CLUSTERS = len(np.unique(labels))
         if classes_from_data_finetune:
