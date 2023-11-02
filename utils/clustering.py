@@ -126,31 +126,8 @@ def clustering(data, method, n_clusters=5, eps=0.01, min_cluster_size=100, knn=1
         y_pred = fhc_lpd(data,k=knn,C=n_clusters)
         y_pred = np.concatenate((y_pred_k, y_pred), axis=0)
 
-
-
-    # elif method=="HDBSCAN":
-    #     clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, gen_min_span_tree=True)
-    #     clusterer.fit(data)
-    #     y_pred = clusterer.labels_
-    #     n_clusters = len(np.unique(y_pred))
-
     else:
         raise ValueError("Please choose a valid clusering method! Chooose between Butter_bandpass, "
                          "Butter_highpass, Elliptic_bandpass or Elliptic_highpass")
-
-    return y_pred, n_clusters
-
-
-def DINO_clustering(data, method, n_clusters=5, eps=0.01, min_cluster_size=100, knn=1000):
-    #Split data in student and teacher
-    data_s = data[:int(len(data)/2),:]
-    data_t = data[int(len(data) / 2):, :]
-    y_pred_s, n_clusters_s = clustering(data_s, method, n_clusters=n_clusters, eps=eps,
-                                        min_cluster_size=min_cluster_size, knn=knn)
-    y_pred_t, n_clusters_t = clustering(data_t, method, n_clusters=n_clusters, eps=eps,
-                                        min_cluster_size=min_cluster_size, knn=knn)
-
-    y_pred = np.concatenate((y_pred_s, y_pred_t), axis=0)
-    n_clusters = [n_clusters_s, n_clusters_t]
 
     return y_pred, n_clusters

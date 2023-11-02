@@ -21,86 +21,91 @@ def gradient_transform(X, fsample):
   return X_grad
 
 
-def data_preparation(config, path_spike_file, data_prep_method, normalization, train_test_split, batch_size, benchmark=False):
+def data_preparation(model_config, pretraining_config, pretrain_method, fintune_config, benchmark=False):
 
-    with open(path_spike_file, 'rb') as f:
+    batch_size = pretraining_config.BATCH_SIZE if pretrain_method == "reconstruction" else pretraining_config.BATCH_SIZE_NNCLR
+
+    with open(pretraining_config.DATA_SAVE_PATH, 'rb') as f:
         X = pickle.load(f)
         fsample = 20000
+        print("X shape", X.shape)
+        #Shuffle data
+        np.random.shuffle(X)
         labels = X[:, 0]
+        print("Ground Truth Number of classes:", len(np.unique(labels)))
         spike_times = X[:, 1]
         spikes = X[:, 2:]
+        model_config.SEQ_LEN = spikes.shape[1]
+        classes_from_data_pretrain = True
+        classes_from_data_finetune = False
+        if classes_from_data_pretrain:
+            pretraining_config.N_CLUSTERS = len(np.unique(labels))
+        if classes_from_data_finetune:
+            fintune_config.DEC_N_CLUSTERS = len(np.unique(labels))
+            fintune_config.IDEC_N_CLUSTERS = len(np.unique(labels))
+            fintune_config.PSEUDO_N_CLUSTERS = len(np.unique(labels))
         del X
 
-    if normalization == "MinMax":
+    if pretraining_config.DATA_NORMALIZATION == "MinMax":
         scaler = MinMaxScaler()
 
-    elif normalization == "Standard":
+    elif pretraining_config.DATA_NORMALIZATION == "Standard":
         scaler = StandardScaler()
     else:
         raise ValueError("Please specify valid data normalization method (MinMax, Standard)")
 
-    if data_prep_method == "gradient":
+    if pretraining_config.DATA_PREP_METHOD == "gradient":
         grad_spikes = gradient_transform(spikes, fsample)
         spikes = scaler.fit_transform(grad_spikes)
-        config.SEQ_LEN = 63
+        model_config.SEQ_LEN = model_config.SEQ_LEN - 1
         
-    elif data_prep_method == "raw_spikes":
+    elif pretraining_config.DATA_PREP_METHOD == "raw_spikes":
         spikes = scaler.fit_transform(spikes)
         spikes = scaler.fit_transform(spikes)
-        config.SEQ_LEN = 64
 
-    elif data_prep_method == "fft":
+    elif pretraining_config.DATA_PREP_METHOD == "fft":
         FT_spikes = np.abs(fft(spikes))[:, :33]
         spikes = scaler.fit_transform(FT_spikes)
-        config.SEQ_LEN = 33
+        model_config.SEQ_LEN = 33
 
     else:
-        raise ValueError("Please specify valied data preprocessing method (gradient, raw_spikes)")
-
-    '''if config.MODEL_TYPE=='AttnAE_1' or config.MODEL_TYPE=='AttnAE_2':
-        print('shape of data set before codons:', spikes.shape)
-
-        # add start+stop codon
-        spikes = np.insert(spikes, 0, -1, axis=1)
-        print('shape of data set after start codon:', spikes.shape)
-
-        spikes = np.append(spikes, np.array([[-1] for i in range(spikes.shape[0])]), axis=1)
-        print('shape of data set after stop codon:', spikes.shape)'''
+        raise ValueError("Please specify valid data preprocessing method (gradient, raw_spikes)")
 
     if benchmark:
-        split = train_test_split
+        split = pretraining_config.TRAIN_TEST_SPLIT
         #k_sets = int(1/split)
         dataset_lst = []
         dataset_test_lst = []
-        for j in range(config.BENCHMARK_START_IDX, config.BENCHMARK_END_IDX):
+        for j in range(pretraining_config.BENCHMARK_START_IDX, pretraining_config.BENCHMARK_END_IDX):
             number_of_test_samples = int(split*spikes.shape[0])
             x_test = spikes[number_of_test_samples*j:number_of_test_samples*(j+1), :]
             y_test = labels[number_of_test_samples*j:number_of_test_samples*(j+1)]
             x_train = np.delete(spikes, slice(number_of_test_samples*j, number_of_test_samples*(j+1)), 0)
             y_train = np.delete(labels, slice(number_of_test_samples*j, number_of_test_samples*(j+1)))
 
-            config.EPOCH_SIZE = int(x_train.shape[0]/batch_size)
-            dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size, drop_remainder=True).take(config.EPOCH_SIZE).shuffle(buffer_size=len(x_train))
-            dataset_test = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size, drop_remainder=True).take(config.EPOCH_SIZE).shuffle(buffer_size=len(x_test))
+            epoch_size = int(x_train.shape[0]/batch_size)
+            dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size, drop_remainder=True).take(epoch_size).shuffle(buffer_size=len(x_train))
+            dataset_test = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size, drop_remainder=True).take(epoch_size).shuffle(buffer_size=len(x_test))
 
             dataset_lst.append(dataset)
             dataset_test_lst.append(dataset_test)
         return dataset_lst, dataset_test_lst
 
     else:
-        split = train_test_split
+        split = pretraining_config.TRAIN_TEST_SPLIT
         number_of_test_samples = int(split * spikes.shape[0])
         x_test = spikes[-number_of_test_samples:, :]
         y_test = labels[-number_of_test_samples:]
         x_train = spikes[:-number_of_test_samples, :]
         y_train = labels[:-number_of_test_samples]
 
-        config.EPOCH_SIZE = int(x_train.shape[0] / batch_size)
-        dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size, drop_remainder=True).take(
-            config.EPOCH_SIZE).shuffle(buffer_size=len(x_train))
-        dataset_test = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size, drop_remainder=True).take(
-            config.EPOCH_SIZE).shuffle(buffer_size=len(x_test))
 
-        return dataset, dataset_test
+        epoch_size = int(x_train.shape[0] / batch_size)
+        dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size, drop_remainder=True).take(
+            epoch_size).shuffle(buffer_size=len(x_train))
+        dataset_test = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size, drop_remainder=True).take(
+            epoch_size).shuffle(buffer_size=len(x_test))
+
+        return dataset, dataset_test, pretraining_config, fintune_config
 
 

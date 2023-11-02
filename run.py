@@ -28,30 +28,30 @@ print("devices:", tf.config.list_physical_devices(device_type=None))
 
 
 if args.Model == "PerceiverIO":
-    config = Config_PerceiverIO(data_path=args.PathData)
+    model_config = Config_PerceiverIO()
 
 elif args.Model == "DenseAutoencoder":
-    config = Config_DenseAutoencoder(data_path=args.PathData)
+    model_config = Config_DenseAutoencoder()
 
 elif args.Model == "AttnE_DenseD":
-    config = Config_AttnAE(data_path=args.PathData)
-    config.MODEL_TYPE = "AttnE_DenseD"
+    model_config = Config_AttnAE()
+    model_config.MODEL_TYPE = "AttnE_DenseD"
 
 elif args.Model == "AE":
-    config = Config_AttnAE(data_path=args.PathData)
-    config.MODEL_TYPE = "AE"
+    model_config = Config_AttnAE()
+    model_config.MODEL_TYPE = "AE"
 
 elif args.Model == "FullTransformer":
-    config = Config_FullTransformer(data_path=args.PathData)
+    model_config = Config_FullTransformer()
     
 else:
     raise ValueError("please choose a valid Model Type. See Documentation!")
 
 if args.Benchmark:
-    run = Run(config=config, benchmark=True, pretrain_method=args.Pretrain_Method, fine_tune_method=args.Finetune_Method)
+    run = Run(model_config=model_config, data_path=args.PathData, benchmark=True, pretrain_method=args.Pretrain_Method, fine_tune_method=args.Finetune_Method)
     
 else:
-    run = Run(config=config, benchmark=False, pretrain_method=args.Pretrain_Method, fine_tune_method=args.Finetune_Method)
+    run = Run(model_config=model_config, data_path=args.PathData, benchmark=False, pretrain_method=args.Pretrain_Method, fine_tune_method=args.Finetune_Method)
 
 if args.Pretrain_Method != "None" and args.Pretrain_Method != None:
     run.execute_pretrain()
