@@ -43,10 +43,10 @@ class Config_Pretraining(object):
         self.LR_FINAL_NNCLR = 1e-4  # 1e-6 1e-8
 
         self.NUM_EPOCHS_NNCLR = 25
-        self.BATCH_SIZE_NNCLR = 256
+        self.BATCH_SIZE_NNCLR = 2048
 
         self.TEMPERATURE = 0.1
-        self.QUEUE_SIZE = 10000
+        self.QUEUE_SIZE = 100000
         self.PROJECTION_WIDTH = 10
         self.CONTRASTIVE_AUGMENTER = {"apply_noise": True,
                                  "max_noise_lvl": 0.075,
@@ -67,7 +67,7 @@ class Config_Pretraining(object):
 
         # Saving
         self.SAVE_WEIGHTS = True
-        self.SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
+        self.SAVE_DIR = "C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
 
         # "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
 

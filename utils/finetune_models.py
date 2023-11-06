@@ -582,7 +582,7 @@ class PseudoLabel(object):
             from kneed import KneeLocator
             kn = KneeLocator(ks, elbow_scores, curve='convex', direction='decreasing')
             print("Predicted number of clusters elbow method:", kn.knee)
-            wandb.log({"Final number of clusters": self.n_clusters})
+            wandb.log({"Final number of clusters": kn.knee})
 
         self.n_clusters = 5
 
