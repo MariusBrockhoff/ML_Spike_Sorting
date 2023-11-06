@@ -61,6 +61,12 @@ class Config_Finetuning(object):
 
         self.PSEUDO_LABEL_RATIO = None
 
+        self.ITERATIVE_RATIOS = [0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4]
+
+        self.SAMPLING_METHOD = "weighted"
+
+        self.DENSITY_FUNCTION = "default"
+
         self.K_NEAREST_NEIGHBOURS = 0.005 #relative of number of spikes
 
         self.PSEUDO_EPOCHS = 50
