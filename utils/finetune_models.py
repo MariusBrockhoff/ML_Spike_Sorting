@@ -558,7 +558,11 @@ class PseudoLabel(object):
 
     def get_pseudo_labels_NNCLR(self, x, y):
         data = self.pseudo.predict(x)
+        import time
+        start_time = time.time()
         OrdRho = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]))
+        end_time = time.time()
+        print("Time Run Execution: ", end_time - start_time)
 
         if self.n_clusters is None:
             ks = []

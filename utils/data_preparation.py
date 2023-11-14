@@ -36,8 +36,9 @@ def data_preparation(model_config, pretraining_config, pretrain_method, fintune_
         spike_times = X[:, 1]
         spikes = X[:, 2:]
         model_config.SEQ_LEN = spikes.shape[1]
-        classes_from_data_pretrain = True
+        classes_from_data_pretrain = False
         classes_from_data_finetune = False
+        pretraining_config.QUEUE_SIZE = int(pretraining_config.QUEUE_SIZE * X.shape[0])
         if classes_from_data_pretrain:
             pretraining_config.N_CLUSTERS = len(np.unique(labels))
         if classes_from_data_finetune:
