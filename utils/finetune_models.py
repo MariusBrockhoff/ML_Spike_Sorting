@@ -5,8 +5,10 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
 from sklearn.neighbors import KDTree
 from sklearn import metrics
+from scipy.optimize import minimize
 from utils.pretrain_models import *
 import wandb
+import matplotlib.pyplot as plt
 
 
 
@@ -75,7 +77,71 @@ def check_filepath_naming(filepath):
                 return newPath
     return filepath
 
-def calculate_densities(data, k):
+def flatten_list(nested_list):
+    flattened = []
+    for item in nested_list:
+        if isinstance(item, list):
+            flattened.extend(flatten_list(item))
+        elif isinstance(item, (int, float)):  # Check for integers and floats
+            flattened.append(item)
+    return flattened
+
+def sampling_weighted(label_ratio, rho_normed):
+
+  bins = 100
+
+  y_dist, x_dist ,_ = plt.hist(rho_normed, bins=bins)
+
+  x_dist_ = x_dist + (1/(2*bins))
+  x_dist_center = x_dist_[:-1]
+
+  desired_fr = label_ratio
+
+  def objective_function(p):
+
+      fr = np.dot(y_dist,x_dist_center**p)/np.sum(y_dist)
+      diff = fr - desired_fr
+
+      return np.linalg.norm(diff)**2
+
+  if label_ratio>0.35:
+    p_guess = 1
+  elif 0.2<label_ratio<0.35:
+    p_guess = 2
+  elif 0.1<label_ratio<0.2:
+    p_guess = 3
+  else:
+    p_guess = 4
+
+  result = minimize(objective_function, p_guess)
+  optimal_p = result.x[0]
+
+  ratios = x_dist_center**optimal_p
+
+  conditions = [(i/100 <= rho_normed) & (rho_normed < (i+1)/100) for i in range(100)]
+
+  selected_indices = []
+
+  for condition, percentage in zip(conditions, ratios):
+      # Find the indices that satisfy the condition
+      indices = np.where(condition)[0]
+
+      # Calculate the number of values to sample
+      num_samples = int(percentage * len(indices))
+
+      # Randomly sample values based on the condition
+      sampled_indices = np.random.choice(indices, num_samples, replace=False)
+
+      # Append the sampled values to the selected_values list
+      selected_indices.extend(sampled_indices.tolist())
+
+  selected_indices = np.array(flatten_list(selected_indices))
+
+  np.random.shuffle(selected_indices)
+
+  return selected_indices
+
+def calculate_densities(data, k, density_function):
     n, d = data.shape
     if d <= 10:
         tree = KDTree(data)
@@ -107,11 +173,14 @@ def calculate_densities(data, k):
             knn_dist[i] = dist[i, neighbors]
 
     # calculate the knn-density value
-    rho = knn_dist[:, -1] ** -1
+    if density_function == 'default':
+        rho = knn_dist[:, -1] ** -1
+    elif density_function == 'mean':
+        rho = np.mean(knn_dist, axis=1) ** -1
 
-    # search for NPN(neighbor-parent node) and record depth value
-    OrdRho = np.argsort(-rho)
-    return OrdRho
+    rho_normed = (rho - np.min(rho)) / (np.max(rho) - np.min(rho))
+
+    return rho_normed
 class ClusteringLayer(tf.keras.layers.Layer):
     """
     Clustering layer converts input sample (feature) to soft label, i.e. a vector that represents the probability of the
@@ -475,7 +544,8 @@ class PseudoLabel(object):
                  model,
                  input_dim,
                  n_clusters,
-                 pseudo_label_ratio,
+                 sampling_method,
+                 density_function,
                  k_nearest_neighbours,
                  batch_size,
                  epochs):
@@ -485,7 +555,8 @@ class PseudoLabel(object):
         self.autoencoder = model
         self.input_dim = input_dim
         self.n_clusters = n_clusters
-        self.pseudo_label_ratio = pseudo_label_ratio
+        self.sampling_method = sampling_method
+        self.density_function = density_function
         self.k_nearest_neighbours = k_nearest_neighbours
         self.batch_size = batch_size
         self.epochs = epochs
@@ -529,13 +600,14 @@ class PseudoLabel(object):
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
-    def get_pseudo_labels(self, x, y):
+    def get_pseudo_labels(self, x, y, pseudo_label_ratio):
 
         data = self.autoencoder.Encoder.predict(x)
-        OrdRho = calculate_densities(data=data, k=self.k_nearest_neighbours)
+        rho_normed = calculate_densities(data=data, k=self.k_nearest_neighbours, density_function=self.density_function)
+        OrdRho = np.argsort(-rho_normed)
 
-        label_points = OrdRho[:int(data.shape[0] * self.pseudo_label_ratio)]
-        unlabelled_points = OrdRho[int(data.shape[0] * self.pseudo_label_ratio):]
+        label_points = OrdRho[:int(data.shape[0] * pseudo_label_ratio)]
+        unlabelled_points = OrdRho[int(data.shape[0] * pseudo_label_ratio):]
 
         y_label_points = y[label_points]
         x_label_points = x[label_points, :]
@@ -556,14 +628,17 @@ class PseudoLabel(object):
 
         return x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points
 
-    def get_pseudo_labels_NNCLR(self, x, y):
+    def get_pseudo_labels_NNCLR(self, x, y, pseudo_label_ratio):
         data = self.pseudo.predict(x)
+
         import time
         start_time = time.time()
         OrdRho = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]))
         end_time = time.time()
-        print("Time Run Execution: ", end_time - start_time)
+        print("Time Density  Calculation: ", end_time - start_time)
 
+        rho_normed = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]), density_function=self.density_function)
+        
         if self.n_clusters is None:
             ks = []
             elbow_scores = []
@@ -586,62 +661,28 @@ class PseudoLabel(object):
             from kneed import KneeLocator
             kn = KneeLocator(ks, elbow_scores, curve='convex', direction='decreasing')
             print("Predicted number of clusters elbow method:", kn.knee)
-            wandb.log({"Final number of clusters": self.n_clusters})
+            wandb.log({"Final number of clusters": kn.knee})
 
-        self.n_clusters = 5
 
-        if self.pseudo_label_ratio is None:
-            lrs = []
-            elbow_scores = []
-            s_scores = []
-            db_scores = []
-            for i in range(7, 75):
-                lr = i * 0.01
-                label_points = OrdRho[:int(data.shape[0] * lr)]
-                y_train_label_points = y[label_points]
-                x_train_label_points = data[label_points, :]
+        print("Ratio of Pseudo Labelled points:", pseudo_label_ratio)
+        if self.sampling_method == 'weighted':
+            selected_indices = sampling_weighted(pseudo_label_ratio, rho_normed)
+            np.random.shuffle(selected_indices)
 
-                kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-                y_pred_labelled_points = kmeans.fit_predict(x_train_label_points)
-                elbow_score = kmeans.inertia_
-                s_score = metrics.silhouette_score(x_train_label_points, y_pred_labelled_points)
-                db_score = metrics.davies_bouldin_score(x_train_label_points, y_pred_labelled_points)
+        elif self.sampling_method == 'densest':
+            OrdRho = np.argsort(-rho_normed)
+            selected_indices = OrdRho[:int(OrdRho.shape[0] * pseudo_label_ratio)]
+            np.random.shuffle(selected_indices)
 
-                lrs.append(lr)
-                s_scores.append(s_score)
-                elbow_scores.append(elbow_score)
-                db_scores.append(db_score)
-                print("Accuracy on high density points for ", lr, "densest points:",
-                      acc(y_train_label_points, y_pred_labelled_points), elbow_score, s_score, db_score)
-                wandb.log({"Label ratio": lr,
-                           "Accuracy on label points": acc(y_train_label_points, y_pred_labelled_points),
-                           "elbow_score": elbow_score,
-                           "Sil score": s_score,
-                           "DB score": db_score})
-
-            score = (1 / np.array(db_scores)) * np.sqrt(np.array(lrs))
-            print("score:", score)
-            print("lr sil method:", lrs[s_scores.index(max(s_scores))])
-            from kneed import KneeLocator
-            kn = KneeLocator(lrs, elbow_scores, curve='convex', direction='increasing')
-            print("lr elbow method:", kn.knee)
-            print("lr db method:", lrs[db_scores.index(min(db_scores))])
-            self.pseudo_label_ratio = np.mean(np.array([lrs[s_scores.index(max(s_scores))], kn.knee, lrs[db_scores.index(min(db_scores))]]))
-
-        print("Ratio of Pseudo Labelled points:", self.pseudo_label_ratio)
-        label_points = OrdRho[:int(data.shape[0] * self.pseudo_label_ratio)]
-        unlabelled_points = OrdRho[int(data.shape[0] * self.pseudo_label_ratio):]
-        y_label_points = y[label_points]
-        x_label_points = x[label_points, :]
-
-        y_unlabel_points = y[unlabelled_points]
-        x_unlabel_points = x[unlabelled_points, :]
+        y_label_points = y[selected_indices]
+        x_label_points = x[selected_indices, :]
+        y_unlabel_points = np.delete(y, selected_indices)
+        x_unlabel_points = np.delete(x, selected_indices, axis=0)
 
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred_labelled_points = kmeans.fit_predict(self.pseudo.predict(x_label_points))
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
         wandb.log({"Accuracy on high density points": acc(y_label_points, y_pred_labelled_points)})
-
 
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred = kmeans.fit_predict(data)
@@ -770,17 +811,20 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
             pseudo_label = PseudoLabel(model=model,
                                        input_dim=x[0, :].shape,
                                        n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
-                                       pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO,
+                                       sampling_method=finetune_config.SAMPLING_METHOD,
+                                       density_function=finetune_config.DENSITY_FUNCTION,
                                        k_nearest_neighbours=finetune_config.K_NEAREST_NEIGHBOURS,
                                        batch_size=finetune_config.PSEUDO_BATCH_SIZE,
                                        epochs=finetune_config.PSEUDO_EPOCHS)
 
             pseudo_label.initialize_model_NNCLR(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
 
-            x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
-                x=x, y=y)
+            if finetune_config.ITERATIVE_RATIOS is None:
 
-            y_pred_finetuned = pseudo_label.finetune_on_pseudos_NNCLR(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
+                x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
+                x=x, y=y, pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO)
+
+                y_pred_finetuned = pseudo_label.finetune_on_pseudos_NNCLR(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                                 x=x,
                                                                 y=y,
                                                                 input_dim=x[0, :].shape,
@@ -789,6 +833,22 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                                                                 y_pred_labelled_points=y_pred_labelled_points,
                                                                 x_unlabel_points=x_unlabel_points,
                                                                 y_unlabel_points=y_unlabel_points)
+
+            else:
+                for ratio in finetune_config.ITERATIVE_RATIOS:
+                    x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
+                        x=x, y=y, pseudo_label_ratio=ratio)
+
+                    y_pred_finetuned = pseudo_label.finetune_on_pseudos_NNCLR(
+                        save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
+                        x=x,
+                        y=y,
+                        input_dim=x[0, :].shape,
+                        classification_augmenter=finetune_config.CLASSIFICATION_AUGMENTER,
+                        x_label_points=x_label_points,
+                        y_pred_labelled_points=y_pred_labelled_points,
+                        x_unlabel_points=x_unlabel_points,
+                        y_unlabel_points=y_unlabel_points)
 
         return y_pred_finetuned, y
 
@@ -822,14 +882,14 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
             pseudo_label = PseudoLabel(model=model,
                                        input_dim=x[0,:].shape,
                                        n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
-                                       pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO,
                                        k_nearest_neighbours=finetune_config.K_NEAREST_NEIGHBOURS,
                                        batch_size=finetune_config.PSEUDO_BATCH_SIZE,
                                        epochs=finetune_config.PSEUDO_EPOCHS)
 
             pseudo_label.initialize_model(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
 
-            x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y)
+            x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y,
+                                                                                                                        pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO)
 
             y_pred_finetuned = pseudo_label.finetune_on_pseudos(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                                 x=x,
