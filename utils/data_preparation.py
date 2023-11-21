@@ -84,9 +84,8 @@ def data_preparation(model_config, pretraining_config, pretrain_method, fintune_
             x_train = np.delete(spikes, slice(number_of_test_samples*j, number_of_test_samples*(j+1)), 0)
             y_train = np.delete(labels, slice(number_of_test_samples*j, number_of_test_samples*(j+1)))
 
-            epoch_size = int(x_train.shape[0]/batch_size)
-            dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size, drop_remainder=True).take(epoch_size).shuffle(buffer_size=len(x_train))
-            dataset_test = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size, drop_remainder=True).take(epoch_size).shuffle(buffer_size=len(x_test))
+            dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size, drop_remainder=True)
+            dataset_test = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size, drop_remainder=True)
 
             dataset_lst.append(dataset)
             dataset_test_lst.append(dataset_test)
@@ -101,11 +100,8 @@ def data_preparation(model_config, pretraining_config, pretrain_method, fintune_
         y_train = labels[:-number_of_test_samples]
 
 
-        epoch_size = int(x_train.shape[0] / batch_size)
-        dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size, drop_remainder=True).take(
-            epoch_size).shuffle(buffer_size=len(x_train))
-        dataset_test = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size, drop_remainder=True).take(
-            epoch_size).shuffle(buffer_size=len(x_test))
+        dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size, drop_remainder=True)
+        dataset_test = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size, drop_remainder=True)
 
         return dataset, dataset_test, pretraining_config, fintune_config
 

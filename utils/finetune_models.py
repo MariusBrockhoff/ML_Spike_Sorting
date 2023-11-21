@@ -633,16 +633,19 @@ class PseudoLabel(object):
 
         import time
         start_time = time.time()
-        OrdRho = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]))
+        rho_normed = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]), density_function=self.density_function)
         end_time = time.time()
         print("Time Density  Calculation: ", end_time - start_time)
-
-        rho_normed = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]), density_function=self.density_function)
+        
+        print("x.shape:", x.shape)
+        print("K:", int(self.k_nearest_neighbours*x.shape[0]))
+        
         
         if self.n_clusters is None:
             ks = []
             elbow_scores = []
             label_ratio = 0.2
+            OrdRho = np.argsort(-rho_normed)
             label_points = OrdRho[:int(data.shape[0] * label_ratio)]
             y_train_label_points = y[label_points]
             x_train_label_points = data[label_points, :]
@@ -747,16 +750,15 @@ class PseudoLabel(object):
 
         from wandb.keras import WandbMetricsLogger
         finetuning_model.fit(
-            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=1, callbacks=[WandbMetricsLogger()])
+            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=0, callbacks=[WandbMetricsLogger()])
 
         pred = finetuning_model.predict(x)
         y_pred = pred.argmax(1)
         final_acc = acc(y, y_pred)
         print("final_acc:", final_acc)
         wandb.log({"Final Acc": final_acc})
-        save_Pseudo_dir = check_filepath_naming(save_Pseudo_dir)
-        finetuning_model.save_weights(save_Pseudo_dir)
-        return y_pred
+        
+        return y_pred, finetuning_model
 
 
 def finetune_model(model, finetune_config, finetune_method, dataset, dataset_test):
@@ -769,9 +771,9 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
             x = np.concatenate((x, batch[0]), axis=0)
             y = np.concatenate((y, batch[1]), axis=0)
 
-    for step, batch in enumerate(dataset_test):
-        x = np.concatenate((x, batch[0]), axis=0)
-        y = np.concatenate((y, batch[1]), axis=0)
+    for stept, batcht in enumerate(dataset_test):
+        x = np.concatenate((x, batcht[0]), axis=0)
+        y = np.concatenate((y, batcht[1]), axis=0)
 
 
     if "NNCLR" in finetune_config.PRETRAINED_SAVE_DIR:
@@ -824,7 +826,7 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                 x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
                 x=x, y=y, pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO)
 
-                y_pred_finetuned = pseudo_label.finetune_on_pseudos_NNCLR(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
+                y_pred_finetuned, finetuning_model = pseudo_label.finetune_on_pseudos_NNCLR(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                                 x=x,
                                                                 y=y,
                                                                 input_dim=x[0, :].shape,
@@ -833,13 +835,16 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                                                                 y_pred_labelled_points=y_pred_labelled_points,
                                                                 x_unlabel_points=x_unlabel_points,
                                                                 y_unlabel_points=y_unlabel_points)
+                
+                finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR)
+                finetuning_model.save_weights(finetune_config.PSEUDO_SAVE_DIR)
 
             else:
                 for ratio in finetune_config.ITERATIVE_RATIOS:
                     x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
                         x=x, y=y, pseudo_label_ratio=ratio)
 
-                    y_pred_finetuned = pseudo_label.finetune_on_pseudos_NNCLR(
+                    y_pred_finetuned, finetuning_model = pseudo_label.finetune_on_pseudos_NNCLR(
                         save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                         x=x,
                         y=y,
@@ -849,6 +854,13 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                         y_pred_labelled_points=y_pred_labelled_points,
                         x_unlabel_points=x_unlabel_points,
                         y_unlabel_points=y_unlabel_points)
+                        
+                
+                finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR)
+                finetuning_model.save_weights(finetune_config.PSEUDO_SAVE_DIR)
+                # save labels
+                ys = np.concatenate((y.reshape(len(y), 1), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)), axis=1)
+                np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels.txt",ys)
 
         return y_pred_finetuned, y
 

@@ -291,6 +291,10 @@ def wandb_initializer(model_config, pretraining_config, fintune_config, method):
                     config={"Model": model_config.MODEL_TYPE,
                             "DATA": fintune_config.FILE_NAME,
                             "PSEUDO_N_CLUSTERS": fintune_config.PSEUDO_N_CLUSTERS,
+                            "PSEUDO_LABEL_RATIO": fintune_config.PSEUDO_LABEL_RATIO,
+                            "ITERATIVE_RATIOS": fintune_config.ITERATIVE_RATIOS,
+                            "SAMPLING_METHOD": fintune_config.SAMPLING_METHOD,
+                            "DENSITY_FUNCTION": fintune_config.DENSITY_FUNCTION,
                             "K_NEAREST_NEIGHBOURS": fintune_config.K_NEAREST_NEIGHBOURS,
                             "PSEUDO_EPOCHS": fintune_config.PSEUDO_EPOCHS,
                             "PSEUDO_BATCH_SIZE": fintune_config.PSEUDO_BATCH_SIZE})
