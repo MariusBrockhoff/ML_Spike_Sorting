@@ -43,10 +43,10 @@ class Config_Pretraining(object):
         self.LR_FINAL_NNCLR = 1e-4  # 1e-6 1e-8
 
         self.NUM_EPOCHS_NNCLR = 25
-        self.BATCH_SIZE_NNCLR = 4096
+        self.BATCH_SIZE_NNCLR = 256
 
         self.TEMPERATURE = 0.1
-        self.QUEUE_SIZE = 0.01
+        self.QUEUE_SIZE = 0.1
         self.PROJECTION_WIDTH = 10
         self.CONTRASTIVE_AUGMENTER = {"apply_noise": True,
                                  "max_noise_lvl": 0.075,

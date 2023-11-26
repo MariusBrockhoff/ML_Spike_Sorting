@@ -677,6 +677,7 @@ class PseudoLabel(object):
             selected_indices = OrdRho[:int(OrdRho.shape[0] * pseudo_label_ratio)]
             np.random.shuffle(selected_indices)
 
+
         y_label_points = y[selected_indices]
         x_label_points = x[selected_indices, :]
         y_unlabel_points = np.delete(y, selected_indices)
@@ -691,6 +692,8 @@ class PseudoLabel(object):
         y_pred = kmeans.fit_predict(data)
         print("vs. Accuracy on all points:", acc(y, y_pred))
         wandb.log({"Accuracy on all points": acc(y, y_pred)})
+        
+        wandb.log({"Label Ratio": pseudo_label_ratio})
 
         return x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points
 
@@ -857,10 +860,10 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                         
                 
                 finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR)
-                finetuning_model.save_weights(finetune_config.PSEUDO_SAVE_DIR)
+                finetuning_model.pseudo.save_weights(finetune_config.PSEUDO_SAVE_DIR)
                 # save labels
-                ys = np.concatenate((y.reshape(len(y), 1), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)), axis=1)
-                np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels.txt",ys)
+                #ys = np.concatenate((y.reshape(len(y), 1), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)), axis=1)
+                #np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels.txt",ys)
 
         return y_pred_finetuned, y
 

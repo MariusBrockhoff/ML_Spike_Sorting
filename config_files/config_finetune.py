@@ -11,7 +11,9 @@ class Config_Finetuning(object):
 
         # Load Pretrained Model
 
-        self.PRETRAINED_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_NNCLR_" + self.MODEL_TYPE + "_" + self.FILE_NAME + "_4.h5"
+        self.PRETRAINED_SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_NNCLR_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5" 
+        
+        #"/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "DensityPseudoLabel_NNCLR_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
 
         #"/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5"
         
@@ -61,7 +63,7 @@ class Config_Finetuning(object):
 
         self.PSEUDO_LABEL_RATIO = None
 
-        self.ITERATIVE_RATIOS = [0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4]
+        self.ITERATIVE_RATIOS = [0.01, 0.05, 0.1, 0.15] #0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4
 
         self.SAMPLING_METHOD = "weighted"
 
