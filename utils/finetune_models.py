@@ -8,6 +8,7 @@ from sklearn import metrics
 from scipy.optimize import minimize
 from utils.pretrain_models import *
 import wandb
+import time
 import matplotlib.pyplot as plt
 
 
@@ -328,7 +329,7 @@ class IDEC(object):
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
-
+        
         # prepare IDEC model
         self.model = BaseModelIDEC(self.autoencoder.Encoder, self.autoencoder.Decoder, self.n_clusters)
         dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
@@ -593,7 +594,7 @@ class PseudoLabel(object):
                                              
             self.pseudo(dummy)
 
-            self.pseudo.load_weights(ae_weights)
+            self.pseudo.load_weights(ae_weights, skip_mismatch=True, by_name=True)
 
 
         else:
@@ -630,15 +631,47 @@ class PseudoLabel(object):
 
     def get_pseudo_labels_NNCLR(self, x, y, pseudo_label_ratio):
         data = self.pseudo.predict(x)
-
-        import time
-        start_time = time.time()
-        rho_normed = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]), density_function=self.density_function)
-        end_time = time.time()
-        print("Time Density  Calculation: ", end_time - start_time)
         
         print("x.shape:", x.shape)
         print("K:", int(self.k_nearest_neighbours*x.shape[0]))
+        
+        k=int(self.k_nearest_neighbours*x.shape[0])
+        
+        
+        
+        start_time = time.time()
+        import hnswlib
+        num_elements, dim = data.shape
+         
+        p = hnswlib.Index(space='l2', dim=dim)
+         
+        # Initializing the index - the maximum number of elements should be known beforehand
+        p.init_index(max_elements=num_elements, ef_construction=int(k*1.5), M=32)
+         
+        # Element insertion (can be called several times):
+        p.add_items(data)
+         
+        # Controlling the recall by setting ef:
+        p.set_ef(int(k*1.5))  # Setting ef to be higher than k to ensure good recall
+         
+        # Query the index:
+        labels, knn_dist = p.knn_query(data, k=k)
+        print("knn_dist.shape:", knn_dist.shape)
+        rho = np.mean(knn_dist, axis=1) ** -1
+        rho_normed = (rho - np.min(rho)) / (np.max(rho) - np.min(rho))
+        #np.savetxt("/rds/user/mb2315/hpc-work/Data/rho_normed_hnswlib.txt", rho_normed)
+
+        end_time = time.time()
+        print("Time Density Calculation hnswlib: ", end_time - start_time)
+
+        
+        #start_time = time.time()
+        #rho_normed = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]), density_function=self.density_function)
+        #np.savetxt("/rds/user/mb2315/hpc-work/Data/rho_normed_exact.txt", rho_normed)
+        #end_time = time.time()
+        #print("Time Density Calculation as before: ", end_time - start_time)
+        
+        
         
         
         if self.n_clusters is None:
@@ -782,37 +815,41 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
     if "NNCLR" in finetune_config.PRETRAINED_SAVE_DIR:
 
         if finetune_method == "DEC":
-
+    
             dec = DEC(model=model, input_dim=x[0, :].shape, n_clusters=finetune_config.DEC_N_CLUSTERS,
                       batch_size=finetune_config.DEC_BATCH_SIZE)
             dec.initialize_model(
                 optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.DEC_LEARNING_RATE,
                                                   momentum=finetune_config.DEC_MOMENTUM),
                 ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
-
+    
             y_pred_finetuned = dec.clustering(x, y=y, tol=finetune_config.DEC_TOL,
                                               maxiter=finetune_config.DEC_MAXITER,
                                               update_interval=finetune_config.DEC_UPDATE_INTERVAL,
                                               save_DEC_dir=finetune_config.DEC_SAVE_DIR)
-
-
+    
+    
         elif finetune_method == "IDEC":
-
+    
             idec = IDEC(model=model, input_dim=x[0, :].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS,
                         batch_size=finetune_config.IDEC_BATCH_SIZE)
             idec.initialize_model(
                 optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE,
                                                   momentum=finetune_config.IDEC_MOMENTUM),
                 ae_weights=finetune_config.PRETRAINED_SAVE_DIR, gamma=finetune_config.IDEC_GAMMA)
-
+                
+            #Calculate number of predicted classes
+            
+            
+    
             y_pred_finetuned = idec.clustering(x, y=y, tol=finetune_config.IDEC_TOL,
                                                maxiter=finetune_config.IDEC_MAXITER,
                                                update_interval=finetune_config.IDEC_UPDATE_INTERVAL,
                                                save_IDEC_dir=finetune_config.IDEC_SAVE_DIR)
-
-
+    
+    
         elif finetune_method == "PseudoLabel":
-
+    
             pseudo_label = PseudoLabel(model=model,
                                        input_dim=x[0, :].shape,
                                        n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
@@ -821,14 +858,14 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                                        k_nearest_neighbours=finetune_config.K_NEAREST_NEIGHBOURS,
                                        batch_size=finetune_config.PSEUDO_BATCH_SIZE,
                                        epochs=finetune_config.PSEUDO_EPOCHS)
-
+    
             pseudo_label.initialize_model_NNCLR(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
-
+    
             if finetune_config.ITERATIVE_RATIOS is None:
-
+    
                 x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
                 x=x, y=y, pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO)
-
+    
                 y_pred_finetuned, finetuning_model = pseudo_label.finetune_on_pseudos_NNCLR(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                                 x=x,
                                                                 y=y,
@@ -841,12 +878,12 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                 
                 finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR)
                 finetuning_model.save_weights(finetune_config.PSEUDO_SAVE_DIR)
-
+    
             else:
                 for ratio in finetune_config.ITERATIVE_RATIOS:
                     x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
                         x=x, y=y, pseudo_label_ratio=ratio)
-
+    
                     y_pred_finetuned, finetuning_model = pseudo_label.finetune_on_pseudos_NNCLR(
                         save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                         x=x,
@@ -859,12 +896,12 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                         y_unlabel_points=y_unlabel_points)
                         
                 
-                finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR)
-                finetuning_model.pseudo.save_weights(finetune_config.PSEUDO_SAVE_DIR)
+                finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR) #check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR) 
+                finetuning_model.save_weights(finetune_config.PSEUDO_SAVE_DIR)
                 # save labels
-                #ys = np.concatenate((y.reshape(len(y), 1), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)), axis=1)
-                #np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels.txt",ys)
-
+                ys = np.concatenate((y.reshape(len(y), 1), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)), axis=1)
+                np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels.txt",ys)
+    
         return y_pred_finetuned, y
 
     else:
@@ -883,10 +920,24 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
         elif finetune_method == "IDEC":
 
             idec = IDEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS, batch_size=finetune_config.IDEC_BATCH_SIZE) # TODO: All models
+            print("used for finetuning number of clusters:", finetune_config.IDEC_N_CLUSTERS)
             idec.initialize_model(
                 optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE, momentum=finetune_config.IDEC_MOMENTUM),
                 ae_weights=finetune_config.PRETRAINED_SAVE_DIR, gamma=finetune_config.IDEC_GAMMA)
-
+            
+            #predict number of neurons 
+            features = idec.extract_feature(x)
+            from sklearn.metrics import silhouette_score
+            def silhouette_method(data):
+                sil_scores = []
+                for i in range(2, 20):
+                    km = KMeans(n_clusters=i, n_init=1).fit(data)
+                    sil_scores.append(silhouette_score(data, km.labels_))
+    
+        
+                return sil_scores.index(max(sil_scores)) + 2
+            pred_number_of_cluster = silhouette_method(features)
+            wandb.log({"Predicted number of clusters": pred_number_of_cluster})
             y_pred_finetuned = idec.clustering(x, y=y, tol=finetune_config.IDEC_TOL,
                                                 maxiter=finetune_config.IDEC_MAXITER, update_interval=finetune_config.IDEC_UPDATE_INTERVAL,
                                                 save_IDEC_dir=finetune_config.IDEC_SAVE_DIR)

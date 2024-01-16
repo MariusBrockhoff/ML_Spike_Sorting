@@ -85,7 +85,7 @@ class Run:
                                         knn=self.pretraining_config.KNN)
         y_pred_test, n_clusters_test = clustering(data=encoded_data_test, method=self.pretraining_config.CLUSTERING_METHOD,
                                                   n_clusters=self.pretraining_config.N_CLUSTERS, eps=self.pretraining_config.EPS,
-                                                  min_cluster_size=self.MIN_CLUSTER_SIZE, knn=self.pretraining_config.KNN)
+                                                  min_cluster_size=self.pretraining_config.MIN_CLUSTER_SIZE, knn=self.pretraining_config.KNN)
 
         return y_pred, n_clusters, y_pred_test, n_clusters_test
 

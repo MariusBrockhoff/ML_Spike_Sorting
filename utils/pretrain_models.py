@@ -419,6 +419,7 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
             save_dir = check_filepath_naming(save_dir)
             wandb.log({"Actual save name": save_dir})
             model.save_weights(save_dir)
+            save_pseudo = save_dir
 
 
 
