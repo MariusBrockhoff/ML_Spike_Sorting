@@ -1,20 +1,27 @@
 # -*- coding: utf-8 -*-
-# import hdbscan
 from sklearn.cluster import KMeans, DBSCAN
 import numpy as np
-from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+from scipy.cluster.hierarchy import linkage, fcluster
 from sklearn.neighbors import KDTree
 
 
 def fhc_lpd(data, k, C):
-    # k: the number of neighbors
-    # C: the number of clusters
+    """
+        Performs clustering using a Fast Hierarchical Clustering with Local Peak Density (FHC_LPD).
 
+        Args:
+            data (numpy.ndarray): The dataset to cluster, where each row represents an observation.
+            k (int): The number of neighbors to consider for each point.
+            C (int): The desired number of clusters.
+
+        Returns:
+            numpy.ndarray: An array of cluster labels for each observation in the dataset.
+        """
     # Normalization
     data = (data - np.min(data, axis=0)) / (np.max(data, axis=0) - np.min(data, axis=0))
     data[np.isnan(data)] = 0
 
-    # Fast KNN based on kd-tree (when dimension is not large than 10)
+    # Fast KNN based on kd-tree (efficient for lower dimensions)
     n, d = data.shape
     if d <= 10:
         tree = KDTree(data)
@@ -107,7 +114,27 @@ def fhc_lpd(data, k, C):
         CL[AA] = F_sub_L[i]
     return CL
 
+
 def clustering(data, method, n_clusters=5, eps=0.01, min_cluster_size=100, knn=1000):
+    """
+        Performs clustering on the given dataset using specified methods.
+
+        Args:
+            data (numpy.ndarray): The dataset to cluster.
+            method (str): The clustering method to use. Can be 'Kmeans', 'DBSCAN', 'FHC_LPD', or 'Kmeans_FHC_LPD'.
+            n_clusters (int, optional): The number of clusters for Kmeans and FHC_LPD. Default is 5.
+            eps (float, optional): Epsilon parameter for DBSCAN, specifies how close points should be to each other to
+                                   be considered a part of a cluster. Default is 0.01.
+            min_cluster_size (int, optional): The minimum number of samples in a neighborhood for a point to be
+                                              considered as a core point in DBSCAN. Default is 100.
+            knn (int, optional): The number of nearest neighbors to consider for FHC_LPD. Default is 1000.
+        Returns:
+            tuple: A tuple containing the array of cluster labels and the number of clusters detected. The array assigns
+                   each observation in the dataset to a cluster.
+
+        Raises:
+            ValueError: If an invalid clustering method is chosen.
+    """
     if method == "Kmeans":
         kmeans = KMeans(n_clusters=n_clusters, n_init=20)
         y_pred = kmeans.fit_predict(data)
@@ -118,12 +145,12 @@ def clustering(data, method, n_clusters=5, eps=0.01, min_cluster_size=100, knn=1
         n_clusters = len(np.unique(y_pred))
 
     elif method == "FHC_LPD":
-        y_pred = fhc_lpd(data,k=knn,C=n_clusters)
+        y_pred = fhc_lpd(data, k=knn, C=n_clusters)
 
     elif method == "Kmeans_FHC_LPD":
         kmeans = KMeans(n_clusters=n_clusters, n_init=20)
         y_pred_k = kmeans.fit_predict(data)
-        y_pred = fhc_lpd(data,k=knn,C=n_clusters)
+        y_pred = fhc_lpd(data, k=knn, C=n_clusters)
         y_pred = np.concatenate((y_pred_k, y_pred), axis=0)
 
     else:

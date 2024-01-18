@@ -1,35 +1,32 @@
-import tensorflow as tf
-import keras.backend as K
-import numpy as np
-from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
-from sklearn.neighbors import KDTree
-from sklearn import metrics
 from scipy.optimize import minimize
-from utils.pretrain_models import *
-import wandb
 import time
 import matplotlib.pyplot as plt
+import hnswlib
+from kneed import KneeLocator
 
+from utils.pretrain_models import *
 
 
 nmi = normalized_mutual_info_score
 ari = adjusted_rand_score
 
-#TODO: merge / incorporate DEC, IDEC, dynAE
-#TODO: add weakly supervised finetuning
-#TODO: add Pseudolabel finetuning
 
 def acc(y_true, y_pred):
     """
-    Calculate clustering accuracy. Require scikit-learn installed
-    # Arguments
-        y: true labels, numpy.array with shape `(n_samples,)`
-        y_pred: predicted labels, numpy.array with shape `(n_samples,)`
-    # Return
-        accuracy, in [0,1]
+    Calculate clustering accuracy.
+
+    The function computes the accuracy of the clustering by finding an optimal match
+    between the cluster labels and the true labels using the Hungarian algorithm.
+
+    Arguments:
+        y_true: True labels, numpy.array with shape `(n_samples,)`.
+        y_pred: Predicted labels, numpy.array with shape `(n_samples,)`.
+
+    Returns:
+        accuracy: A float value between 0 and 1 indicating the clustering accuracy.
     """
-    #y_pred = y_pred.argmax(1)
+    # y_pred = y_pred.argmax(1)
     y_true = y_true.astype(np.int64)
     assert y_pred.size == y_true.size
     D = max(y_pred.max(), y_true.max()) + 1
@@ -42,14 +39,19 @@ def acc(y_true, y_pred):
     ind = np.transpose(ind)
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
+
 def acc_tf(y_true, y_pred):
     """
-    Calculate clustering accuracy. Require scikit-learn installed
-    # Arguments
-        y: true labels, numpy.array with shape `(n_samples,)`
-        y_pred: predicted labels, numpy.array with shape `(n_samples,)`
-    # Return
-        accuracy, in [0,1]
+    Calculate clustering accuracy for TensorFlow tensors.
+
+    Similar to `acc` but specifically designed for use with TensorFlow tensors.
+
+    Arguments:
+        y_true: True labels, numpy.array with shape `(n_samples,)`.
+        y_pred: Predicted labels, numpy.array with shape `(n_samples,)`.
+
+    Returns:
+        accuracy: A float value between 0 and 1 indicating the clustering accuracy.
     """
     y_true = y_true.numpy()
     y_pred = y_pred.numpy()
@@ -67,7 +69,20 @@ def acc_tf(y_true, y_pred):
     ind = np.transpose(ind)
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
+
 def check_filepath_naming(filepath):
+    """
+    Check and modify the file path to avoid overwriting existing files.
+
+    If the specified file path exists, a number is appended to the file name to
+    create a unique file name.
+
+    Arguments:
+        filepath: The file path to check.
+
+    Returns:
+        A modified file path if the original exists, otherwise the original file path.
+    """
     if path.exists(filepath):
         numb = 1
         while True:
@@ -78,7 +93,17 @@ def check_filepath_naming(filepath):
                 return newPath
     return filepath
 
+
 def flatten_list(nested_list):
+    """
+    Flatten a nested list.
+
+    Arguments:
+        nested_list: A list possibly containing nested lists.
+
+    Returns:
+        A single flattened list.
+    """
     flattened = []
     for item in nested_list:
         if isinstance(item, list):
@@ -87,73 +112,132 @@ def flatten_list(nested_list):
             flattened.append(item)
     return flattened
 
+
 def sampling_weighted(label_ratio, rho_normed):
+    """
+    Generates weighted sampling indices based on a given label ratio and a distribution of values.
 
-  bins = 100
+    This function calculates the weighted indices for sampling from a distribution (rho_normed)
+    to achieve a desired label ratio. It uses an optimization approach to find the best power
+    coefficient (p) that, when applied to the distribution, achieves a label ratio closest to the desired one.
 
-  y_dist, x_dist ,_ = plt.hist(rho_normed, bins=bins)
+    Parameters:
+    label_ratio (float): The desired ratio of labels in the final sample.
+    rho_normed (numpy.ndarray): A normalized array representing the distribution of values to sample from.
 
-  x_dist_ = x_dist + (1/(2*bins))
-  x_dist_center = x_dist_[:-1]
+    Returns:
+    numpy.ndarray: An array of indices that have been selected based on the weighted sampling.
+    """
 
-  desired_fr = label_ratio
+    # Number of bins for histogram
+    bins = 100
 
-  def objective_function(p):
+    # Calculate histogram of the rho_normed distribution
+    y_dist, x_dist, _ = plt.hist(rho_normed, bins=bins)
 
-      fr = np.dot(y_dist,x_dist_center**p)/np.sum(y_dist)
-      diff = fr - desired_fr
+    # Adjust x distribution for center of bins
+    x_dist_ = x_dist + (1 / (2 * bins))
+    x_dist_center = x_dist_[:-1]
 
-      return np.linalg.norm(diff)**2
+    # Desired fraction from label ratio
+    desired_fr = label_ratio
 
-  if label_ratio>0.35:
-    p_guess = 1
-  elif 0.2<label_ratio<0.35:
-    p_guess = 2
-  elif 0.1<label_ratio<0.2:
-    p_guess = 3
-  else:
-    p_guess = 4
+    def objective_function(p):
+        """
+        Objective function for optimization. It calculates the squared difference between the current
+        fraction (based on the power p) and the desired fraction.
 
-  result = minimize(objective_function, p_guess)
-  optimal_p = result.x[0]
+        Parameters:
+        p (float): Power coefficient applied to x_dist_center.
 
-  ratios = x_dist_center**optimal_p
+        Returns:
+        float: Squared difference between calculated fraction and desired fraction.
+        """
+        # Calculate the fraction based on power p
+        fr = np.dot(y_dist, x_dist_center ** p) / np.sum(y_dist)
 
-  conditions = [(i/100 <= rho_normed) & (rho_normed < (i+1)/100) for i in range(100)]
+        # Difference from desired fraction
+        diff = fr - desired_fr
 
-  selected_indices = []
+        # Return squared difference
+        return np.linalg.norm(diff) ** 2
 
-  for condition, percentage in zip(conditions, ratios):
-      # Find the indices that satisfy the condition
-      indices = np.where(condition)[0]
+    # Initial guess for power p based on label_ratio
+    if label_ratio > 0.35:
+        p_guess = 1
+    elif 0.2 < label_ratio < 0.35:
+        p_guess = 2
+    elif 0.1 < label_ratio < 0.2:
+        p_guess = 3
+    else:
+        p_guess = 4
 
-      # Calculate the number of values to sample
-      num_samples = int(percentage * len(indices))
+    # Optimize to find the best power p
+    result = minimize(objective_function, p_guess)
+    optimal_p = result.x[0]
 
-      # Randomly sample values based on the condition
-      sampled_indices = np.random.choice(indices, num_samples, replace=False)
+    # Ratios based on the optimal power p
+    ratios = x_dist_center ** optimal_p
 
-      # Append the sampled values to the selected_values list
-      selected_indices.extend(sampled_indices.tolist())
+    # Generate conditions for each bin
+    conditions = [(i / 100 <= rho_normed) & (rho_normed < (i + 1) / 100) for i in range(100)]
 
-  selected_indices = np.array(flatten_list(selected_indices))
+    selected_indices = []
 
-  np.random.shuffle(selected_indices)
+    # Loop over each condition and bin ratio
+    for condition, percentage in zip(conditions, ratios):
+        # Indices that satisfy the current condition
+        indices = np.where(condition)[0]
 
-  return selected_indices
+        # Number of samples to select from these indices
+        num_samples = int(percentage * len(indices))
+
+        # Randomly sample indices based on the calculated number
+        sampled_indices = np.random.choice(indices, num_samples, replace=False)
+
+        # Append sampled indices to the list
+        selected_indices.extend(sampled_indices.tolist())
+
+    # Flatten the list of selected indices
+    selected_indices = np.array(selected_indices).flatten()
+
+    # Shuffle the selected indices
+    np.random.shuffle(selected_indices)
+
+    return selected_indices
+
 
 def calculate_densities(data, k, density_function):
+    """
+    Calculates density values for each data point in a given dataset.
+
+    This function computes the density of each point in the dataset based on its k-nearest neighbors (k-NN).
+    It supports two density functions: 'default' (inverse of the distance to the k-th nearest neighbor) and
+    'mean' (inverse of the mean distance to k nearest neighbors). It also normalizes the density values.
+
+    Parameters:
+    data (numpy.ndarray): The dataset, an array of shape (n_samples, n_features).
+    k (int): The number of nearest neighbors to consider for density calculation.
+    density_function (str): The method to calculate density ('default' or 'mean').
+
+    Returns:
+    numpy.ndarray: An array of normalized density values for each point in the dataset.
+    """
+
+    # Number of points and dimensions in the dataset
     n, d = data.shape
+
+    # Use KDTree for low-dimensional data
     if d <= 10:
         tree = KDTree(data)
         knn_dist, knn = tree.query(data, k=k)
     else:
-        """#Faster but High RAM version
-        dist = np.sqrt(np.sum((data[:, np.newaxis, :] - data[np.newaxis, :, :]) ** 2, axis=2))
-        knn = np.argsort(dist, axis=1)[:, 1:k+1]
-        knn_dist = dist[np.arange(n)[:, None], knn]"""
+        # Alternate approach for high-dimensional data (commented out due to high memory usage)
+        # dist = np.sqrt(np.sum((data[:, np.newaxis, :] - data[np.newaxis, :, :]) ** 2, axis=2))
+        # knn = np.argsort(dist, axis=1)[:, 1:k+1]
+        # knn_dist = dist[np.arange(n)[:, None], knn]
 
-        # Slower but less memory hungry
+        # Slower but more memory efficient method for high-dimensional data
         dist = np.empty((n, n), dtype=np.float64)
         knn = np.empty((n, k), dtype=np.int64)
         fills = np.empty((n, d), dtype=np.float64)
@@ -162,397 +246,53 @@ def calculate_densities(data, k, density_function):
             np.square(data[i] - data, out=fills)
             np.sum(fills, axis=1, out=dist[i])
 
-            # Find indices of k+1 nearest neighbors
+            # Find indices of k+1 nearest neighbors (excluding the point itself)
             neighbors = np.argpartition(dist[i], k + 1)[:k + 1]
-            knn[i] = neighbors[1:]  # exclude the point itself
+            knn[i] = neighbors[1:]  # Exclude the point itself
 
-            # Replace distances to self with infinity
+            # Set distance to self as infinity
             dist[i, i] = np.inf
+
         # Compute distances to k nearest neighbors
         knn_dist = np.sqrt(dist[np.arange(n)[:, None], knn])
         for i, neighbors in enumerate(knn):
             knn_dist[i] = dist[i, neighbors]
 
-    # calculate the knn-density value
+    # Calculate the k-NN density value
     if density_function == 'default':
+        # Inverse of the distance to the k-th nearest neighbor
         rho = knn_dist[:, -1] ** -1
     elif density_function == 'mean':
+        # Inverse of the mean distance to the k nearest neighbors
         rho = np.mean(knn_dist, axis=1) ** -1
 
+    # Normalize the density values
     rho_normed = (rho - np.min(rho)) / (np.max(rho) - np.min(rho))
 
     return rho_normed
-class ClusteringLayer(tf.keras.layers.Layer):
-    """
-    Clustering layer converts input sample (feature) to soft label, i.e. a vector that represents the probability of the
-    sample belonging to each cluster. The probability is calculated with student's t-distribution.
-
-    # Example
-    ```
-        model.add(ClusteringLayer(n_clusters=10))
-    ```
-    # Arguments
-        n_clusters: number of clusters.
-        weights: list of Numpy array with shape `(n_clusters, n_features)` witch represents the initial cluster centers.
-        alpha: degrees of freedom parameter in Student's t-distribution. Default to 1.0.
-    # Input shape
-        2D tensor with shape: `(n_samples, n_features)`.
-    # Output shape
-        2D tensor with shape: `(n_samples, n_clusters)`.
-    """
-
-    def __init__(self, n_clusters, weights=None, alpha=1.0, **kwargs):
-        if 'input_shape' not in kwargs and 'input_dim' in kwargs:
-            kwargs['input_shape'] = (kwargs.pop('input_dim'),)
-        super(ClusteringLayer, self).__init__(**kwargs)
-        self.n_clusters = n_clusters
-        self.alpha = alpha
-        self.initial_weights = weights
-        self.input_spec = tf.keras.layers.InputSpec(ndim=2)
-
-    def build(self, input_shape):
-        assert len(input_shape) == 2
-        input_dim = input_shape[1]
-        self.input_spec = tf.keras.layers.InputSpec(dtype=K.floatx(), shape=(None, input_dim))
-        self.clusters = self.add_weight(shape=(self.n_clusters, input_dim), initializer='glorot_uniform', name='clusters')
-        if self.initial_weights is not None:
-            self.set_weights(self.initial_weights)
-            del self.initial_weights
-        self.built = True
-
-    def call(self, inputs, **kwargs):
-        """ student t-distribution, as same as used in t-SNE algorithm.
-         Measure the similarity between embedded point z_i and centroid µ_j.
-                 q_ij = 1/(1+dist(x_i, µ_j)^2), then normalize it.
-                 q_ij can be interpreted as the probability of assigning sample i to cluster j.
-                 (i.e., a soft assignment)
-        Arguments:
-            inputs: the variable containing data, shape=(n_samples, n_features)
-        Return:
-            q: student's t-distribution, or soft labels for each sample. shape=(n_samples, n_clusters)
-        """
-        q = 1.0 / (1.0 + (K.sum(K.square(K.expand_dims(inputs, axis=1) - self.clusters), axis=2) / self.alpha))
-        q **= (self.alpha + 1.0) / 2.0
-        q = K.transpose(K.transpose(q) / K.sum(q, axis=1)) # Make sure each sample's 10 values add up to 1.
-        return q
-
-    def compute_output_shape(self, input_shape):
-        assert input_shape and len(input_shape) == 2
-        return input_shape[0], self.n_clusters
-
-    def get_config(self):
-        config = {'n_clusters': self.n_clusters}
-        base_config = super(ClusteringLayer, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
-
-def target_distribution(q):
-  """
-  computing an auxiliary target distribution
-  """
-  weight = q ** 2 / q.sum(0)
-  return (weight.T / weight.sum(1)).T
-
-
-class BaseModelDEC(tf.keras.Model):
-    def __init__(self,
-
-                 encoder,
-
-                 n_clusters):
-        super(BaseModelDEC, self).__init__()
-
-        self.Encoder = encoder
-
-        self.n_clusters = n_clusters
-
-        self.clustering = ClusteringLayer(self.n_clusters, name='clustering')
-
-    def call(self, inputs):
-
-        logits = self.Encoder(inputs)
-
-        out = self.clustering(logits)
-
-        return out
-
-class BaseModelIDEC(tf.keras.Model):
-    def __init__(self,
-
-                 encoder,
-
-                 decoder,
-
-                 n_clusters):
-        super(BaseModelIDEC, self).__init__()
-
-        self.Encoder = encoder
-
-        self.Decoder = decoder
-
-        self.n_clusters = n_clusters
-
-        self.clustering = ClusteringLayer(self.n_clusters, name='clustering')
-
-    def call(self, inputs):
-
-        logits = self.Encoder(inputs)
-
-        out = self.Decoder(logits)
-
-        clus = self.clustering(logits)
-
-        return clus, out
-
-class IDEC(object):
-    def __init__(self,
-                 model,
-                 input_dim,
-                 n_clusters=10,
-                 alpha=1.0,
-                 batch_size=256):
-
-        super(IDEC, self).__init__()
-
-        self.autoencoder = model
-        self.input_dim = input_dim
-        self.n_clusters = n_clusters
-        self.alpha = alpha
-        self.batch_size = batch_size
-        self.model = None
-
-    def initialize_model(self, ae_weights=None, gamma=0.1, optimizer='adam'):
-        if ae_weights is not None:  # load pretrained weights of autoencoder
-            dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
-            self.autoencoder(dummy)
-            self.autoencoder.load_weights(ae_weights)
-        else:
-            print('ae_weights, i.e. path to weights of a pretrained model must be given')
-            exit()
-
-        
-        # prepare IDEC model
-        self.model = BaseModelIDEC(self.autoencoder.Encoder, self.autoencoder.Decoder, self.n_clusters)
-        dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
-        y = self.model(dummy)
-        print(self.model.summary())
-
-
-        # prepare IDEC model
-        self.model.compile(loss={'output_1': 'kld', 'output_2': 'mse'},
-                           loss_weights=[gamma, 1],
-                           optimizer=optimizer)
-
-
-
-    def load_weights(self, weights_path):  # load weights of IDEC model
-        self.model.load_weights(weights_path)
-
-    def extract_feature(self, x):  # extract features from before clustering layer
-        return self.model.Encoder.predict(x)
-
-
-    def predict_clusters(self, x):  # predict cluster labels using the output of clustering layer
-        q, _ = self.model.predict(x, verbose=0)
-        return q.argmax(1)
-
-    @staticmethod
-    def target_distribution(q):  # target distribution P which enhances the discrimination of soft label Q
-        weight = q ** 2 / q.sum(0)
-        return (weight.T / weight.sum(1)).T
-
-    def clustering(self, x, y=None,
-                   tol=1e-3,
-                   update_interval=140,
-                   maxiter=2e4,
-                   save_IDEC_dir='./results/idec'):
-
-        print('Update interval', update_interval)
-        save_interval = x.shape[0] / self.batch_size * 5  # 5 epochs
-        print('Save interval', save_interval)
-
-        # initialize cluster centers using k-means
-        print('Initializing cluster centers with k-means.')
-        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred = kmeans.fit_predict(self.model.Encoder.predict(x))
-        y_pred_last = y_pred
-        self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
-
-        loss = [0, 0, 0]
-        index = 0
-        for ite in range(int(maxiter)):
-            if ite % update_interval == 0:
-                q, _ = self.model.predict(x, verbose=0)
-                p = self.target_distribution(q)  # update the auxiliary target distribution p
-
-                # evaluate the clustering performance
-                y_pred = q.argmax(1)
-                delta_label = np.sum(y_pred != y_pred_last).astype(np.float32) / y_pred.shape[0]
-                y_pred_last = y_pred
-                if y is not None:
-                    acc_var = np.round(acc(y, y_pred), 5)
-                    nmi_var = np.round(nmi(y, y_pred), 5)
-                    ari_var = np.round(ari(y, y_pred), 5)
-                    loss = np.round(loss, 5)
-                    print('Iter %d: acc = %.5f, nmi = %.5f, ari = %.5f' % (ite, acc_var, nmi_var, ari_var), ' ; loss=', loss)
-                    wandb.log({"Iteration": ite, "Accuracy": acc_var, "NMI": nmi_var, "ARI": ari_var, "Loss 1": loss[0], "Loss 2": loss[1], "Loss 3": loss[2]})
-
-                # check stop criterion
-                if ite > 0 and delta_label < tol:
-                    print('delta_label ', delta_label, '< tol ', tol)
-                    print('Reached tolerance threshold. Stopping training.')
-                    break
-
-            # train on batch
-            if (index + 1) * self.batch_size > x.shape[0] and index * self.batch_size < x.shape[0]:
-
-                loss = self.model.train_on_batch(x=x[index * self.batch_size::],
-                                                 y=[p[index * self.batch_size::], x[index * self.batch_size::]])
-
-                index = 0
-
-            elif (index + 1) * self.batch_size > x.shape[0] and index * self.batch_size == x.shape[0]:
-                index = 0
-
-
-            else:
-                loss = self.model.train_on_batch(x=x[index * self.batch_size:(index + 1) * self.batch_size],
-                                                 y=[p[index * self.batch_size:(index + 1) * self.batch_size],
-                                                    x[index * self.batch_size:(index + 1) * self.batch_size]])
-                index += 1
-
-            ite += 1
-
-        save_IDEC_dir = check_filepath_naming(save_IDEC_dir)
-        self.model.save_weights(save_IDEC_dir)
-        return y_pred
-
-
-class DEC(object):
-    def __init__(self,
-                 model,
-                 input_dim,
-                 n_clusters=10,
-                 alpha=1.0,
-                 batch_size=256):
-
-        super(DEC, self).__init__()
-
-        self.autoencoder = model
-        self.input_dim = input_dim
-        self.n_clusters = n_clusters
-        self.alpha = alpha
-        self.batch_size = batch_size
-        self.model = None
-
-    def initialize_model(self, optimizer, ae_weights=None):
-        if ae_weights is not None:  # load pretrained weights of autoencoder
-            dummy = tf.zeros(shape=[512,self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
-            self.autoencoder(dummy)
-            self.autoencoder.load_weights(ae_weights)
-        else:
-            print('ae_weights, i.e. path to weights of a pretrained model must be given')
-            exit()
-
-
-        # prepare DEC model
-        self.model = BaseModelDEC(self.autoencoder.Encoder, self.n_clusters)
-        self.model.compile(loss='kld', optimizer=optimizer)
-        self.model.build((None, self.input_dim[0]))
-        print(self.model.summary())
-
-
-    def load_weights(self, weights_path):  # load weights of DEC model
-        self.model.load_weights(weights_path)
-
-    def extract_feature(self, x):  # extract features from before clustering layer
-        return self.model.Encoder.predict(x)
-
-    def predict_clusters(self, x):  # predict cluster labels using the output of clustering layer
-        q = self.model.predict(x, verbose=0)
-        return q.argmax(1)
-
-    @staticmethod
-    def target_distribution(q):
-        weight = q ** 2 / q.sum(0)
-        return (weight.T / weight.sum(1)).T
-
-    def clustering(self, x, y=None,
-                   tol=1e-3,
-                   update_interval=140,
-                   maxiter=2e4,
-                   save_DEC_dir='./results/dec'):
-
-        print('Update interval', update_interval)
-
-        # initialize cluster centers using k-means
-        print('Initializing cluster centers with k-means.')
-        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred = kmeans.fit_predict(self.model.Encoder.predict(x))
-        y_pred_last = y_pred
-        self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_])
-
-
-        loss = 0
-        index = 0
-        for ite in range(int(maxiter)):
-            if ite % update_interval == 0:
-                q = self.model.predict(x, verbose=0)
-                p = self.target_distribution(q)  # update the auxiliary target distribution p
-
-                # evaluate the clustering performance
-                y_pred = q.argmax(1)
-                delta_label = np.sum(y_pred != y_pred_last).astype(np.float32) / y_pred.shape[0]
-                y_pred_last = y_pred
-                if y is not None:
-                    acc_var = np.round(acc(y, y_pred), 5)
-                    nmi_var = np.round(nmi(y, y_pred), 5)
-                    ari_var = np.round(ari(y, y_pred), 5)
-                    loss = np.round(loss, 5)
-                    print('Iter %d: acc = %.5f, nmi = %.5f, ari = %.5f' % (ite, acc_var, nmi_var, ari_var), ' ; loss=', loss)
-                    wandb.log({"Iteration": ite, "Accuracy": acc_var, "NMI": nmi_var, "ARI": ari_var, "Loss": loss})
-
-                # check stop criterion
-                if ite > 0 and delta_label < tol:
-                    print('delta_label ', delta_label, '< tol ', tol)
-                    print('Reached tolerance threshold. Stopping training.')
-                    break
-
-            # train on batch
-            if (index + 1) * self.batch_size > x.shape[0] and index * self.batch_size < x.shape[0]:
-
-                loss = self.model.train_on_batch(x=x[index * self.batch_size::],
-                                                 y=p[index * self.batch_size::])
-                index = 0
-
-            elif (index + 1) * self.batch_size > x.shape[0] and index * self.batch_size == x.shape[0]:
-                index = 0
-                loss = 0
-
-            else:
-                loss = self.model.train_on_batch(x=x[index * self.batch_size:(index + 1) * self.batch_size],
-                                                 y=p[index * self.batch_size:(index + 1) * self.batch_size])
-                index += 1
-
-            ite += 1
-
-        save_DEC_dir = check_filepath_naming(save_DEC_dir)
-        self.model.save_weights(save_DEC_dir)
-        return y_pred
 
 
 class PseudoLabel(object):
-    def __init__(self,
-                 model,
-                 input_dim,
-                 n_clusters,
-                 sampling_method,
-                 density_function,
-                 k_nearest_neighbours,
-                 batch_size,
-                 epochs):
+    def __init__(self, model, input_dim, n_clusters, sampling_method, density_function, k_nearest_neighbours,
+                 batch_size, epochs):
+        """
+        Initializes the PseudoLabel class for generating pseudo labels using various clustering and density-based
+        methods.
+
+        Parameters:
+        model (tf.keras.Model): The neural network model to use.
+        input_dim (tuple): Dimension of the input data.
+        n_clusters (int): The number of clusters to use in KMeans clustering.
+        sampling_method (str): The method to use for sampling ('weighted' or 'densest').
+        density_function (str): The function to use for calculating density ('default' or 'mean').
+        k_nearest_neighbours (float): The proportion of nearest neighbours to consider for density calculation.
+        batch_size (int): Batch size for training.
+        epochs (int): Number of epochs for training.
+        """
 
         super(PseudoLabel, self).__init__()
 
+        # Initialization of attributes
         self.autoencoder = model
         self.input_dim = input_dim
         self.n_clusters = n_clusters
@@ -566,8 +306,15 @@ class PseudoLabel(object):
         self.pseudo = None
 
     def initialize_model(self, ae_weights=None):
-        if ae_weights is not None:  # load pretrained weights of autoencoder
-            dummy = tf.zeros(shape=[1,self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+        """
+        Initializes the model with the given autoencoder weights.
+
+        Parameters:
+        ae_weights (str, optional): Path to the pre-trained weights of the autoencoder. If not provided, the function
+         will exit.
+        """
+        if ae_weights is not None:
+            dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
             self.autoencoder(dummy)
             self.autoencoder.load_weights(ae_weights)
         else:
@@ -577,9 +324,33 @@ class PseudoLabel(object):
         self.encoder = self.autoencoder.Encoder
 
     def initialize_model_NNCLR(self, ae_weights=None):
+        """
+        Initializes the NNCLR model with a projection head on top of the encoder.
+
+        This method is used for scenarios where a non-linear projection head is required on top of the encoder.
+        It initializes the NNCLR (Neural Network Contrastive Learning Representation) model, which is particularly
+        useful in semi-supervised learning for tasks like clustering and pseudo-labeling. The method sets up the
+        encoder, projection head, and the complete NNCLR model. If pre-trained weights are provided, it loads them
+        into the model.
+
+        Parameters:
+        ae_weights (str, optional): The path to the pre-trained weights for the autoencoder. If not provided, the
+                                    method will display a message and exit.
+
+        The method first tests the autoencoder with a dummy input to initialize the layers. Then it sets up a
+        projection head, a sequential model consisting of dense layers. The encoder part of the autoencoder is
+        extracted and combined with the projection head to form the complete NNCLR model. If pre-trained weights
+        are available, they are loaded with allowances for any mismatch in layer names and structures.
+        """
+
         if ae_weights is not None:  # load pretrained weights of autoencoder
-            dummy = tf.zeros(shape=[1,self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+            # Creating a dummy input to initialize the model
+            dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+
+            # Running the dummy input through the autoencoder to get output shapes
             out_1, out_2 = self.autoencoder(dummy)
+
+            # Setting up the projection head with dense layers
             self.projection_head = tf.keras.Sequential(
                 [
                     tf.keras.layers.Input(shape=(out_1.shape[1],)),
@@ -588,40 +359,78 @@ class PseudoLabel(object):
                 ],
                 name="projection_head",
             )
+
+            # Extracting the encoder part from the autoencoder
             self.encoder = self.autoencoder.Encoder
-            self.pseudo = tf.keras.Sequential([self.encoder,
-                                             self.projection_head])
-                                             
-            self.pseudo(dummy)
 
+            # Creating the NNCLR model by combining the encoder and projection head
+            self.pseudo = tf.keras.Sequential([self.encoder, self.projection_head])
+            self.pseudo(dummy)  # Initializing the NNCLR model with dummy input
+
+            # Loading pre-trained weights into the NNCLR model
             self.pseudo.load_weights(ae_weights, skip_mismatch=True, by_name=True)
-
-
         else:
             print('ae_weights, i.e. path to weights of a pretrained model must be given')
             exit()
 
     def get_pseudo_labels(self, x, y, pseudo_label_ratio):
+        """
+        Generates pseudo labels for a dataset using density-based sampling and KMeans clustering.
 
+        This method is part of the semi-supervised learning approach where pseudo labels are generated for unlabeled
+        data. It first computes the density of each data point using the encoded representation of the data. Then, it
+        sorts the data pointsbased on their density and selects a subset based on the pseudo_label_ratio. This subset
+        is assumed to have the most reliable pseudo labels. KMeans clustering is applied to generate these pseudo
+        labels. The method also evaluates the accuracy of pseudo labels on high-density points compared to the actual
+        labels and logs this information using wandb.
+
+        Parameters:
+        x (numpy.ndarray): The input features of the data.
+        y (numpy.ndarray): The actual labels of the data.
+        pseudo_label_ratio (float): The ratio of data points to be considered for generating pseudo labels based on
+        density.
+
+        Returns:
+        tuple: A tuple containing:
+               - x_label_points (numpy.ndarray): The features of data points selected for pseudo labeling.
+               - y_pred_labelled_points (numpy.ndarray): The pseudo labels generated for the selected data points.
+               - x_unlabel_points (numpy.ndarray): The features of the remaining data points.
+               - y_unlabel_points (numpy.ndarray): The actual labels of the remaining data points.
+
+        The method first encodes the data using the autoencoder's encoder, then calculates the densities and sorts the
+        data points based on these densities. A subset of data points, determined by the pseudo_label_ratio, is
+        selected for pseudo labeling. KMeans clustering is used to generatepseudo labels for these selected points. The
+        method also calculates and logs the accuracy of the pseudo labels on high-density points for evaluation.
+        """
+
+        # Encode the data and calculate densities
         data = self.autoencoder.Encoder.predict(x)
         rho_normed = calculate_densities(data=data, k=self.k_nearest_neighbours, density_function=self.density_function)
+
+        # Sort data points based on density
         OrdRho = np.argsort(-rho_normed)
 
+        # Select a subset of data points for pseudo labeling
         label_points = OrdRho[:int(data.shape[0] * pseudo_label_ratio)]
         unlabelled_points = OrdRho[int(data.shape[0] * pseudo_label_ratio):]
 
+        # Separate the selected points and their labels
         y_label_points = y[label_points]
         x_label_points = x[label_points, :]
 
+        # Remaining data points and their labels
         y_unlabel_points = y[unlabelled_points]
         x_unlabel_points = x[unlabelled_points, :]
 
+        # Apply KMeans clustering to generate pseudo labels
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred_labelled_points = kmeans.fit_predict(self.autoencoder.Encoder.predict(x_label_points))
+
+        # Logging and printing the accuracy on high-density points
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
         wandb.log({"Accuracy on high density points": acc(y_label_points, y_pred_labelled_points)})
 
-
+        # Apply KMeans on all data and log the accuracy
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred = kmeans.fit_predict(data)
         print("vs. Accuracy on all points:", acc(y, y_pred))
@@ -630,50 +439,67 @@ class PseudoLabel(object):
         return x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points
 
     def get_pseudo_labels_NNCLR(self, x, y, pseudo_label_ratio):
+        """
+        Generates pseudo labels for a dataset using the NNCLR model, density-based sampling, and KMeans clustering.
+
+        This method applies the NNCLR (Neural Network Contrastive Learning Representation) model to the dataset to
+        generate embeddings. It then uses density-based sampling to select a subset of the data for pseudo labeling. The
+        density is calculated using the HNSWliblibrary for efficient nearest neighbor search. Depending on the specified
+        sampling method, it selects the appropriate data points and applies KMeans clustering to generate pseudo labels.
+        The method also evaluates and logs the accuracy of pseudo labels on both high-density points and the entire
+        dataset.
+
+        Parameters:
+        x (numpy.ndarray): The input features of the data.
+        y (numpy.ndarray): The actual labels of the data.
+        pseudo_label_ratio (float): The ratio of data points to be considered for generating pseudo labels based on
+         density.
+
+        Returns:
+        tuple: A tuple containing:
+               - x_label_points (numpy.ndarray): The features of data points selected for pseudo labeling.
+               - y_pred_labelled_points (numpy.ndarray): The pseudo labels generated for the selected data points.
+               - x_unlabel_points (numpy.ndarray): The features of the remaining data points.
+               - y_unlabel_points (numpy.ndarray): The actual labels of the remaining data points.
+
+        The method starts by predicting the embeddings of the data using the NNCLR model. It then performs an efficient
+        nearest neighbor search to calculate the densities of the data points. Depending on the 'n_clusters' attribute,
+        either the elbow method is used to determine the number of clusters, or the predefined number is used. The
+        method selects data points for pseudo labeling based on the calculated densities and the pseudo_label_ratio. It
+        applies KMeans clustering to generate pseudo labels and logs various performance metrics using wandb.
+        """
+
+        # Predicting data using the NNCLR model
         data = self.pseudo.predict(x)
-        
-        print("x.shape:", x.shape)
-        print("K:", int(self.k_nearest_neighbours*x.shape[0]))
-        
-        k=int(self.k_nearest_neighbours*x.shape[0])
-        
-        
-        
+
+        k = int(self.k_nearest_neighbours*x.shape[0])
+
+        # Starting the density calculation
         start_time = time.time()
-        import hnswlib
+
         num_elements, dim = data.shape
-         
+
         p = hnswlib.Index(space='l2', dim=dim)
-         
+
         # Initializing the index - the maximum number of elements should be known beforehand
         p.init_index(max_elements=num_elements, ef_construction=int(k*1.5), M=32)
-         
+
         # Element insertion (can be called several times):
         p.add_items(data)
-         
+
         # Controlling the recall by setting ef:
         p.set_ef(int(k*1.5))  # Setting ef to be higher than k to ensure good recall
-         
+
         # Query the index:
         labels, knn_dist = p.knn_query(data, k=k)
         print("knn_dist.shape:", knn_dist.shape)
         rho = np.mean(knn_dist, axis=1) ** -1
         rho_normed = (rho - np.min(rho)) / (np.max(rho) - np.min(rho))
-        #np.savetxt("/rds/user/mb2315/hpc-work/Data/rho_normed_hnswlib.txt", rho_normed)
 
         end_time = time.time()
         print("Time Density Calculation hnswlib: ", end_time - start_time)
 
-        
-        #start_time = time.time()
-        #rho_normed = calculate_densities(data=data, k=int(self.k_nearest_neighbours*x.shape[0]), density_function=self.density_function)
-        #np.savetxt("/rds/user/mb2315/hpc-work/Data/rho_normed_exact.txt", rho_normed)
-        #end_time = time.time()
-        #print("Time Density Calculation as before: ", end_time - start_time)
-        
-        
-        
-        
+        # Selecting data points for pseudo labeling
         if self.n_clusters is None:
             ks = []
             elbow_scores = []
@@ -694,11 +520,9 @@ class PseudoLabel(object):
                 wandb.log({"K": n_clusters,
                            "Accuracy on Ks": acc(y_train_label_points, y_pred_labelled_points)})
 
-            from kneed import KneeLocator
             kn = KneeLocator(ks, elbow_scores, curve='convex', direction='decreasing')
             print("Predicted number of clusters elbow method:", kn.knee)
             wandb.log({"Final number of clusters": kn.knee})
-
 
         print("Ratio of Pseudo Labelled points:", pseudo_label_ratio)
         if self.sampling_method == 'weighted':
@@ -710,64 +534,131 @@ class PseudoLabel(object):
             selected_indices = OrdRho[:int(OrdRho.shape[0] * pseudo_label_ratio)]
             np.random.shuffle(selected_indices)
 
-
         y_label_points = y[selected_indices]
         x_label_points = x[selected_indices, :]
         y_unlabel_points = np.delete(y, selected_indices)
         x_unlabel_points = np.delete(x, selected_indices, axis=0)
 
+        # Applying KMeans clustering to generate pseudo labels
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred_labelled_points = kmeans.fit_predict(self.pseudo.predict(x_label_points))
+
+        # Logging the accuracy on high-density points
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
         wandb.log({"Accuracy on high density points": acc(y_label_points, y_pred_labelled_points)})
 
+        # Apply KMeans on all data and log the overall accuracy
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred = kmeans.fit_predict(data)
         print("vs. Accuracy on all points:", acc(y, y_pred))
         wandb.log({"Accuracy on all points": acc(y, y_pred)})
-        
+
         wandb.log({"Label Ratio": pseudo_label_ratio})
 
         return x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points
 
-    def finetune_on_pseudos(self, save_Pseudo_dir, x, y, x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points):
+    def finetune_on_pseudos(self, save_Pseudo_dir, x, y, x_label_points, y_pred_labelled_points, x_unlabel_points,
+                            y_unlabel_points):
+        """
+        Fine-tunes the model on pseudo-labeled data and evaluates its performance on both pseudo-labeled and unlabeled
+        data.
 
+        This method is crucial in a semi-supervised learning setup, where the model is initially trained on a small set
+        of labeled data and then fine-tuned on a larger set of pseudo-labeled data. It creates two datasets - one with
+        pseudo-labeled data and another with the remaining unlabeled data. The model is then fine-tuned on this combined
+        dataset. After fine-tuning, the method evaluates the model's performance and saves the fine-tuned model's
+        weights.
+
+        Parameters:
+        save_Pseudo_dir (str): Directory to save the fine-tuned model weights.
+        x (numpy.ndarray): The complete set of input features.
+        y (numpy.ndarray): The complete set of actual labels.
+        x_label_points (numpy.ndarray): Input features of the pseudo-labeled data.
+        y_pred_labelled_points (numpy.ndarray): Pseudo labels for the pseudo-labeled data.
+        x_unlabel_points (numpy.ndarray): Input features of the remaining unlabeled data.
+        y_unlabel_points (numpy.ndarray): Actual labels of the remaining unlabeled data.
+
+        The method sets up a fine-tuning model using the autoencoder's encoder followed by a dropout layer and a dense
+        layer for classification. It compiles the model with the Adam optimizer and Sparse Categorical Crossentropy
+        loss, and trains it on the pseudo-labeled data, using the unlabeled data for validation. The training process is
+        logged with wandb. After training, the method predicts labels for the complete dataset and saves the model's
+        weights.
+        """
+
+        # Create datasets for pseudo-labeled and unlabeled data
         dataset_pseudolabeled = tf.data.Dataset.from_tensor_slices((x_label_points, y_pred_labelled_points)).batch(
             self.batch_size, drop_remainder=True)
         dataset_unlabellabed = tf.data.Dataset.from_tensor_slices((x_unlabel_points, y_unlabel_points)).batch(
             self.batch_size, drop_remainder=True)
 
+        # Constructing the fine-tuning model
         finetuning_model = tf.keras.Sequential(
             [tf.keras.layers.Input(shape=self.input_dim[0]),
-                self.autoencoder.Encoder,
-                tf.keras.layers.Dropout(0.1),
-                tf.keras.layers.Dense(self.n_clusters, activation='softmax'),],
+             self.autoencoder.Encoder,
+             tf.keras.layers.Dropout(0.1),
+             tf.keras.layers.Dense(self.n_clusters, activation='softmax'),
+             ],
             name="finetuning_model",
         )
+
+        # Compiling the model
         finetuning_model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
-            metrics=[acc_tf], #tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
+            metrics=[acc_tf],  # Custom accuracy metric function
             run_eagerly=True)
 
+        # Training the model with logging
         from wandb.keras import WandbMetricsLogger
         finetuning_history = finetuning_model.fit(
-            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=1, callbacks=[WandbMetricsLogger()])
+            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=1,
+            callbacks=[WandbMetricsLogger()])
 
+        # Predicting and saving the fine-tuned model
         pred = finetuning_model.predict(x)
         y_pred = pred.argmax(1)
         save_Pseudo_dir = check_filepath_naming(save_Pseudo_dir)
         finetuning_model.save_weights(save_Pseudo_dir)
+
         return y_pred
 
-    def finetune_on_pseudos_NNCLR(self, save_Pseudo_dir, input_dim, x, y, x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points, classification_augmenter):
+    def finetune_on_pseudos_NNCLR(self, save_Pseudo_dir, input_dim, x, y, x_label_points, y_pred_labelled_points,
+                                  x_unlabel_points, y_unlabel_points, classification_augmenter):
+        """
+        Fine-tunes the NNCLR model on pseudo-labeled data using conditional augmentation and evaluates its performance.
 
+        This method is an extension of the semi-supervised learning approach where the NNCLR model is fine-tuned on a
+        dataset comprising both pseudo-labeled and unlabeled data. It incorporates an additional conditional
+        augmentation step in the training process. The method creates two datasets: one with pseudo-labeled data and
+        another with the remaining unlabeled data. The model, consisting of the NNCLR model and additional layers, is
+        then fine-tuned on this combined dataset. After fine-tuning, the method evaluates the model's performance on the
+        entire dataset and logs the final accuracy.
+
+        Parameters:
+        save_Pseudo_dir (str): Directory to save the fine-tuned model weights.
+        input_dim (tuple): Dimension of the input data.
+        x (numpy.ndarray): The complete set of input features.
+        y (numpy.ndarray): The complete set of actual labels.
+        x_label_points (numpy.ndarray): Input features of the pseudo-labeled data.
+        y_pred_labelled_points (numpy.ndarray): Pseudo labels for the pseudo-labeled data.
+        x_unlabel_points (numpy.ndarray): Input features of the remaining unlabeled data.
+        y_unlabel_points (numpy.ndarray): Actual labels of the remaining unlabeled data.
+        classification_augmenter (dict): Parameters for the conditional augmentation process.
+
+        The method sets up a fine-tuning model using the NNCLR model with a conditional augmentation layer, followed by
+        dropout and dense layers for classification. The model is compiled with the Adam optimizer and Sparse
+        Categorical Crossentropy loss, and trained on the pseudo-labeled data, using the unlabeled data for validation.
+        The training process is logged with wandb. After training, the method predicts labels for the complete dataset,
+        calculates the final accuracy, logs this information, and saves the model's weights.
+        """
+
+        # Create datasets for pseudo-labeled and unlabeled data
         dataset_pseudolabeled = tf.data.Dataset.from_tensor_slices((x_label_points, y_pred_labelled_points)).batch(
             self.batch_size, drop_remainder=True)
         dataset_unlabellabed = tf.data.Dataset.from_tensor_slices((x_unlabel_points, y_unlabel_points)).batch(
             self.batch_size, drop_remainder=True)
 
-
+        # Constructing the fine-tuning model with conditional augmentation
         finetuning_model = tf.keras.Sequential(
             [
                 tf.keras.layers.Input(shape=input_dim),
@@ -778,27 +669,59 @@ class PseudoLabel(object):
             ],
             name="finetuning_model",
         )
+
+        # Compiling the model
         finetuning_model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
-            metrics=[acc_tf], #tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
+            metrics=[acc_tf],  # Custom accuracy metric function
             run_eagerly=True)
 
+        # Training the model with logging
         from wandb.keras import WandbMetricsLogger
         finetuning_model.fit(
-            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=0, callbacks=[WandbMetricsLogger()])
+            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=0,
+            callbacks=[WandbMetricsLogger()])
 
+        # Predicting, evaluating, and saving the fine-tuned model
         pred = finetuning_model.predict(x)
         y_pred = pred.argmax(1)
         final_acc = acc(y, y_pred)
         print("final_acc:", final_acc)
         wandb.log({"Final Acc": final_acc})
-        
+
         return y_pred, finetuning_model
 
 
 def finetune_model(model, finetune_config, finetune_method, dataset, dataset_test):
-    # data prep --> combined train and test
+    """
+    Fine-tunes a given model using a specified method and configuration on a combined dataset.
+
+    This function handles the fine-tuning of a model, specifically for cases involving NNCLR (Neural Network Contrastive
+    Learning Representation) and PseudoLabel methods. It combines the provided training and test datasets, prepares the
+    data, and applies the fine-tuning process using either NNCLR or a standard pseudo-labeling approach, depending on
+    the model's configuration. It supports both singular and iterative ratio-based pseudo labeling.
+
+    Parameters:
+    model (tf.keras.Model): The neural network model to be fine-tuned.
+    finetune_config (Config_Finetuning): Configuration object containing parameters for fine-tuning.
+    finetune_method (str): The method used for fine-tuning ('PseudoLabel', etc.).
+    dataset (tf.data.Dataset): The training dataset.
+    dataset_test (tf.data.Dataset): The test dataset.
+
+    The function first merges the training and test datasets. It then checks the model configuration to determine the
+    fine-tuning method. For NNCLR-based models, it initializes a PseudoLabel object, performs pseudo-labeling, and
+    fine-tunes the model iteratively or singularly based on the configuration. For other models, it follows a similar
+    process but without the NNCLR-specific steps. The function saves the fine-tuned model's weights and optionally the
+    generated labels.
+
+    Returns:
+    tuple: A tuple containing:
+           - y_pred_finetuned (numpy.ndarray): The predicted labels by the fine-tuned model.
+           - y (numpy.ndarray): The actual labels from the combined dataset.
+    """
+
+    # Combine training and test datasets
     for step, batch in enumerate(dataset):
         if step == 0:
             x = batch[0]
@@ -811,44 +734,12 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
         x = np.concatenate((x, batcht[0]), axis=0)
         y = np.concatenate((y, batcht[1]), axis=0)
 
-
+    # Check if the model configuration includes NNCLR
     if "NNCLR" in finetune_config.PRETRAINED_SAVE_DIR:
+        # NNCLR-specific fine-tuning steps
+        # Initialize PseudoLabel object, generate pseudo labels, and fine-tune
 
-        if finetune_method == "DEC":
-    
-            dec = DEC(model=model, input_dim=x[0, :].shape, n_clusters=finetune_config.DEC_N_CLUSTERS,
-                      batch_size=finetune_config.DEC_BATCH_SIZE)
-            dec.initialize_model(
-                optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.DEC_LEARNING_RATE,
-                                                  momentum=finetune_config.DEC_MOMENTUM),
-                ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
-    
-            y_pred_finetuned = dec.clustering(x, y=y, tol=finetune_config.DEC_TOL,
-                                              maxiter=finetune_config.DEC_MAXITER,
-                                              update_interval=finetune_config.DEC_UPDATE_INTERVAL,
-                                              save_DEC_dir=finetune_config.DEC_SAVE_DIR)
-    
-    
-        elif finetune_method == "IDEC":
-    
-            idec = IDEC(model=model, input_dim=x[0, :].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS,
-                        batch_size=finetune_config.IDEC_BATCH_SIZE)
-            idec.initialize_model(
-                optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE,
-                                                  momentum=finetune_config.IDEC_MOMENTUM),
-                ae_weights=finetune_config.PRETRAINED_SAVE_DIR, gamma=finetune_config.IDEC_GAMMA)
-                
-            #Calculate number of predicted classes
-            
-            
-    
-            y_pred_finetuned = idec.clustering(x, y=y, tol=finetune_config.IDEC_TOL,
-                                               maxiter=finetune_config.IDEC_MAXITER,
-                                               update_interval=finetune_config.IDEC_UPDATE_INTERVAL,
-                                               save_IDEC_dir=finetune_config.IDEC_SAVE_DIR)
-    
-    
-        elif finetune_method == "PseudoLabel":
+        if finetune_method == "PseudoLabel":
     
             pseudo_label = PseudoLabel(model=model,
                                        input_dim=x[0, :].shape,
@@ -863,10 +754,17 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
     
             if finetune_config.ITERATIVE_RATIOS is None:
     
-                x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
-                x=x, y=y, pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO)
+                (x_label_points,
+                 y_pred_labelled_points,
+                 x_unlabel_points,
+                 y_unlabel_points) = pseudo_label.get_pseudo_labels_NNCLR(x=x,
+                                                                          y=y,
+                                                                          pseudo_label_ratio=finetune_config.
+                                                                          PSEUDO_LABEL_RATIO)
     
-                y_pred_finetuned, finetuning_model = pseudo_label.finetune_on_pseudos_NNCLR(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
+                (y_pred_finetuned,
+                 finetuning_model) = (pseudo_label.
+                                      finetune_on_pseudos_NNCLR(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                                 x=x,
                                                                 y=y,
                                                                 input_dim=x[0, :].shape,
@@ -874,15 +772,17 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                                                                 x_label_points=x_label_points,
                                                                 y_pred_labelled_points=y_pred_labelled_points,
                                                                 x_unlabel_points=x_unlabel_points,
-                                                                y_unlabel_points=y_unlabel_points)
+                                                                y_unlabel_points=y_unlabel_points))
                 
                 finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR)
                 finetuning_model.save_weights(finetune_config.PSEUDO_SAVE_DIR)
     
             else:
                 for ratio in finetune_config.ITERATIVE_RATIOS:
-                    x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels_NNCLR(
-                        x=x, y=y, pseudo_label_ratio=ratio)
+                    (x_label_points,
+                     y_pred_labelled_points,
+                     x_unlabel_points,
+                     y_unlabel_points) = pseudo_label.get_pseudo_labels_NNCLR(x=x, y=y, pseudo_label_ratio=ratio)
     
                     y_pred_finetuned, finetuning_model = pseudo_label.finetune_on_pseudos_NNCLR(
                         save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
@@ -894,59 +794,23 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                         y_pred_labelled_points=y_pred_labelled_points,
                         x_unlabel_points=x_unlabel_points,
                         y_unlabel_points=y_unlabel_points)
-                        
-                
-                finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR) #check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR) 
+
+                finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR)
                 finetuning_model.save_weights(finetune_config.PSEUDO_SAVE_DIR)
                 # save labels
-                ys = np.concatenate((y.reshape(len(y), 1), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)), axis=1)
-                np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels.txt",ys)
+                ys = np.concatenate((y.reshape(len(y), 1), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)),
+                                    axis=1)
+                np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels.txt", ys)
     
         return y_pred_finetuned, y
 
     else:
-        if finetune_method == "DEC":
-
-            dec = DEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.DEC_N_CLUSTERS, batch_size=finetune_config.DEC_BATCH_SIZE)
-            dec.initialize_model(
-                optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.DEC_LEARNING_RATE, momentum=finetune_config.DEC_MOMENTUM),
-                ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
-
-            y_pred_finetuned = dec.clustering(x, y=y, tol=finetune_config.DEC_TOL,
-                                              maxiter=finetune_config.DEC_MAXITER, update_interval=finetune_config.DEC_UPDATE_INTERVAL,
-                                              save_DEC_dir=finetune_config.DEC_SAVE_DIR)
-
-
-        elif finetune_method == "IDEC":
-
-            idec = IDEC(model=model, input_dim=x[0,:].shape, n_clusters=finetune_config.IDEC_N_CLUSTERS, batch_size=finetune_config.IDEC_BATCH_SIZE) # TODO: All models
-            print("used for finetuning number of clusters:", finetune_config.IDEC_N_CLUSTERS)
-            idec.initialize_model(
-                optimizer=tf.keras.optimizers.SGD(learning_rate=finetune_config.IDEC_LEARNING_RATE, momentum=finetune_config.IDEC_MOMENTUM),
-                ae_weights=finetune_config.PRETRAINED_SAVE_DIR, gamma=finetune_config.IDEC_GAMMA)
-            
-            #predict number of neurons 
-            features = idec.extract_feature(x)
-            from sklearn.metrics import silhouette_score
-            def silhouette_method(data):
-                sil_scores = []
-                for i in range(2, 20):
-                    km = KMeans(n_clusters=i, n_init=1).fit(data)
-                    sil_scores.append(silhouette_score(data, km.labels_))
-    
-        
-                return sil_scores.index(max(sil_scores)) + 2
-            pred_number_of_cluster = silhouette_method(features)
-            wandb.log({"Predicted number of clusters": pred_number_of_cluster})
-            y_pred_finetuned = idec.clustering(x, y=y, tol=finetune_config.IDEC_TOL,
-                                                maxiter=finetune_config.IDEC_MAXITER, update_interval=finetune_config.IDEC_UPDATE_INTERVAL,
-                                                save_IDEC_dir=finetune_config.IDEC_SAVE_DIR)
-
-
-        elif finetune_method == "PseudoLabel":
+        # Non-NNCLR fine-tuning steps
+        if finetune_method == "PseudoLabel":
+            # Initialize PseudoLabel object, generate pseudo labels, and fine-tune
 
             pseudo_label = PseudoLabel(model=model,
-                                       input_dim=x[0,:].shape,
+                                       input_dim=x[0, :].shape,
                                        n_clusters=finetune_config.PSEUDO_N_CLUSTERS,
                                        k_nearest_neighbours=finetune_config.K_NEAREST_NEIGHBOURS,
                                        batch_size=finetune_config.PSEUDO_BATCH_SIZE,
@@ -954,8 +818,12 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
 
             pseudo_label.initialize_model(ae_weights=finetune_config.PRETRAINED_SAVE_DIR)
 
-            x_label_points, y_pred_labelled_points, x_unlabel_points, y_unlabel_points = pseudo_label.get_pseudo_labels(x=x, y=y,
-                                                                                                                        pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO)
+            (x_label_points,
+             y_pred_labelled_points,
+             x_unlabel_points,
+             y_unlabel_points) = pseudo_label.get_pseudo_labels(x=x,
+                                                                y=y,
+                                                                pseudo_label_ratio=finetune_config.PSEUDO_LABEL_RATIO)
 
             y_pred_finetuned = pseudo_label.finetune_on_pseudos(save_Pseudo_dir=finetune_config.PSEUDO_SAVE_DIR,
                                                                 x=x,
@@ -966,4 +834,3 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
                                                                 y_unlabel_points=y_unlabel_points)
 
         return y_pred_finetuned, y
-

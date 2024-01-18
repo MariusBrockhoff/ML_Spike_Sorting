@@ -1,29 +1,48 @@
-# -*- coding: utf-8 -*-
 import tensorflow as tf
-import numpy as np
 import tensorflow_addons as tfa
-import wandb
 
 from os import path
 from utils.evaluation import *
-#temp
-from sklearn.cluster import KMeans
-from sklearn.neighbors import KDTree
-from sklearn import metrics
 
 
 def check_filepath_naming(filepath):
+    """
+    Check and modify the file path to avoid overwriting existing files.
+
+    If the specified file path exists, a number is appended to the file name to
+    create a unique file name.
+
+    Arguments:
+        filepath: The file path to check.
+
+    Returns:
+        A modified file path if the original exists, otherwise the original file path.
+    """
     if path.exists(filepath):
         numb = 1
         while True:
-            newPath = "{0}_{2}{1}".format(*path.splitext(filepath) + (numb,))
-            if path.exists(newPath):
+            new_path = "{0}_{2}{1}".format(*path.splitext(filepath) + (numb,))
+            if path.exists(new_path):
                 numb += 1
             else:
-                return newPath
+                return new_path
     return filepath
 
+
 def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_warmup_value=0):
+    """
+    Generate a cosine learning rate schedule with optional warmup.
+
+    Arguments:
+        base_value: The initial learning rate or weight decay value.
+        final_value: The final learning rate or weight decay value.
+        epochs: Total number of epochs.
+        warmup_epochs: Number of warmup epochs. Default is 0.
+        start_warmup_value: Starting value for warmup. Default is 0.
+
+    Returns:
+        A numpy array containing the learning rate or weight decay value for each epoch.
+    """
     warmup_schedule = np.array([])
     if warmup_epochs > 0:
         warmup_schedule = np.linspace(start_warmup_value, base_value, warmup_epochs)
@@ -35,7 +54,19 @@ def cosine_scheduler(base_value, final_value, epochs, warmup_epochs=0, start_war
     assert len(schedule) == epochs
     return schedule
 
+
 class EarlyStopper:
+    """
+    Early stopping utility to stop training when a certain criteria is met.
+
+    Arguments:
+        patience: Number of epochs to wait for improvement before stopping. Default is 5.
+        min_delta: Minimum change to quantify as an improvement. Default is 0.
+        baseline: Baseline value for comparison. Default is 0.
+
+    Methods:
+        early_stop(validation_loss): Determine if training should be stopped based on the validation loss.
+    """
     def __init__(self, patience=5, min_delta=0, baseline=0):
         self.patience = patience
         self.min_delta = min_delta
@@ -56,53 +87,67 @@ class EarlyStopper:
         return False
 
 
-class RandomResizedCrop1D(tf.keras.layers.Layer):
-    def __init__(self, scale, seq_len):
-        super().__init__()
-        self.scale = scale
-        self.seq_len = seq_len
-
-    def build(self, input_shape):
-        # This layer does not have any trainable weights, so we pass
-        super().build(input_shape)
-
-    def call(self, sequences):
-        batch_size = tf.shape(sequences)[0]
-
-        random_scale = tf.random.uniform((), self.scale[0], self.scale[1])
-        new_length = tf.cast(tf.round(random_scale * tf.cast(self.seq_len, tf.float32)), tf.int32)
-
-        max_start_idx = tf.maximum(0, self.seq_len - new_length + 1)
-        start_idx = tf.random.uniform((), 0, max_start_idx, dtype=tf.int32)
-        end_idx = start_idx + new_length
-
-        cropped_sequences = sequences[:, start_idx:end_idx]
-
-
-        # Resizing: temporarily swap batch and sequence dimensions
-        cropped_sequences_swapped = tf.transpose(cropped_sequences, [1, 0])
-        cropped_sequences_3d = tf.expand_dims(cropped_sequences_swapped, axis=-1)
-        resized_sequences_3d = tf.image.resize(
-            cropped_sequences_3d, [self.seq_len, batch_size], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR
-        )
-        # Swap the dimensions back and remove the extra dimension to obtain the resized 1D sequences
-        resized_sequences_swapped = tf.squeeze(resized_sequences_3d, axis=-1)
-        resized_sequences = tf.transpose(resized_sequences_swapped, [1, 0])
-
-        return resized_sequences
-
 class RandomNoise(tf.keras.layers.Layer):
+    """
+    A custom Keras layer that adds random noise to its inputs.
+
+    This layer is designed to augment data by adding random Gaussian noise. The level of noise can be adjusted,
+    and the application of noise can be toggled on or off. This type of layer is often used in training deep learning
+    models to improve robustness and prevent overfitting, as it introduces variability in the training data.
+
+    Attributes:
+    apply_noise (bool): If True, noise is applied to the inputs; if False, the layer acts as a no-op.
+    max_noise_lvl (float): The maximum standard deviation of the Gaussian noise to be added.
+    seed (int, optional): Seed for random number generation to ensure reproducibility.
+
+    Methods:
+    build(input_shape): Builds the layer (no trainable weights).
+    call(inputs): Logic for adding noise to the inputs.
+
+    The layer, when called on input data, generates noise with a random level (up to `max_noise_lvl`) and adds it to the
+    input.
+    If `apply_noise` is set to False, the layer simply passes the input data through without modification.
+    """
+
     def __init__(self, apply_noise=True, max_noise_lvl=1.0, seed=None):
+        """
+        Initializes the RandomNoise layer.
+
+        Parameters:
+        apply_noise (bool): Whether to apply noise or not. Defaults to True.
+        max_noise_lvl (float): Maximum level of noise to apply. Defaults to 1.0.
+        seed (int, optional): Seed for random number generation. Defaults to None.
+        """
         super().__init__()
         self.apply_noise = apply_noise
         self.max_noise_lvl = max_noise_lvl
         self.seed = seed
 
     def build(self, input_shape):
-        # This layer does not have any trainable weights, so we pass
+        """
+        Build method for the layer.
+
+        This layer does not have any trainable weights, so the method simply calls the parent's build method.
+
+        Parameters:
+        input_shape (tuple of int): The shape of the input to the layer.
+        """
         super().build(input_shape)
 
     def call(self, inputs):
+        """
+        The logic for adding random noise to the inputs.
+
+        If `apply_noise` is True, it generates and adds Gaussian noise to the input. The standard deviation of the noise
+        is randomly chosen between 0 and `max_noise_lvl` for each forward pass through the layer. If `apply_noise` is
+        False, inputs are passed through unchanged.
+
+        Parameters:
+        inputs (tf.Tensor): The input tensor to the layer.
+
+        Returns:
+        tf.Tensor: The input tensor, with random noise added if `apply_noise` is True.
+        """
         if self.apply_noise:
             noise_lvl = tf.random.uniform(
                 shape=(),
@@ -120,35 +165,84 @@ class RandomNoise(tf.keras.layers.Layer):
                 seed=self.seed
             )
 
-            inputs += noise  # Simpler addition operation
+            inputs += noise  # Adding generated noise to the inputs
 
         return inputs
 
 
 def spikeaugmentation(apply_noise, max_noise_lvl, scale, name):
+    """
+    Creates a sequential model for data augmentation specifically designed for spike data.
+
+    This function constructs a Keras Sequential model consisting of layers that apply various augmentations to the input
+    data. Currently, it includes the RandomNoise layer for adding Gaussian noise. This augmentation technique is useful
+    in training neural network models, especially when dealing with spike data, as it helps in enhancing the model's
+    robustness and generalization by introducing variability in the training data.
+
+    Parameters:
+    apply_noise (bool): Whether to apply random noise to the data.
+    max_noise_lvl (float): The maximum level of noise to be added.
+    scale (tuple): The scaling factor to be used in the RandomResizedCrop1D layer (currently not included in the
+                   Sequential model).
+    name (str): The name of the Sequential model.
+
+    Returns:
+    tf.keras.Sequential: A Keras Sequential model with specified augmentation layers.
+
+    The function constructs a Sequential model comprising a RandomNoise layer. The RandomNoise layer's behavior is
+    controlled by the 'apply_noise' and 'max_noise_lvl' parameters. The 'scale' parameter is reserved for future use
+    with a potential RandomResizedCrop1D layer. The 'name' parameter assigns a name to the Sequential model for
+    identification.
+    """
     return tf.keras.Sequential(
         [
-            #tf.keras.Input(shape=(63,)),
+            # tf.keras.Input(shape=(63,)),
             RandomNoise(apply_noise=apply_noise, max_noise_lvl=max_noise_lvl),
-            #RandomResizedCrop1D(scale=scale, seq_len=input_shape[0]),
+            # RandomResizedCrop1D(scale=scale, seq_len=input_shape[0]),
         ],
         name=name,
     )
 
-class ConditionalAugmentation(tf.keras.layers.Layer):
-    def __init__(self, augmenter, **kwargs):
-        super(ConditionalAugmentation, self).__init__(**kwargs)
-        self.augmenter = augmenter
-
-    def call(self, inputs, training=None):
-        if training:
-          return self.augmenter(inputs)
-        return inputs
-
 
 class NNCLR(tf.keras.Model):
+    """
+    NNCLR (Neural Network Contrastive Learning Representation) is a custom Keras Model for semi-supervised learning.
+
+    This class implements a NNCLR model that uses contrastive learning for feature extraction and a linear probe
+    for classification. It is designed for scenarios where labeled data is scarce, and the model needs to learn
+    useful representations from unlabeled data. The model consists of an encoder, a projection head for contrastive
+    learning, and a linear probe for classification.
+
+    Attributes:
+    model_config: Configuration object containing model-specific parameters.
+    pretraining_config: Configuration object containing pretraining-specific parameters.
+    encoder: The neural network used to encode the input data.
+    contrastive_augmenter: A function or layer that applies augmentation for contrastive learning.
+    classification_augmenter: A function or layer that applies augmentation for classification.
+    probe_accuracy, correlation_accuracy, contrastive_accuracy: Keras metrics for tracking training performance.
+    probe_loss: Loss function for the probe classifier.
+    projection_head: A Keras Sequential model used in the projection of encoded features.
+    linear_probe: A Keras Sequential model for classification.
+    temperature: The temperature parameter used in contrastive loss calculation.
+    feature_queue: A queue of features used in contrastive learning for negative sampling.
+
+    Methods:
+    compile(contrastive_optimizer, probe_optimizer, **kwargs): Compiles the NNCLR model with given optimizers.
+    nearest_neighbour(projections): Computes nearest neighbours in the feature space for contrastive learning.
+    update_contrastive_accuracy(features_1, features_2): Updates the contrastive accuracy metric.
+    update_correlation_accuracy(features_1, features_2): Updates the correlation accuracy metric.
+    contrastive_loss(projections_1, projections_2): Computes the contrastive loss between two sets of projections.
+    train_step(data): Defines a single step of training.
+    test_step(data): Defines a single step of testing.
+
+    The NNCLR model uses contrastive learning to learn representations by maximizing agreement between differently
+    augmented views of the same data instance and uses a linear classifier (probe) to perform classification based on
+    these representations.
+    """
     def __init__(self, model_config, pretraining_config, encoder, contrastive_augmenter, classification_augmenter):
         super().__init__()
+        self.probe_optimizer = None
+        self.contrastive_optimizer = None
         self.model_config = model_config
         self.pretraining_config = pretraining_config
         self.probe_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
@@ -169,7 +263,8 @@ class NNCLR(tf.keras.Model):
             name="projection_head",
         )
         self.linear_probe = tf.keras.Sequential(
-            [tf.keras.layers.Input(shape=(self.projection_width,)), tf.keras.layers.Dense(pretraining_config.N_CLUSTERS)], name="linear_probe"
+            [tf.keras.layers.Input(shape=(self.projection_width,)),
+             tf.keras.layers.Dense(pretraining_config.N_CLUSTERS)], name="linear_probe"
         )
         self.temperature = self.pretraining_config.TEMPERATURE
 
@@ -346,11 +441,34 @@ class NNCLR(tf.keras.Model):
         return {"p_loss": probe_loss, "p_acc": self.probe_accuracy.result()}
 
 
+def pretrain_model(model, model_config, pretraining_config, pretrain_method, dataset, dataset_test, save_weights,
+                   save_dir):
+    """
+    Pretrains a model using a specified method and configuration on given datasets.
 
+    This function supports different pretraining methods, particularly 'reconstruction' and 'NNCLR' (Neural Network
+    Contrastive Learning Representation). It handles the entire pretraining process, including setting up the optimizer,
+    loss functions, and learning rate schedules. It also provides support for early stopping and logs training metrics
+    using wandb.
 
+    Parameters:
+    model (tf.keras.Model): The neural network model to be pretrained.
+    model_config: Configuration object containing model-specific parameters.
+    pretraining_config: Configuration object containing pretraining-specific parameters.
+    pretrain_method (str): The method used for pretraining ('reconstruction', 'NNCLR', etc.).
+    dataset (tf.data.Dataset): The training dataset.
+    dataset_test (tf.data.Dataset): The test dataset.
+    save_weights (bool): Whether to save the pretrained weights.
+    save_dir (str): Directory where the pretrained weights should be saved.
 
+    The function first checks the pretraining method. For 'reconstruction', it uses a Mean Squared Error loss to train
+    the model to reconstruct its inputs. For 'NNCLR', it sets up a NNCLR model and trains it using contrastive learning.
+    The function supports early stopping based on validation loss and learning rate scheduling. After training, it saves
+    the model weights if 'save_weights' is True.
 
-def pretrain_model(model, model_config, pretraining_config, pretrain_method, dataset, dataset_test, save_weights, save_dir):
+    Returns:
+    str: The path where the pretrained model's weights are saved.
+    """
 
     if pretrain_method == "reconstruction":
         if pretraining_config.EARLY_STOPPING:
@@ -358,13 +476,22 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                                          baseline=pretraining_config.BASELINE)
 
         if pretraining_config.WITH_WARMUP:
-            lr_schedule = cosine_scheduler(pretraining_config.LEARNING_RATE, pretraining_config.LR_FINAL, pretraining_config.NUM_EPOCHS,
-                                           warmup_epochs=pretraining_config.LR_WARMUP, start_warmup_value=0)
+            lr_schedule = cosine_scheduler(pretraining_config.LEARNING_RATE,
+                                           pretraining_config.LR_FINAL,
+                                           pretraining_config.NUM_EPOCHS,
+                                           warmup_epochs=pretraining_config.LR_WARMUP,
+                                           start_warmup_value=0)
         else:
-            lr_schedule = cosine_scheduler(pretraining_config.LEARNING_RATE, pretraining_config.LR_FINAL, pretraining_config.NUM_EPOCHS,
-                                           warmup_epochs=0, start_warmup_value=0)
-        wd_schedule = cosine_scheduler(pretraining_config.WEIGHT_DECAY, pretraining_config.WD_FINAL, pretraining_config.NUM_EPOCHS,
-                                       warmup_epochs=0, start_warmup_value=0)
+            lr_schedule = cosine_scheduler(pretraining_config.LEARNING_RATE,
+                                           pretraining_config.LR_FINAL,
+                                           pretraining_config.NUM_EPOCHS,
+                                           warmup_epochs=0,
+                                           start_warmup_value=0)
+        wd_schedule = cosine_scheduler(pretraining_config.WEIGHT_DECAY,
+                                       pretraining_config.WD_FINAL,
+                                       pretraining_config.NUM_EPOCHS,
+                                       warmup_epochs=0,
+                                       start_warmup_value=0)
         if pretraining_config.WITH_WD:
             optimizer = tfa.optimizers.AdamW(weight_decay=wd_schedule[0], learning_rate=lr_schedule[0])
         else:
@@ -388,7 +515,6 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                     print(model.summary())
                     initializer = False
 
-
                 with tf.GradientTape() as tape:
                     [_, output] = model(batch[0])
 
@@ -397,8 +523,7 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                     grads = tape.gradient(loss, model.trainable_weights)
                     optimizer.apply_gradients(zip(grads, model.trainable_weights))
 
-
-            #test loss
+            # test loss
             for step, batch in enumerate(dataset_test):
                 batch_t = batch[0]
                 [_, output] = model(batch_t)
@@ -409,39 +534,43 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                 "Train Loss": np.mean(loss_lst[-dataset.cardinality().numpy():]),
                 "Valid Loss": np.mean(test_loss_lst[-dataset_test.cardinality().numpy():])})
 
-            print("Epoch: ", epoch + 1, ", Train loss: ", np.mean(loss_lst[-dataset.cardinality().numpy():]), ", Test loss: ", np.mean(test_loss_lst[-dataset_test.cardinality().numpy():]))
+            print("Epoch: ", epoch + 1, ", Train loss: ", np.mean(loss_lst[-dataset.cardinality().numpy():]),
+                  ", Test loss: ", np.mean(test_loss_lst[-dataset_test.cardinality().numpy():]))
             if pretraining_config.EARLY_STOPPING:
-                if early_stopper.early_stop(np.mean(test_loss_lst[-dataset_test.cardinality().numpy():])): #test_loss
+                if early_stopper.early_stop(np.mean(test_loss_lst[-dataset_test.cardinality().numpy():])):  # test_loss
                     break
 
-
-        if save_weights: #add numbering system if file already exists
+        if save_weights:  # add numbering system if file already exists
             save_dir = check_filepath_naming(save_dir)
             wandb.log({"Actual save name": save_dir})
             model.save_weights(save_dir)
             save_pseudo = save_dir
 
-
-
     elif pretrain_method == "NNCLR":
 
-        #Prepare dataset
+        # Prepare dataset
         dataset = tf.data.Dataset.zip((dataset, dataset)).prefetch(buffer_size=tf.data.AUTOTUNE)
 
-        nnclr = NNCLR(model_config=model_config, pretraining_config=pretraining_config, encoder=model.Encoder,
+        nnclr = NNCLR(model_config=model_config,
+                      pretraining_config=pretraining_config,
+                      encoder=model.Encoder,
                       contrastive_augmenter=pretraining_config.CONTRASTIVE_AUGMENTER,
                       classification_augmenter=pretraining_config.CLASSIFICATION_AUGMENTER)
-        nnclr.compile(contrastive_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR),
+        nnclr.compile(contrastive_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.
+                                                                     LEARNING_RATE_NNCLR),
                       probe_optimizer=tf.keras.optimizers.Adam(learning_rate=pretraining_config.LEARNING_RATE_NNCLR))
         from wandb.keras import WandbMetricsLogger
-        nnclr.fit(dataset, epochs=pretraining_config.NUM_EPOCHS_NNCLR, validation_data=dataset_test, verbose=1, callbacks=[WandbMetricsLogger()])
+        nnclr.fit(dataset,
+                  epochs=pretraining_config.NUM_EPOCHS_NNCLR,
+                  validation_data=dataset_test,
+                  verbose=1,
+                  callbacks=[WandbMetricsLogger()])
 
-        if save_weights: #add numbering system if file already exists
+        if save_weights:  # add numbering system if file already exists
 
             if "Pretrain_" in save_dir:
                 # Split the path at 'Pretrain_' and take the second part
-                pseudo = tf.keras.Sequential([nnclr.encoder,
-                                     nnclr.projection_head])
+                pseudo = tf.keras.Sequential([nnclr.encoder, nnclr.projection_head])
                 for step, batch in enumerate(dataset):
                     batch_t = batch[0][0]
                     break
@@ -454,8 +583,4 @@ def pretrain_model(model, model_config, pretraining_config, pretrain_method, dat
                 pseudo.save_weights(save_pseudo)
                 wandb.log({"Actual save name": save_pseudo})
 
-
     return save_pseudo
-
-
-
