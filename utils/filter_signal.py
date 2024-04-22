@@ -114,7 +114,6 @@ def ellip_filter(data, lowcut, highcut, fs, order=5):
     low = lowcut / nyq
     high = highcut / nyq
     b, a = ellip(order, 0.1, 40, [low, high], 'bandpass')
-    # y = filtfilt(b, a, data)
     y = filtfilt(b, a, data,  axis=0, padtype='odd', padlen=3*(max(len(b), len(a))-1))
     return y
 
@@ -135,12 +134,11 @@ def ellip_filter_high(data, lowcut, fs, order=5):
     nyq = 0.5 * fs
     low = lowcut / nyq
     b, a = ellip(order, 0.1, 40, low, 'highpass')
-    # y = filtfilt(b, a, data)
     y = filtfilt(b, a, data,  axis=0, padtype='odd', padlen=3*(max(len(b), len(a))-1))
     return y
 
 
-def filter_signal(raw_data, frequencies, fsample, filtering_method="Butter_bandpass", order=2):
+def filter_signal(raw_data, fsample, data_preprocessing_config):
     """
     Filter the signal based on specified method and parameters.
     This function applies the selected filtering method (Butterworth or Elliptic, bandpass or highpass)
@@ -148,11 +146,8 @@ def filter_signal(raw_data, frequencies, fsample, filtering_method="Butter_bandp
 
     Args:
         raw_data (numpy.ndarray): The raw data to filter.
-        frequencies (list): The list of frequencies used for low and high cutoff (or just low for highpass filter).
         fsample (float): The sampling frequency in Hz.
-        filtering_method (str, optional): The filtering method used, can be 'Butter_bandpass', 'Butter_highpass',
-                                          'Elliptic_bandpass', or 'Elliptic_highpass'. Default is 'Butter_bandpass'.
-        order (int, optional): The order of the filtering. Default is 2.
+        data_preprocessing_config: Configuration for data preprocessing
 
     Returns:
         numpy.ndarray: The filtered signal. Shape = (recorded data points, number of electrodes).
@@ -160,42 +155,42 @@ def filter_signal(raw_data, frequencies, fsample, filtering_method="Butter_bandp
     Raises:
         ValueError: If an invalid filtering method is chosen.
     """
-    if filtering_method == "Butter_bandpass":
-        lowcut = frequencies[0]
-        highcut = frequencies[1]
+    if data_preprocessing_config.filtering_method == "Butter_bandpass":
+        lowcut = data_preprocessing_config.FREQUENCIES[0]
+        highcut = data_preprocessing_config.FREQUENCIES[1]
 
         filtered = np.empty(shape=(raw_data.shape[0], raw_data.shape[1]))
         for i in range(raw_data.shape[1]):
-            filtered[:, i] = butter_bandpass_filter(raw_data[:, i], lowcut, highcut, fsample=fsample, order=order)
-        del recording_data
+            filtered[:, i] = butter_bandpass_filter(raw_data[:, i], lowcut, highcut, fs=fsample, order=data_preprocessing_config.ORDER)
+        del raw_data
 
-    elif filtering_method == "Butter_highpass":
-        lowcut = frequencies[0]
-
-        filtered = np.empty(shape=(raw_data.shape[0], raw_data.shape[1]))
-        for i in range(raw_data.shape[1]):
-            filtered[:, i] = butter_bandpass_filter_high(raw_data[:, i], lowcut, fsample=fsample, order=order)
-        del recording_data
-
-    elif filtering_method == "Elliptic_bandpass":
-        lowcut = frequencies[0]
-        highcut = frequencies[1]
+    elif data_preprocessing_config.filtering_method == "Butter_highpass":
+        lowcut = data_preprocessing_config.FREQUENCIES[0]
 
         filtered = np.empty(shape=(raw_data.shape[0], raw_data.shape[1]))
         for i in range(raw_data.shape[1]):
-            filtered[:, i] = ellip_filter(raw_data[:, i], lowcut, highcut, fsample=fsample, order=order)
-        del recording_data
+            filtered[:, i] = butter_bandpass_filter_high(raw_data[:, i], lowcut, fs=fsample, order=data_preprocessing_config.ORDER)
+        del raw_data
 
-    elif filtering_method == "Elliptic_highpass":
-        lowcut = frequencies[0]
+    elif data_preprocessing_config.filtering_method == "Elliptic_bandpass":
+        lowcut = data_preprocessing_config.FREQUENCIES[0]
+        highcut = data_preprocessing_config.FREQUENCIES[1]
 
         filtered = np.empty(shape=(raw_data.shape[0], raw_data.shape[1]))
         for i in range(raw_data.shape[1]):
-            filtered[:, i] = ellip_filter_high(raw_data[:, i], lowcut, fsample=fsample, order=order)
-        del recording_data
+            filtered[:, i] = ellip_filter(raw_data[:, i], lowcut, highcut, fs=fsample, order=data_preprocessing_config.ORDER)
+        del raw_data
+
+    elif data_preprocessing_config.filtering_method == "Elliptic_highpass":
+        lowcut = data_preprocessing_config.FREQUENCIES[0]
+
+        filtered = np.empty(shape=(raw_data.shape[0], raw_data.shape[1]))
+        for i in range(raw_data.shape[1]):
+            filtered[:, i] = ellip_filter_high(raw_data[:, i], lowcut, fs=fsample, order=data_preprocessing_config.ORDER)
+        del raw_data
 
     else:
         raise ValueError("Please choose a valid filtering method! Chooose between Butter_bandpass, "
                          "Butter_highpass, Elliptic_bandpass or Elliptic_highpass")
-    
+
     return filtered

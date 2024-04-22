@@ -17,9 +17,6 @@ def wandb_initializer(model_config, pretraining_config, finetune_config, method)
     The function initializes a wandb run with a project name and configuration parameters specific to the chosen method.
     The project name and parameters are set based on the model type, method, and configurations provided.
 
-    For 'reconstruction' method:
-        - The project is named "Pretraining_{method}_{MODEL_TYPE}".
-        - Configurations related to pretraining and model settings are logged.
 
     For 'NNCLR' method:
         - The project is named "Pretraining_{method}_{MODEL_TYPE}".
@@ -30,28 +27,7 @@ def wandb_initializer(model_config, pretraining_config, finetune_config, method)
         - Configurations related to finetuning and model settings are logged.
     """
 
-    if method == "reconstruction":
-        if model_config.MODEL_TYPE == "DenseAutoencoder":
-            wandb.init(
-                # set the wandb project where this run will be logged
-                project="Pretraining_" + method + "_" + model_config.MODEL_TYPE,
-                # track hyperparameters and run metadata with wandb.model_config
-                config={"Model": model_config.MODEL_TYPE,
-                        "DATA": pretraining_config.FILE_NAME,
-                        "DATA_PREP_METHOD": pretraining_config.DATA_PREP_METHOD,
-                        "DATA_NORMALIZATION": pretraining_config.DATA_NORMALIZATION,
-                        "LEARNING_RATE": pretraining_config.LEARNING_RATE,
-                        "WITH_WARMUP": pretraining_config.WITH_WARMUP,
-                        "LR_WARMUP": pretraining_config.LR_WARMUP,
-                        "LR_FINAL": pretraining_config.LR_FINAL,
-                        "NUM_EPOCHS": pretraining_config.NUM_EPOCHS,
-                        "BATCH_SIZE": pretraining_config.BATCH_SIZE,
-                        "DIMS": model_config.DIMS,
-                        "ACT": model_config.ACT,
-                        "CLUSTERING_METHOD": pretraining_config.CLUSTERING_METHOD,
-                        "N_CLUSTERS": pretraining_config.N_CLUSTERS})
-
-    elif method == "NNCLR":
+    if method == "NNCLR":
         if model_config.MODEL_TYPE == "DenseAutoencoder":
             wandb.init(
                 # set the wandb project where this run will be logged
