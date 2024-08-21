@@ -6,9 +6,9 @@ from utils.model_predict import *
 from utils.clustering import *
 from utils.wandb_initializer import *
 from utils.finetune_models import *
-from utils.file_opener_raw_recording_data import *
-from utils.filter_signal import *
-from utils.spike_detection import *
+#from utils.file_opener_raw_recording_data import *
+#from utils.filter_signal import *
+#from utils.spike_detection import *
 
 
 from config_files.config_finetune import *
@@ -84,6 +84,7 @@ class Run:
         print('PRETRAINING MODEL...')
 
         pretrain_model(model=model,
+                       model_config=self.model_config,
                        pretraining_config=self.pretraining_config,
                        pretrain_method=self.pretrain_method,
                        dataset=dataset,

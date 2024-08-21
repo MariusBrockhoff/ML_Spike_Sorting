@@ -48,7 +48,7 @@ def data_preparation(model_config, data_preprocessing_config, pretraining_config
         Returns:
             Processed data ready for training or benchmarking.
         """
-    batch_size = pretraining_config.BATCH_SIZE
+    batch_size = pretraining_config.BATCH_SIZE_NNCLR
     if benchmark:
         with open(pretraining_config.data_path, 'rb') as f:
             X = pickle.load(f)
@@ -97,6 +97,7 @@ def data_preparation(model_config, data_preprocessing_config, pretraining_config
 
         split = pretraining_config.TRAIN_TEST_SPLIT
         number_of_test_samples = int(split * spikes.shape[0])
+        pretraining_config.QUEUE_SIZE = int(pretraining_config.QUEUE_SIZE * spikes.shape[0])
         x_test = spikes[-number_of_test_samples:, :]
         y_test = labels[-number_of_test_samples:]
         x_train = spikes[:-number_of_test_samples, :]
@@ -142,6 +143,7 @@ def data_preparation(model_config, data_preprocessing_config, pretraining_config
 
         split = pretraining_config.TRAIN_TEST_SPLIT
         number_of_test_samples = int(split * spikes.shape[0])
+        pretraining_config.QUEUE_SIZE = int(pretraining_config.QUEUE_SIZE * spikes.shape[0])
         x_test = spikes[-number_of_test_samples:, :]
         y = np.concatenate((electrode, spike_times), axis=1)
         y_test = y[-number_of_test_samples:, :]

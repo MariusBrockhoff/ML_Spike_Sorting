@@ -76,12 +76,12 @@ def file_opener_raw_recording_data(data_preprocessing_config):
         min_step = 0
         max_step = 60
         for i in range(min_step, max_step, step_size):
-        scale_factor_for_uV = Q_(1,'volt').to(ureg.uV).magnitude
-        if i == min_step:
-          recording_data = (get_channel_data(electrode_stream, channel_ids = [j for j in range(i,i+step_size)]) * scale_factor_for_uV).T
-        else:
-          recording_data = np.concatenate((recording_data, (get_channel_data(electrode_stream, channel_ids = [j for j in range(i,i+step_size)]) * scale_factor_for_uV).T), axis=1)
-        print("iteration", i+step_size, "completed")
+            scale_factor_for_uV = Q_(1,'volt').to(ureg.uV).magnitude
+            if i == min_step:
+              recording_data = (get_channel_data(electrode_stream, channel_ids = [j for j in range(i,i+step_size)]) * scale_factor_for_uV).T
+            else:
+              recording_data = np.concatenate((recording_data, (get_channel_data(electrode_stream, channel_ids = [j for j in range(i,i+step_size)]) * scale_factor_for_uV).T), axis=1)
+            print("iteration", i+step_size, "completed")
 
     else:
         signal = get_channel_data(electrode_stream, channel_ids = [])

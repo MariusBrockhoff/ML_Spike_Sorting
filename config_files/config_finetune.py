@@ -42,8 +42,11 @@ class Config_Finetuning(object):
         self.FILE_NAME = self.data_path.rpartition('/')[-1][:-4]
 
         # Load Pretrained Model
-        self.PRETRAINED_SAVE_DIR = ("C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE +
-                                    "_" + self.FILE_NAME + ".h5")
+        self.PRETRAINED_SAVE_DIR = ("/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_"
+                                     + self.FILE_NAME + ".h5") 
+        
+        #("C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE +
+         #                           "_" + self.FILE_NAME + ".h5")
 
         # PseudoLabels
         self.PSEUDO_N_CLUSTERS = None
@@ -59,5 +62,9 @@ class Config_Finetuning(object):
                                          "scale": (1.0, 1.0),
                                          "name": "classification_augmenter"}
 
-        self.PSEUDO_SAVE_DIR = ("C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "DensityPseudoLabel_NNCLR_" +
+        self.PSEUDO_SAVE_DIR = ("/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "DensityPseudoLabel_NNCLR_" +
                                 self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5")
+        
+        
+        #("C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "DensityPseudoLabel_NNCLR_" +
+         #                       self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5")
