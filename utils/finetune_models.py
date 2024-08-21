@@ -532,6 +532,7 @@ class PseudoLabel(object):
 
             kn = KneeLocator(ks, elbow_scores, curve='convex', direction='decreasing')
             print("Predicted number of clusters elbow method:", kn.knee)
+            self.n_clusters = kn.knee
             wandb.log({"Final number of clusters": kn.knee})
 
         print("Ratio of Pseudo Labelled points:", pseudo_label_ratio)
