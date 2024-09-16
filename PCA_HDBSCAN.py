@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+from sklearn.decomposition import PCA
 
 from utils.data_preparation import data_preparation
 from config_files.config_data_preprocessing import Config_Preprocessing
@@ -34,3 +35,9 @@ print("y_train.shape: ", y_train.shape)
 print("x_test.shape: ", x_test.shape)
 print("y_test.shape: ", y_test.shape)
 
+pca = PCA(n_components=10)
+x_train_pca = pca.fit_transform(x_train)
+x_test_pca = pca.transform(x_test)
+
+print("x_train_pca.shape: ", x_train_pca.shape)
+print("x_test_pca.shape: ", x_test_pca.shape)
