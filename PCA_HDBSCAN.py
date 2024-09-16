@@ -15,8 +15,8 @@ args = parser.parse_args()
 model_config = Config_DenseAutoencoder()
 
 data_preprocessing_config = Config_Preprocessing(args.PathData)
-pretraining_config = Config_Pretraining(args.PathData)
-fintune_config = Config_Finetuning(args.PathData)
+pretraining_config = Config_Pretraining(args.PathData, model_config.MODEL_TYPE)
+fintune_config = Config_Finetuning(args.PathData, model_config.MODEL_TYPE)
 
 dataset, dataset_test, pretraining_config, fintune_config = data_preparation(model_config=model_config,
                                                                              data_preprocessing_config=data_preprocessing_config,
