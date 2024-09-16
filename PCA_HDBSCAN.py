@@ -18,13 +18,11 @@ data_preprocessing_config = Config_Preprocessing(args.PathData)
 pretraining_config = Config_Pretraining(args.PathData, model_config.MODEL_TYPE)
 fintune_config = Config_Finetuning(args.PathData, model_config.MODEL_TYPE)
 
-data_preprocessing_config.DATA_SAVE_PATH = data_preprocessing_config.DATA_PATH
-
 dataset, dataset_test, pretraining_config, fintune_config = data_preparation(model_config=model_config,
                                                                              data_preprocessing_config=data_preprocessing_config,
                                                                              pretraining_config=pretraining_config,
                                                                              fintune_config=fintune_config,
-                                                                             benchmark=False)
+                                                                             benchmark=True)
 
 x_train = np.concatenate([x for x, y in dataset], axis=0)
 y_train = np.concatenate([y for x, y in dataset], axis=0)
