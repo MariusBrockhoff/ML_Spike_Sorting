@@ -10,7 +10,6 @@ from config_files.config_file_DenseAutoencoder import Config_DenseAutoencoder
 # Set up argument parser
 parser = argparse.ArgumentParser()
 parser.add_argument('--PathData', type=str, required=True)
-parser.add_argument('--Benchmark', action='store_true')
 args = parser.parse_args()
 
 model_config = Config_DenseAutoencoder()
