@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 from sklearn.decomposition import PCA
+import hdbscan
 
 from utils.data_preparation import data_preparation
 from config_files.config_data_preprocessing import Config_Preprocessing
@@ -41,3 +42,10 @@ x_test_pca = pca.transform(x_test)
 
 print("x_train_pca.shape: ", x_train_pca.shape)
 print("x_test_pca.shape: ", x_test_pca.shape)
+
+clusterer = hdbscan.HDBSCAN(min_cluster_size=25)
+cluster_labels_train = clusterer.fit_predict(x_train_pca)
+cluster_labels_test = clusterer.fit_predict(x_test_pca)
+
+print("cluster_labels_train.shape: ", cluster_labels_train.shape)
+print("cluster_labels_test.shape: ", cluster_labels_test.shape)
