@@ -4,7 +4,7 @@ from sklearn.decomposition import PCA
 import hdbscan
 
 from utils.data_preparation import data_preparation
-from utils.evaluation import evaluate_clustering
+from utils.evaluation import acc
 from config_files.config_data_preprocessing import Config_Preprocessing
 from config_files.config_pretraining import Config_Pretraining
 from config_files.config_finetune import Config_Finetuning
@@ -51,7 +51,8 @@ cluster_labels_test = clusterer.fit_predict(x_test_pca)
 print("cluster_labels_train.shape: ", cluster_labels_train.shape)
 print("cluster_labels_test.shape: ", cluster_labels_test.shape)
 
-train_acc, test_acc = evaluate_clustering(cluster_labels_train, y_train, cluster_labels_test, y_test)
+train_acc = acc(y_train.astype(int), cluster_labels_train)
+test_acc = acc(y_test.astype(int), cluster_labels_test)
 
 print("Train Accuracy: ", train_acc)
 print("Test Accuracy: ", test_acc)
