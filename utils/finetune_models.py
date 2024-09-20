@@ -5,6 +5,7 @@ import time
 import matplotlib.pyplot as plt
 import hnswlib
 from kneed import KneeLocator
+from sklearn.neighbors import KDTree
 
 from utils.pretrain_models import *
 
@@ -324,7 +325,7 @@ class PseudoLabel(object):
          will exit.
         """
         if ae_weights is not None:
-            dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+            dummy = tf.zeros(shape=[1, self.input_dim[0], self.input_dim[1]], dtype=tf.dtypes.float32, name=None)
             self.autoencoder(dummy)
             self.autoencoder.load_weights(ae_weights)
         else:
@@ -355,7 +356,7 @@ class PseudoLabel(object):
 
         if ae_weights is not None:  # load pretrained weights of autoencoder
             # Creating a dummy input to initialize the model
-            dummy = tf.zeros(shape=[1, self.input_dim[0]], dtype=tf.dtypes.float32, name=None)
+            dummy = tf.zeros(shape=[1, self.input_dim[0], self.input_dim[1]], dtype=tf.dtypes.float32, name=None)
 
             # Running the dummy input through the autoencoder to get output shapes
             out_1, out_2 = self.autoencoder(dummy)
@@ -483,28 +484,34 @@ class PseudoLabel(object):
         data = self.pseudo.predict(x)
 
         k = int(self.k_nearest_neighbours*x.shape[0])
+        
+        print("k:", k)
+        
+        
 
         # Starting the density calculation
         start_time = time.time()
+        
+        rho_normed = calculate_densities(data=data, k=k, density_function=self.density_function)
 
-        num_elements, dim = data.shape
+        #num_elements, dim = data.shape
 
-        p = hnswlib.Index(space='l2', dim=dim)
+        #p = hnswlib.Index(space='l2', dim=dim)
 
         # Initializing the index - the maximum number of elements should be known beforehand
-        p.init_index(max_elements=num_elements, ef_construction=int(k*1.5), M=32)
+        #p.init_index(max_elements=num_elements, ef_construction=int(k*1.5), M=32)
 
         # Element insertion (can be called several times):
-        p.add_items(data)
+        #p.add_items(data)
 
         # Controlling the recall by setting ef:
-        p.set_ef(int(k*1.5))  # Setting ef to be higher than k to ensure good recall
+        #p.set_ef(int(k*1.5))  # Setting ef to be higher than k to ensure good recall
 
         # Query the index:
-        labels, knn_dist = p.knn_query(data, k=k)
-        print("knn_dist.shape:", knn_dist.shape)
-        rho = np.mean(knn_dist, axis=1) ** -1
-        rho_normed = (rho - np.min(rho)) / (np.max(rho) - np.min(rho))
+        #labels, knn_dist = p.knn_query(data, k=k)
+        #print("knn_dist.shape:", knn_dist.shape)
+        #rho = np.mean(knn_dist, axis=1) ** -1
+        #rho_normed = (rho - np.min(rho)) / (np.max(rho) - np.min(rho))
 
         end_time = time.time()
         print("Time Density Calculation hnswlib: ", end_time - start_time)
@@ -518,17 +525,13 @@ class PseudoLabel(object):
             label_points = OrdRho[:int(data.shape[0] * label_ratio)]
             y_train_label_points = y[label_points]
             x_train_label_points = data[label_points, :]
-            for i in range(2, 15):
+            for i in range(2, 20):
                 n_clusters = i
                 kmeans = KMeans(n_clusters=n_clusters, n_init=20)
                 y_pred_labelled_points = kmeans.fit_predict(x_train_label_points)
                 elbow_score = kmeans.inertia_
                 ks.append(n_clusters)
                 elbow_scores.append(elbow_score)
-                print("Accuracy on high density points for ", n_clusters, "cluster:",
-                      acc(y_train_label_points, y_pred_labelled_points), elbow_score)
-                wandb.log({"K": n_clusters,
-                           "Accuracy on Ks": acc(y_train_label_points, y_pred_labelled_points)})
 
             kn = KneeLocator(ks, elbow_scores, curve='convex', direction='decreasing')
             print("Predicted number of clusters elbow method:", kn.knee)
@@ -539,30 +542,36 @@ class PseudoLabel(object):
         if self.sampling_method == 'weighted':
             selected_indices = sampling_weighted(pseudo_label_ratio, rho_normed)
             np.random.shuffle(selected_indices)
+            print("number of selected traces:", len(selected_indices))
 
         elif self.sampling_method == 'densest':
             OrdRho = np.argsort(-rho_normed)
             selected_indices = OrdRho[:int(OrdRho.shape[0] * pseudo_label_ratio)]
             np.random.shuffle(selected_indices)
 
-        y_label_points = y[selected_indices]
+        print("y.shape", y.shape)
         x_label_points = x[selected_indices, :]
-        y_unlabel_points = np.delete(y, selected_indices)
+        y_label_points = y[selected_indices,0]
+        y_unlabel_points = np.delete(y, selected_indices, axis=0)
         x_unlabel_points = np.delete(x, selected_indices, axis=0)
+        
+        print("y_unlabel_points.shape", y_unlabel_points.shape)
+        y_unlabel_points = y_unlabel_points[:,0]
 
         # Applying KMeans clustering to generate pseudo labels
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred_labelled_points = kmeans.fit_predict(self.pseudo.predict(x_label_points))
-
-        # Logging the accuracy on high-density points
+        
+        # Logging and printing the accuracy on high-density points
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
         wandb.log({"Accuracy on high density points": acc(y_label_points, y_pred_labelled_points)})
 
-        # Apply KMeans on all data and log the overall accuracy
+        # Apply KMeans on all data and log the accuracy
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
         y_pred = kmeans.fit_predict(data)
-        print("vs. Accuracy on all points:", acc(y, y_pred))
-        wandb.log({"Accuracy on all points": acc(y, y_pred)})
+        print("vs. Accuracy on all points:", acc(y[:,0], y_pred))
+        wandb.log({"Accuracy on all points": acc(y[:,0], y_pred)})
+
 
         wandb.log({"Label Ratio": pseudo_label_ratio})
 
@@ -604,7 +613,7 @@ class PseudoLabel(object):
 
         # Constructing the fine-tuning model
         finetuning_model = tf.keras.Sequential(
-            [tf.keras.layers.Input(shape=self.input_dim[0]),
+            [tf.keras.layers.Input(shape=self.input_dim),
              self.autoencoder.Encoder,
              tf.keras.layers.Dropout(0.1),
              tf.keras.layers.Dense(self.n_clusters, activation='softmax'),
@@ -665,8 +674,8 @@ class PseudoLabel(object):
         # Create datasets for pseudo-labeled and unlabeled data
         dataset_pseudolabeled = tf.data.Dataset.from_tensor_slices((x_label_points, y_pred_labelled_points)).batch(
             self.batch_size, drop_remainder=True)
-        dataset_unlabellabed = tf.data.Dataset.from_tensor_slices((x_unlabel_points, y_unlabel_points)).batch(
-            self.batch_size, drop_remainder=True)
+        #dataset_unlabellabed = tf.data.Dataset.from_tensor_slices((x_unlabel_points, y_unlabel_points)).batch(
+         #   self.batch_size, drop_remainder=True)
 
         # Constructing the fine-tuning model with conditional augmentation
         finetuning_model = tf.keras.Sequential(
@@ -690,13 +699,13 @@ class PseudoLabel(object):
         # Training the model with logging
         from wandb.keras import WandbMetricsLogger
         finetuning_model.fit(
-            dataset_pseudolabeled, epochs=self.epochs, validation_data=dataset_unlabellabed, verbose=0,
+            dataset_pseudolabeled, epochs=self.epochs, verbose=0,
             callbacks=[WandbMetricsLogger()])
 
         # Predicting, evaluating, and saving the fine-tuned model
         pred = finetuning_model.predict(x)
         y_pred = pred.argmax(1)
-        final_acc = acc(y, y_pred)
+        final_acc = acc(y[:,0], y_pred)
         print("final_acc:", final_acc)
         wandb.log({"Final Acc": final_acc})
 
@@ -735,17 +744,14 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
     for step, batch in enumerate(dataset):
         if step == 0:
             x = batch[0]
-            if benchmark:
-                y = batch[1]
+            y = batch[1]
         else:
             x = np.concatenate((x, batch[0]), axis=0)
-            if benchmark:
-                y = np.concatenate((y, batch[1]), axis=0)
+            y = np.concatenate((y, batch[1]), axis=0)
 
     for stept, batcht in enumerate(dataset_test):
         x = np.concatenate((x, batcht[0]), axis=0)
-        if benchmark:
-            y = np.concatenate((y, batcht[1]), axis=0)
+        y = np.concatenate((y, batcht[1]), axis=0)
 
 
     pseudo_label = PseudoLabel(model=model,
@@ -785,6 +791,7 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
 
     else:
         for ratio in finetune_config.ITERATIVE_RATIOS:
+            print("ratio:", ratio)
             (x_label_points,
              y_pred_labelled_points,
              x_unlabel_points,
@@ -803,8 +810,8 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
         finetune_config.PSEUDO_SAVE_DIR = check_filepath_naming(finetune_config.PSEUDO_SAVE_DIR)
         finetuning_model.save_weights(finetune_config.PSEUDO_SAVE_DIR)
         # save labels
-        ys = np.concatenate((y.reshape(len(y), 1), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)),
+        ys = np.concatenate((y.reshape(len(y), 2), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)),
                             axis=1)
-        np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels.txt", ys)
+        np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_RESULTS.txt", ys)
 
     return y_pred_finetuned, y

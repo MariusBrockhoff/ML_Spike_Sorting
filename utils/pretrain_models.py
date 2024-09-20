@@ -384,7 +384,8 @@ class NNCLR(tf.keras.Model):
 
     def train_step(self, data):
         (unlabeled_images, _), (labeled_images, labels) = data
-        images = tf.concat((unlabeled_images, labeled_images), axis=0)
+        labels = labels[:,0]
+        images = unlabeled_images  #tf.concat((unlabeled_images, labeled_images), axis=0) #unlabeled_images 
         augmented_images_1 = self.contrastive_augmenter(images)
         augmented_images_2 = self.contrastive_augmenter(images)
 
@@ -430,6 +431,7 @@ class NNCLR(tf.keras.Model):
 
     def test_step(self, data):
         labeled_images, labels = data
+        labels = labels[:,0]
 
         preprocessed_images = self.classification_augmenter(
             labeled_images, training=False
@@ -440,6 +442,7 @@ class NNCLR(tf.keras.Model):
 
         self.probe_accuracy.update_state(labels, class_logits)
         return {"p_loss": probe_loss, "p_acc": self.probe_accuracy.result()}
+        #return {"p_loss": 1, "p_acc": 1}
 
 
 def pretrain_model(model, model_config, pretraining_config, pretrain_method, dataset, dataset_test, save_weights,

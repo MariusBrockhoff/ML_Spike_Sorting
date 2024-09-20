@@ -153,7 +153,7 @@ class Run:
         else:
             start_time = time.time()
             self.initialize_wandb(self.pretrain_method)
-            self.extract_spikes_from_raw_recording()
+            #self.extract_spikes_from_raw_recording()
             dataset, dataset_test = self.prepare_data()
             model = self.initialize_model()
             self.pretrain(model=model, dataset=dataset, dataset_test=dataset_test)
@@ -172,6 +172,7 @@ class Run:
             dataset, dataset_test = self.prepare_data()
             model = self.initialize_model()
             y_pred_finetuned, y_true = self.finetune(model=model, dataset=dataset, dataset_test=dataset_test)
+            y_true = y_true[:,0]
             train_acc, _ = self.evaluate_spike_sorting(y_pred_finetuned, y_true)
             print("Accuracy after Finetuning: ", train_acc)
             end_time = time.time()

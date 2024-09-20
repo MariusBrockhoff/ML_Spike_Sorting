@@ -87,5 +87,7 @@ class Config_Preprocessing(object):
 
         # Model Saving Configuration
         self.SAVE_WEIGHTS = True  # Flag to save model weights
-        self.SAVE_PATH = "/rds/user/mb2315/hpc-work/Data/Saved_Models/Spike_File_" + self.FILE_NAME + ".pkl" # Directory for saving the model
+        self.SAVE_PATH = self.DATA_PATH
+        
+        #"/rds/user/mb2315/hpc-work/Data/Saved_Models/Spike_File_" + self.FILE_NAME + ".pkl" # Directory for saving the model
 

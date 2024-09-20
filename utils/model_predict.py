@@ -28,9 +28,9 @@ def model_predict_latents(model, dataset, dataset_test):
         [latents, _] = model(batch_s)
         if i == 0:
             encoded_data = latents
-            y_true = batch[1].numpy().tolist()
+            y_true = batch[1][:,0].numpy().tolist()
         encoded_data = np.concatenate((encoded_data, latents))
-        y_true = y_true + batch[1].numpy().tolist()
+        y_true = y_true + batch[1][:,0].numpy().tolist()
         i += 1
 
     i_test = 0
@@ -39,9 +39,9 @@ def model_predict_latents(model, dataset, dataset_test):
         [latents, _] = model(batch_s)
         if i_test == 0:
             encoded_data_test = latents
-            y_true_test = batch_test[1].numpy().tolist()
+            y_true_test = batch_test[1][:,0].numpy().tolist()
         encoded_data_test = np.concatenate((encoded_data_test, latents))
-        y_true_test = y_true_test + batch_test[1].numpy().tolist()
+        y_true_test = y_true_test + batch_test[1][:,0].numpy().tolist()
         i_test += 1
 
     return encoded_data, encoded_data_test, np.array(y_true), np.array(y_true_test)

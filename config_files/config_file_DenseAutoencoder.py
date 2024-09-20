@@ -39,7 +39,7 @@ class Config_DenseAutoencoder(object):
         self.MODEL_TYPE = "DenseAutoencoder"
 
         # Input Sequence Length
-        self.SEQ_LEN = 63
+        self.SEQ_LEN = 1600
 
         # Latent Space Length
         self.LATENT_LEN = 10

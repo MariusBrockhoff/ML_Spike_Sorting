@@ -27,6 +27,7 @@ class Encoder(tf.keras.Model):
         self.dims = dims
         self.act = act
         # Creates a list of Dense layers for the encoder part, excluding the last dimension.
+        #self.proj_1D = KL.Dense(1)
         self.encoding = [KL.Dense(self.dims[i + 1], activation=self.act, name='encoder_%d' % i) for i in
                          range(len(self.dims) - 2)]
         # The hidden layer representation
@@ -38,6 +39,9 @@ class Encoder(tf.keras.Model):
         Applies each layer in the encoder to the input in sequence.
         """
         h = inputs
+        #h = self.proj_1D(h)
+        #h = tf.squeeze(h, axis=-1)
+        h = KL.Flatten()(h)
         for i in range(len(self.dims) - 2):
             h = self.encoding[i](h)
         h = self.hidden(h)

@@ -59,7 +59,7 @@ class Config_Pretraining(object):
         self.DATA_SAVE_PATH = self.data_path
         self.DATA_PREP_METHOD = "gradient"
         self.DATA_NORMALIZATION = "MinMax"
-        self.TRAIN_TEST_SPLIT = 0.75
+        self.TRAIN_TEST_SPLIT = 0.25
         self.BENCHMARK_START_IDX = 0
         self.BENCHMARK_END_IDX = 5  # int(1/self.TRAIN_TEST_SPLIT)
 
@@ -71,7 +71,7 @@ class Config_Pretraining(object):
         self.LR_FINAL_NNCLR = 1e-4  # 1e-6 1e-8
 
         self.NUM_EPOCHS_NNCLR = 25
-        self.BATCH_SIZE_NNCLR = 256
+        self.BATCH_SIZE_NNCLR = 256 
 
         self.TEMPERATURE = 0.1
         self.QUEUE_SIZE = 0.1
@@ -95,8 +95,7 @@ class Config_Pretraining(object):
 
         # Model Saving Configuration
         self.SAVE_WEIGHTS = True
-        self.SAVE_DIR = ("/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_"
-                         + self.FILE_NAME + ".h5") 
+        self.SAVE_DIR = "/rds/user/mb2315/hpc-work/Data/Saved_Models/" + "Pretrain_" + self.MODEL_TYPE + "_" + self.FILE_NAME + ".h5" 
         
         #("C:/Users/marib/Documents/Github/ML_Spike_Sorting/trained_models/" + "Pretrain_" + self.MODEL_TYPE + "_"
          #                + self.FILE_NAME + ".h5")
