@@ -549,13 +549,10 @@ class PseudoLabel(object):
             selected_indices = OrdRho[:int(OrdRho.shape[0] * pseudo_label_ratio)]
             np.random.shuffle(selected_indices)
 
-        print("y.shape", y.shape)
         x_label_points = x[selected_indices, :]
         y_label_points = y[selected_indices,0]
         y_unlabel_points = np.delete(y, selected_indices, axis=0)
         x_unlabel_points = np.delete(x, selected_indices, axis=0)
-        
-        print("y_unlabel_points.shape", y_unlabel_points.shape)
         y_unlabel_points = y_unlabel_points[:,0]
 
         # Applying KMeans clustering to generate pseudo labels
