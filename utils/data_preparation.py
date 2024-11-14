@@ -66,8 +66,7 @@ def data_preparation(model_config, data_preprocessing_config, pretraining_config
             if classes_from_data_pretrain:
                 pretraining_config.N_CLUSTERS = len(np.unique(labels))
             if classes_from_data_finetune:
-                fintune_config.DEC_N_CLUSTERS = len(np.unique(labels))
-                fintune_config.IDEC_N_CLUSTERS = len(np.unique(labels))
+                fintune_config.PSEUDO_N_CLUSTERS = len(np.unique(labels))
             del X
 
         if pretraining_config.DATA_NORMALIZATION == "MinMax":

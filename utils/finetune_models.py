@@ -5,6 +5,7 @@ import time
 import matplotlib.pyplot as plt
 import hnswlib
 from kneed import KneeLocator
+from sklearn.mixture import GaussianMixture
 
 from utils.pretrain_models import *
 
@@ -551,16 +552,21 @@ class PseudoLabel(object):
         x_unlabel_points = np.delete(x, selected_indices, axis=0)
 
         # Applying KMeans clustering to generate pseudo labels
-        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred_labelled_points = kmeans.fit_predict(self.pseudo.predict(x_label_points))
+        #kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
+        #y_pred_labelled_points = kmeans.fit_predict(self.pseudo.predict(x_label_points))
+        gmm = GaussianMixture(n_components=self.n_clusters)
+        y_pred_labelled_points = gmm.fit_predict(self.pseudo.predict(x_label_points))
 
         # Logging the accuracy on high-density points
         print("Accuracy on high density points:", acc(y_label_points, y_pred_labelled_points))
         wandb.log({"Accuracy on high density points": acc(y_label_points, y_pred_labelled_points)})
 
         # Apply KMeans on all data and log the overall accuracy
-        kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
-        y_pred = kmeans.fit_predict(data)
+        #kmeans = KMeans(n_clusters=self.n_clusters, n_init=20)
+        #y_pred = kmeans.fit_predict(data)
+        gmm = GaussianMixture(n_components=self.n_clusters)
+        y_pred = gmm.fit_predict(data)
+        
         print("vs. Accuracy on all points:", acc(y, y_pred))
         wandb.log({"Accuracy on all points": acc(y, y_pred)})
 
