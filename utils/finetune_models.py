@@ -805,6 +805,6 @@ def finetune_model(model, finetune_config, finetune_method, dataset, dataset_tes
         # save labels
         ys = np.concatenate((y.reshape(len(y), 1), y_pred_finetuned.reshape(len(y_pred_finetuned), 1)),
                             axis=1)
-        np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels.txt", ys)
+        np.savetxt(finetune_config.PSEUDO_SAVE_DIR[:-3] + "_labels_extra.txt", ys)
 
     return y_pred_finetuned, y
