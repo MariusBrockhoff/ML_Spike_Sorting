@@ -49,8 +49,6 @@ All parameters can be adjusted in the configuration files. There are separate fi
 
 
 ## Acknowledgements
-If you use PseudoSorter, please cite our [preprint](https://doi.org/10.1101/2024.02.29.582792 ):
+If you use PseudoSorter, please cite our [publication](https://doi.org/10.1126/sciadv.adr4155):
 
-Brockhoff, M., Träuble, J., Middya, S., Fuchsberger, T., Fernandez-Villegas, A., Stephens, A. D., ... & Schierle, G. S. K. (2024). Machine learning-based spike sorting reveals how subneuronal concentrations of monomeric Tau cause a loss in excitatory postsynaptic currents in hippocampal neurons. bioRxiv, 2024-02. DOI: https://doi.org/10.1101/2024.02.29.582792
-
-
+Brockhoff, M., Träuble, J., Middya, S., Fuchsberger, T., Fernandez-Villegas, A., Stephens, A., ... & Kaminski Schierle, G. S. (2025). PseudoSorter: A self-supervised spike sorting approach applied to reveal Tau-induced reductions in neuronal activity. Science Advances, 11(11).
